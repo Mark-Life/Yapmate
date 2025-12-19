@@ -130,7 +130,7 @@ export const useProviderAttachments = () => {
   return ctx;
 };
 
-const useOptionalProviderAttachments = () =>
+export const useOptionalProviderAttachments = () =>
   useContext(ProviderAttachmentsContext);
 
 export type PromptInputProviderProps = PropsWithChildren<{
@@ -425,6 +425,32 @@ export const PromptInputActionAddAttachments = ({
     >
       <ImageIcon className="mr-2 size-4" /> {label}
     </DropdownMenuItem>
+  );
+};
+
+export type PromptInputAddFileButtonProps = PromptInputButtonProps;
+
+/**
+ * Direct button that opens the file dialog when clicked.
+ * Uses ImageIcon and immediately triggers attachments.openFileDialog().
+ */
+export const PromptInputAddFileButton = ({
+  className,
+  ...props
+}: PromptInputAddFileButtonProps) => {
+  const attachments = usePromptInputAttachments();
+
+  return (
+    <PromptInputButton
+      aria-label="Add photos or files"
+      className={className}
+      onClick={() => {
+        attachments.openFileDialog();
+      }}
+      {...props}
+    >
+      <ImageIcon className="size-4" />
+    </PromptInputButton>
   );
 };
 
