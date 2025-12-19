@@ -1,5 +1,39 @@
 "use client";
 
+import type { ChatStatus, FileUIPart } from "ai";
+import {
+  CornerDownLeftIcon,
+  ImageIcon,
+  Loader2Icon,
+  MicIcon,
+  PaperclipIcon,
+  PlusIcon,
+  SquareIcon,
+  XIcon,
+} from "lucide-react";
+import { nanoid } from "nanoid";
+import {
+  type ChangeEvent,
+  type ChangeEventHandler,
+  Children,
+  type ClipboardEventHandler,
+  type ComponentProps,
+  createContext,
+  type FormEvent,
+  type FormEventHandler,
+  Fragment,
+  type HTMLAttributes,
+  type KeyboardEventHandler,
+  type PropsWithChildren,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -35,40 +69,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { ChatStatus, FileUIPart } from "ai";
-import {
-  CornerDownLeftIcon,
-  ImageIcon,
-  Loader2Icon,
-  MicIcon,
-  PaperclipIcon,
-  PlusIcon,
-  SquareIcon,
-  XIcon,
-} from "lucide-react";
-import { nanoid } from "nanoid";
-import {
-  type ChangeEvent,
-  type ChangeEventHandler,
-  Children,
-  type ClipboardEventHandler,
-  type ComponentProps,
-  createContext,
-  type FormEvent,
-  type FormEventHandler,
-  Fragment,
-  type HTMLAttributes,
-  type KeyboardEventHandler,
-  type PropsWithChildren,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 
 // ============================================================================
 // Provider Context & Types
@@ -201,15 +201,16 @@ export function PromptInputProvider({
   attachmentsRef.current = attachmentFiles;
 
   // Cleanup blob URLs on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       for (const f of attachmentsRef.current) {
         if (f.url) {
           URL.revokeObjectURL(f.url);
         }
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   const openFileDialog = useCallback(() => {
     openRef.current?.();
@@ -392,7 +393,7 @@ export function PromptInputAttachments({
 
   return (
     <div
-      className={cn("flex flex-wrap items-center gap-2 p-3 w-full", className)}
+      className={cn("flex w-full flex-wrap items-center gap-2 p-3", className)}
       {...props}
     >
       {attachments.files.map((file) => (

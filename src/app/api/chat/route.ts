@@ -1,12 +1,5 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error("OPENROUTER_API_KEY is not set");
-}
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+import { openrouter } from "@/lib/openrouter";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;

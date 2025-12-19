@@ -41,14 +41,13 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
+import { MODELS, parseModel } from "@/lib/models";
 
-const models = [
-  {
-    name: "Gemini 3 Flash Preview",
-    value: "google/gemini-3-flash-preview",
-  },
-];
-const ChatBotDemo = () => {
+const models = MODELS.map((value) => ({
+  name: parseModel(value).modelName,
+  value,
+}));
+const Chat = () => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const { messages, sendMessage, status, regenerate } = useChat();
@@ -133,7 +132,7 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
         <PromptInput
-          className="mt-4"
+          className="mt-4 rounded-md border border-primary/10 bg-primary/5"
           globalDrop
           multiple
           onSubmit={handleSubmit}
@@ -185,4 +184,4 @@ const ChatBotDemo = () => {
     </div>
   );
 };
-export default ChatBotDemo;
+export default Chat;
