@@ -122,3 +122,103 @@ I can create the Phase 1 implementation:
 2. Create `src/db/` with schema and client
 3. Update `chat-store.ts` with actual DB operations
 4. Wire up route.ts and chat.tsx
+
+
+---
+
+# Phase 1 Completion Checklist
+
+### ✅ Done
+- [x] Schema files (`users`, `chats`, `messages`, `parts`, `files`)
+- [x] `timestamps` helper
+- [x] Schema re-exports
+
+### 🔧 Infrastructure
+| Task | Description |
+|------|-------------|
+| 1. **Update `client.ts`** | Switch from `@vercel/postgres` to `postgres-js` for Supabase |
+| 2. **Add `postgres` package** | `bun add postgres` |
+| 3. **Update `drizzle.config.ts`** | Ensure path is correct for Supabase |
+| 4. **Create Supabase project** | Get connection string, set `DATABASE_URL` |
+| 5. **Run migration** | `bun run db:generate` + `bun run db:migrate` |
+
+### 📦 Service Layer (`src/db/service/`)
+| File | Functions |
+|------|-----------|
+| `chats.ts` | `createChat`, `getChat`, `getChatsByUser`, `updateChatTitle`, `deleteChat`, `branchChat` |
+| `messages.ts` | `getMessagesByChatId`, `saveMessages`, `deleteMessagesFromOrder` (for regenerate) |
+| `mapping.ts` | `mapUIMessageToDb`, `mapDbMessageToUI`, `mapUIPartToDb`, `mapDbPartToUI` |
+
+### 🔄 Integration
+| Task | File | Description |
+|------|------|-------------|
+| 6. **Update `chat-store.ts`** | `src/lib/chat-store.ts` | Use service layer functions |
+| 7. **Update API route** | `src/app/api/chat/route.ts` | Load previous messages, save on finish |
+| 8. **Update chat component** | `src/components/chat.tsx` | Use `prepareSendMessagesRequest` to send only last message |
+| 9. **Create chat page** | `src/app/chat/[id]/page.tsx` | Load chat from DB, pass to component |
+
+### 📁 File Storage (can defer)
+| Task | Description |
+|------|-------------|
+| 10. **Create Supabase Storage bucket** | Private bucket for user files |
+| 11. **File service** | `src/db/service/files.ts` - upload, getSignedUrl, delete |
+| 12. **File upload API** | `/api/files/upload` endpoint |
+
+---
+
+## Order of Implementation
+
+```
+1. Infrastructure (client, package, config)
+         ↓
+2. Run first migration (create tables)
+         ↓
+3. Mapping functions (UI ↔ DB conversion)
+         ↓
+4. Service layer (chats.ts, messages.ts)
+         ↓
+5. Update chat-store.ts
+         ↓
+6. Update API route + chat component
+         ↓
+7. Test with real DB
+         ↓
+8. File storage (can do later)
+```
+
+---
+
+## Key Functions to Implement
+
+### `src/db/service/mapping.ts`
+```typescript
+// UI → DB (when saving)
+mapUIMessageToDb(uiMessage: UIMessage, chatId: string, order: number) → { message: MessageInsert, parts: PartInsert[] }
+
+// DB → UI (when loading)
+mapDbMessageToUI(dbMessage: MessageSelect, dbParts: PartSelect[]) → UIMessage
+```
+
+### `src/db/service/messages.ts`
+```typescript
+// Save all messages (upsert - handles new + updated)
+saveMessages(chatId: string, uiMessages: UIMessage[]) → Promise<void>
+
+// Load messages with parts, return as UIMessage[]
+getMessagesByChatId(chatId: string) → Promise<UIMessage[]>
+
+// For regenerate: delete messages from order N onwards
+deleteMessagesFromOrder(chatId: string, fromOrder: number) → Promise<void>
+```
+
+### `src/db/service/chats.ts`
+```typescript
+createChat(userId: string, title?: string) → Promise<string>
+getChat(chatId: string) → Promise<ChatSelect | null>
+getChatsByUser(userId: string) → Promise<ChatSelect[]>
+updateChatTitle(chatId: string, title: string) → Promise<void>
+deleteChat(chatId: string) → Promise<void>
+branchChat(originalChatId: string, fromMessageOrder: number) → Promise<string>
+```
+
+---
