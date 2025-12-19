@@ -27,15 +27,22 @@ import {
   PromptInputHeader,
   type PromptInputMessage,
   PromptInputProvider,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from "@/components/ai-elements/model-selector";
 import {
   Reasoning,
   ReasoningContent,
@@ -44,19 +51,42 @@ import {
 import { DragDropZone } from "@/components/drag-drop-zone";
 import { MODELS, parseModel } from "@/lib/models";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 const models = MODELS.map((value) => ({
   name: parseModel(value).modelName,
   value,
+  provider: parseModel(value).provider,
 }));
+
+const groupModelsByProvider = (
+  models: Array<{ name: string; value: string; provider: string }>
+) => {
+  const grouped = new Map<string, Array<{ name: string; value: string }>>();
+  for (const model of models) {
+    const existing = grouped.get(model.provider) ?? [];
+    grouped.set(model.provider, [...existing, { name: model.name, value: model.value }]);
+  }
+  return Array.from(grouped.entries()).map(([provider, items]) => ({
+    provider,
+    items,
+  }));
+};
 
 const Chat = () => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { messages, sendMessage, status, regenerate } = useChat();
+
+  const groupedModels = useMemo(() => groupModelsByProvider(models), []);
+  const currentModel = useMemo(
+    () => models.find((m) => m.value === model),
+    [model]
+  );
 
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -170,26 +200,49 @@ const Chat = () => {
               </PromptInputBody>
               <PromptInputFooter>
                 <PromptInputTools>
-                  <PromptInputSelect
-                    onValueChange={(value) => {
-                      setModel(value);
-                    }}
-                    value={model}
-                  >
-                    <PromptInputSelectTrigger>
-                      <PromptInputSelectValue />
-                    </PromptInputSelectTrigger>
-                    <PromptInputSelectContent>
-                      {models.map((modelItem) => (
-                        <PromptInputSelectItem
-                          key={modelItem.value}
-                          value={modelItem.value}
-                        >
-                          {modelItem.name}
-                        </PromptInputSelectItem>
-                      ))}
-                    </PromptInputSelectContent>
-                  </PromptInputSelect>
+                  <ModelSelector open={modelSelectorOpen} onOpenChange={setModelSelectorOpen}>
+                    <ModelSelectorTrigger asChild>
+                      <PromptInputButton
+                        className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
+                        aria-expanded={modelSelectorOpen}
+                      >
+                        {currentModel && (
+                          <ModelSelectorLogo provider={currentModel.provider as any} />
+                        )}
+                        <span>{currentModel?.name}</span>
+                      </PromptInputButton>
+                    </ModelSelectorTrigger>
+                    <ModelSelectorContent>
+                      <ModelSelectorInput placeholder="Search models..." />
+                      <ModelSelectorList>
+                        <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                        {groupedModels.map((group) => (
+                          <ModelSelectorGroup key={group.provider}>
+                            <div className="cmdk-group-heading pb-1 pl-2">
+                              {group.provider === "google"
+                                ? "Google"
+                                : group.provider === "openai"
+                                  ? "OpenAI"
+                                  : group.provider.charAt(0).toUpperCase() + group.provider.slice(1)}
+                            </div>
+                            {group.items.map((item) => (
+                              <ModelSelectorItem
+                                key={item.value}
+                                value={item.value}
+                                onSelect={() => {
+                                  setModel(item.value);
+                                  setModelSelectorOpen(false);
+                                }}
+                              >
+                                <ModelSelectorLogo provider={group.provider as any} />
+                                <ModelSelectorName>{item.name}</ModelSelectorName>
+                              </ModelSelectorItem>
+                            ))}
+                          </ModelSelectorGroup>
+                        ))}
+                      </ModelSelectorList>
+                    </ModelSelectorContent>
+                  </ModelSelector>
                   <PromptInputAddFileButton />
                   <PromptInputButton
                     aria-label="Toggle search"
