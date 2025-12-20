@@ -132,6 +132,43 @@ const handleRegeneration = async (
 };
 
 /**
+ * Handles editing a user message by updating its text and deleting stale messages
+ * @param chatId - ID of the chat
+ * @param editMessageId - ID of the message being edited
+ * @param editedText - New text content for the message
+ */
+const handleEdit = async (
+  chatId: string,
+  editMessageId: string,
+  editedText: string
+): Promise<void> => {
+  const allMessages = await loadChatMessages(chatId);
+  const messageToEdit = allMessages.find((msg) => msg.id === editMessageId);
+
+  if (messageToEdit && messageToEdit.role === "user") {
+    // Update the text part with edited content
+    const updatedParts = messageToEdit.parts.map((part) =>
+      part.type === "text" ? { type: "text" as const, text: editedText } : part
+    );
+
+    const updatedMessage: UIMessage = {
+      ...messageToEdit,
+      parts: updatedParts,
+    };
+
+    // Get the order of the edited message
+    const editOrder = await getMessageOrder(editMessageId);
+    if (editOrder !== null) {
+      // Delete stale messages after the edited message
+      await deleteMessagesFromOrder(chatId, editOrder + 1);
+
+      // Save the updated message
+      await saveMessageService(chatId, updatedMessage, editOrder, {});
+    }
+  }
+};
+
+/**
  * Processes file parts and maps them to part indices
  * @param message - The message containing file parts
  * @param userId - ID of the user
@@ -177,6 +214,8 @@ export async function POST(req: Request) {
     id,
     regenerateMessageId,
     regenerateRole,
+    editMessageId,
+    editedText,
   }: {
     message: UIMessage;
     model: string;
@@ -184,6 +223,8 @@ export async function POST(req: Request) {
     id: string;
     regenerateMessageId?: string;
     regenerateRole?: "user" | "assistant";
+    editMessageId?: string;
+    editedText?: string;
   } = await req.json();
 
   if (!id) {
@@ -199,41 +240,48 @@ export async function POST(req: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  // Process file parts and create file records
-  const { fileRecords, fileIdByPartIndex } = await processMessageFiles(
-    message,
-    userId
-  );
+  let fileRecords: FileSelect[] = [];
+  let isFirstMessage = false;
 
-  // Handle regeneration: delete stale messages after the regeneration point
-  if (regenerateMessageId) {
-    await handleRegeneration(id, regenerateMessageId, regenerateRole);
+  // Handle edit: update message text and delete stale messages
+  if (editMessageId && editedText) {
+    await handleEdit(id, editMessageId, editedText);
+  } else {
+    // Process file parts and create file records (only if not editing)
+    const processedFiles = await processMessageFiles(message, userId);
+    fileRecords = processedFiles.fileRecords;
+    const fileIdByPartIndex = processedFiles.fileIdByPartIndex;
+
+    // Handle regeneration: delete stale messages after the regeneration point
+    if (regenerateMessageId) {
+      await handleRegeneration(id, regenerateMessageId, regenerateRole);
+    }
+
+    // Save user message before sending to LLM
+    const previousMessages = await loadChatMessages(id);
+    isFirstMessage = previousMessages.length === 0;
+    const messageOrder = previousMessages.length;
+
+    // Save message with file IDs
+    await saveMessageService(id, message, messageOrder, {
+      fileIdMap: fileIdByPartIndex,
+    });
+
+    // Trigger background upload (non-blocking)
+    if (fileRecords.length > 0) {
+      uploadFilesInBackground(fileRecords, id);
+    }
   }
 
-  // Save user message before sending to LLM
-  const previousMessages = await loadChatMessages(id);
-  const isFirstMessage = previousMessages.length === 0;
-  const messageOrder = previousMessages.length;
-
-  // Save message with file IDs
-  await saveMessageService(id, message, messageOrder, {
-    fileIdMap: fileIdByPartIndex,
-  });
-
-  // Load all messages (includes the newly saved message)
+  // Load all messages (includes the newly saved/updated message)
   const allMessages = await loadChatMessages(id);
-
-  // Trigger background upload (non-blocking)
-  if (fileRecords.length > 0) {
-    uploadFilesInBackground(fileRecords, id);
-  }
 
   const modelWithSearch = searchEnabled ? `${model}:online` : model;
 
   const stream = createUIMessageStream({
     execute: ({ writer }) => {
-      // If first message, generate title in parallel
-      if (isFirstMessage) {
+      // If first message, generate title in parallel (skip if editing)
+      if (isFirstMessage && !editMessageId) {
         const userText =
           message.parts.find((p) => p.type === "text")?.text || "New chat";
 

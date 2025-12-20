@@ -1,8 +1,14 @@
 "use client";
 
 import type { ChatStatus } from "ai";
-import { CheckIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  CheckIcon,
+  CopyIcon,
+  PencilIcon,
+  RefreshCcwIcon,
+  XIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -40,6 +46,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -48,28 +55,37 @@ import {
 } from "@/components/ui/tooltip";
 import type { ChatUIMessage } from "@/lib/chat-types";
 import { MODELS, parseModel } from "@/lib/models";
+import { cn } from "@/lib/utils";
 
 type MessagesHistoryProps = {
+  disabled?: boolean;
   messages: ChatUIMessage[];
-  status: ChatStatus;
+  onEdit?: (messageId: string, editedText: string) => void;
   onRegenerate: (
     messageId?: string,
     role?: "user" | "assistant",
     model?: string
   ) => void;
+  status: ChatStatus;
 };
 
 type RenderTextPartProps = {
-  message: ChatUIMessage;
-  part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
-  partId: string;
+  disabled?: boolean;
   isCopied: boolean;
+  isEditing: boolean;
+  message: ChatUIMessage;
+  onCancelEdit: () => void;
+  onCopy: (text: string, partId: string) => void;
+  onEdit?: (messageId: string, editedText: string) => void;
   onRegenerate: (
     messageId?: string,
     role?: "user" | "assistant",
     model?: string
   ) => void;
-  onCopy: (text: string, partId: string) => void;
+  onStartEdit: (messageId: string) => void;
+  part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
+  partId: string;
+  status: ChatStatus;
   groupedModels: Array<{
     provider: string;
     items: Array<{ name: string; value: string }>;
@@ -113,14 +129,40 @@ const getProviderDisplayName = (provider: string): string => {
  * Renders a text message part with actions
  */
 const TextPart = ({
+  disabled = false,
+  isCopied,
+  isEditing,
   message,
+  onCancelEdit,
+  onCopy,
+  onEdit,
+  onRegenerate,
+  onStartEdit,
   part,
   partId,
-  isCopied,
-  onRegenerate,
-  onCopy,
+  status,
   groupedModels,
 }: RenderTextPartProps) => {
+  const [editedText, setEditedText] = useState(part.text);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      // Move cursor to end
+      textareaRef.current.setSelectionRange(
+        textareaRef.current.value.length,
+        textareaRef.current.value.length
+      );
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedText(part.text);
+    }
+  }, [isEditing, part.text]);
+
   const handleRetry = () => {
     onRegenerate(message.id, message.role as "user" | "assistant");
   };
@@ -129,78 +171,151 @@ const TextPart = ({
     onRegenerate(message.id, message.role as "user" | "assistant", modelValue);
   };
 
+  const handleEdit = () => {
+    if (message.role === "user" && onEdit) {
+      onEdit(message.id, editedText.trim());
+      onCancelEdit();
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedText(part.text);
+    onCancelEdit();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  const isUser = message.role === "user";
+  const canEdit = isUser && onEdit && !disabled;
+
+  const hasChanges = editedText.trim() !== part.text.trim();
+
   return (
     <Message from={message.role}>
       <MessageContent>
-        <MessageResponse>{part.text}</MessageResponse>
+        {isEditing ? (
+          <Textarea
+            className={cn(
+              "field-sizing-content min-h-5 w-full resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:ring-0",
+              isUser ? "text-primary-foreground" : "text-foreground"
+            )}
+            onChange={(e) => setEditedText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            ref={textareaRef}
+            rows={1}
+            value={editedText}
+          />
+        ) : (
+          <MessageResponse>{part.text}</MessageResponse>
+        )}
       </MessageContent>
       {(message.role === "user" || message.role === "assistant") && (
         <MessageActions
           className={message.role === "user" ? "ml-auto" : undefined}
         >
-          <ContextMenu>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ContextMenuTrigger asChild>
-                    <MessageAction label="Retry" onClick={handleRetry}>
-                      <RefreshCcwIcon className="size-3" />
-                    </MessageAction>
-                  </ContextMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent hideArrow side="bottom">
-                  <p>Right click to select another model</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <ContextMenuContent className="w-64 p-0">
-              <ContextMenuLabel className="px-3 py-2">
-                Regenerate with model
-              </ContextMenuLabel>
-              <ContextMenuSeparator />
-              <Command className="max-h-[300px]">
-                <ModelSelectorInput
-                  className="rounded-none border-0"
-                  placeholder="Search models..."
-                />
-                <ModelSelectorList className="max-h-[250px]">
-                  <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                  {groupedModels.map((group) => (
-                    <ModelSelectorGroup key={group.provider}>
-                      <div className="cmdk-group-heading pb-1 pl-2">
-                        {getProviderDisplayName(group.provider)}
-                      </div>
-                      {group.items.map((item) => (
-                        <ModelSelectorItem
-                          key={item.value}
-                          onSelect={() => handleModelSelect(item.value)}
-                          value={`${item.name} ${group.provider} ${item.value}`}
-                        >
-                          <ModelSelectorLogo
-                            provider={
-                              group.provider as ModelSelectorLogoProps["provider"]
-                            }
-                          />
-                          <ModelSelectorName>{item.name}</ModelSelectorName>
-                        </ModelSelectorItem>
+          {isEditing ? (
+            <>
+              <MessageAction
+                label="Cancel"
+                onClick={handleCancel}
+                tooltip="Cancel editing"
+              >
+                <XIcon className="size-3" />
+              </MessageAction>
+              <MessageAction
+                disabled={!hasChanges}
+                label="Save"
+                onClick={handleEdit}
+                tooltip="Save changes"
+              >
+                <CheckIcon className="size-3" />
+              </MessageAction>
+            </>
+          ) : (
+            <>
+              <MessageAction
+                label={isCopied ? "Copied" : "Copy"}
+                onClick={() => onCopy(part.text, partId)}
+                tooltip="Copy"
+              >
+                {isCopied ? (
+                  <CheckIcon className="size-3" />
+                ) : (
+                  <CopyIcon className="size-3" />
+                )}
+              </MessageAction>
+              <ContextMenu>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <ContextMenuTrigger asChild>
+                        <MessageAction label="Retry" onClick={handleRetry}>
+                          <RefreshCcwIcon className="size-3" />
+                        </MessageAction>
+                      </ContextMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent hideArrow side="bottom">
+                      <p>Right click to select another model</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <ContextMenuContent className="w-64 p-0">
+                  <ContextMenuLabel className="px-3 py-2">
+                    Regenerate with model
+                  </ContextMenuLabel>
+                  <ContextMenuSeparator />
+                  <Command className="max-h-[300px]">
+                    <ModelSelectorInput
+                      className="rounded-none border-0"
+                      placeholder="Search models..."
+                    />
+                    <ModelSelectorList className="max-h-[250px]">
+                      <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                      {groupedModels.map((group) => (
+                        <ModelSelectorGroup key={group.provider}>
+                          <div className="cmdk-group-heading pb-1 pl-2">
+                            {getProviderDisplayName(group.provider)}
+                          </div>
+                          {group.items.map((item) => (
+                            <ModelSelectorItem
+                              key={item.value}
+                              onSelect={() => handleModelSelect(item.value)}
+                              value={`${item.name} ${group.provider} ${item.value}`}
+                            >
+                              <ModelSelectorLogo
+                                provider={
+                                  group.provider as ModelSelectorLogoProps["provider"]
+                                }
+                              />
+                              <ModelSelectorName>{item.name}</ModelSelectorName>
+                            </ModelSelectorItem>
+                          ))}
+                        </ModelSelectorGroup>
                       ))}
-                    </ModelSelectorGroup>
-                  ))}
-                </ModelSelectorList>
-              </Command>
-            </ContextMenuContent>
-          </ContextMenu>
-          <MessageAction
-            label={isCopied ? "Copied" : "Copy"}
-            onClick={() => onCopy(part.text, partId)}
-            tooltip="Copy"
-          >
-            {isCopied ? (
-              <CheckIcon className="size-3" />
-            ) : (
-              <CopyIcon className="size-3" />
-            )}
-          </MessageAction>
+                    </ModelSelectorList>
+                  </Command>
+                </ContextMenuContent>
+              </ContextMenu>
+              {canEdit ? (
+                <MessageAction
+                  disabled={status === "streaming" || status === "submitted"}
+                  label="Edit"
+                  onClick={() => onStartEdit(message.id)}
+                  tooltip="Edit message"
+                >
+                  <PencilIcon className="size-3" />
+                </MessageAction>
+              ) : null}
+            </>
+          )}
         </MessageActions>
       )}
     </Message>
@@ -264,11 +379,14 @@ const renderFilePart = ({ message, part, partId }: RenderFilePartProps) => (
  * Renders the conversation history with messages, reasoning, and file attachments
  */
 export const MessagesHistory = ({
+  disabled = false,
   messages,
-  status,
+  onEdit,
   onRegenerate,
+  status,
 }: MessagesHistoryProps) => {
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
   const groupedModels = useMemo(() => {
     const modelsList = MODELS.map((value) => ({
@@ -313,14 +431,20 @@ export const MessagesHistory = ({
                 case "text":
                   return (
                     <TextPart
+                      disabled={disabled}
                       groupedModels={groupedModels}
                       isCopied={isCopied}
+                      isEditing={editingMessageId === message.id}
                       key={partId}
                       message={message}
+                      onCancelEdit={() => setEditingMessageId(null)}
                       onCopy={handleCopy}
+                      onEdit={onEdit}
                       onRegenerate={onRegenerate}
+                      onStartEdit={setEditingMessageId}
                       part={part}
                       partId={partId}
+                      status={status}
                     />
                   );
                 case "reasoning":

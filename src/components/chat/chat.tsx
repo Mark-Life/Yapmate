@@ -63,6 +63,8 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
   const searchEnabledRef = useRef(searchEnabled);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
+  const editMessageIdRef = useRef<string | undefined>(undefined);
+  const editedTextRef = useRef<string | undefined>(undefined);
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
 
@@ -78,9 +80,13 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
           // Use refs to get latest values
           const regenerateMessageId = regenerateMessageIdRef.current;
           const regenerateRole = regenerateRoleRef.current;
+          const editMessageId = editMessageIdRef.current;
+          const editedText = editedTextRef.current;
           // Clear after use
           regenerateMessageIdRef.current = undefined;
           regenerateRoleRef.current = undefined;
+          editMessageIdRef.current = undefined;
+          editedTextRef.current = undefined;
           return {
             body: {
               message: allMessages.at(-1),
@@ -89,6 +95,9 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
               searchEnabled: searchEnabledRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
+                : {}),
+              ...(editMessageId && editedText
+                ? { editMessageId, editedText }
                 : {}),
             },
           };
@@ -207,6 +216,58 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     [messages, regenerate, setMessages]
   );
 
+  /**
+   * Handles editing a user message
+   * Updates the message text in local state and triggers regeneration
+   * @param messageId - ID of the message to edit
+   * @param editedText - New text content for the message
+   */
+  const handleEdit = useCallback(
+    (messageId: string, editedText: string) => {
+      // Find the message index
+      const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+      if (messageIndex === -1) {
+        return;
+      }
+
+      const message = messages[messageIndex];
+      if (message.role !== "user") {
+        return;
+      }
+
+      // Update the message text in local state
+      const updatedMessages = [...messages];
+      const textPartIndex = updatedMessages[messageIndex].parts.findIndex(
+        (p) => p.type === "text"
+      );
+
+      if (textPartIndex !== -1) {
+        updatedMessages[messageIndex] = {
+          ...updatedMessages[messageIndex],
+          parts: [
+            ...updatedMessages[messageIndex].parts.slice(0, textPartIndex),
+            { type: "text", text: editedText },
+            ...updatedMessages[messageIndex].parts.slice(textPartIndex + 1),
+          ],
+        };
+      }
+
+      // Truncate messages after the edited message
+      const truncatedMessages = updatedMessages.slice(0, messageIndex + 1);
+
+      // Update local state
+      setMessages(truncatedMessages);
+
+      // Store editMessageId and editedText for transport to pass to API
+      editMessageIdRef.current = messageId;
+      editedTextRef.current = editedText;
+
+      // Trigger regeneration from the edited message
+      regenerate({ messageId });
+    },
+    [messages, regenerate, setMessages]
+  );
+
   return (
     <PromptInputProvider initialInput={input}>
       <div
@@ -220,6 +281,7 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
           <div className="flex h-full flex-col">
             <MessagesHistory
               messages={messages}
+              onEdit={handleEdit}
               onRegenerate={handleRegenerate}
               status={status}
             />
