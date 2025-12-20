@@ -1,8 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { PlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 type ChatLayoutProps = {
   children: React.ReactNode;
@@ -18,6 +26,30 @@ type Chat = {
   id: string;
   title: string | null;
   updatedAt: Date | null;
+};
+
+/**
+ * Header controls - sidebar trigger + new chat button when collapsed
+ */
+const HeaderControls = () => {
+  const { open } = useSidebar();
+  const router = useRouter();
+
+  const handleNewChat = () => {
+    router.push(`/?new=${Date.now()}`);
+  };
+
+  return (
+    <div className="absolute top-3 left-3 z-10 flex items-center gap-1">
+      <SidebarTrigger />
+      {!open && (
+        <Button size="icon" variant="ghost" onClick={handleNewChat}>
+          <PlusIcon className="size-4" />
+          <span className="sr-only">New Chat</span>
+        </Button>
+      )}
+    </div>
+  );
 };
 
 /**
@@ -46,6 +78,7 @@ export default function ChatLayout({ children }: ChatLayoutProps) {
     <SidebarProvider>
       <AppSidebar chats={chats} />
       <SidebarInset>
+        <HeaderControls />
         <main className="flex-1">{children}</main>
       </SidebarInset>
     </SidebarProvider>

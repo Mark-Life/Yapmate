@@ -8,7 +8,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -53,7 +52,7 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Chats</SidebarGroupLabel>
+          {/* <SidebarGroupLabel>Chats</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
               {chats.map((chat) => (
