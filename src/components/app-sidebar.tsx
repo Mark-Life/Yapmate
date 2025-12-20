@@ -2,8 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOutIcon, XIcon } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -35,6 +34,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useChatContext } from "@/contexts/chat-context";
 import { createClient } from "@/lib/supabase/client";
 
 type Chat = {
@@ -56,13 +56,10 @@ type User = {
  */
 export const AppSidebar = ({ chats }: AppSidebarProps) => {
   const router = useRouter();
-  const pathname = usePathname();
   const queryClient = useQueryClient();
+  const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const currentChatId = pathname.startsWith("/chat/")
-    ? pathname.split("/chat/")[1]
-    : null;
 
   /**
    * Fetch current user from Supabase
@@ -90,11 +87,11 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
   }, [router]);
 
   /**
-   * Navigate to new chat with unique timestamp to force component remount
+   * Navigate to new chat
    */
   const openNewChat = useCallback(() => {
-    router.push("/");
-  }, [router]);
+    navigateToNew();
+  }, [navigateToNew]);
 
   /**
    * Delete chat mutation
@@ -114,7 +111,7 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       // Navigate away if deleted chat was active
       if (deletedChatId === currentChatId) {
-        router.push("/");
+        navigateToNew();
       }
       setChatToDelete(null);
     },
@@ -148,16 +145,14 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
                 <SidebarMenuItem key={chat.id}>
                   <div className="relative flex w-full items-center gap-1">
                     <SidebarMenuButton
-                      asChild
                       className="flex-1 pr-8"
                       isActive={chat.id === currentChatId}
+                      onClick={() => navigateToChat(chat.id)}
                       tooltip={chat.id}
                     >
-                      <Link href={`/chat/${chat.id}`}>
-                        <span className="truncate text-sm">
-                          {chat.title ?? "New chat"}
-                        </span>
-                      </Link>
+                      <span className="truncate text-sm">
+                        {chat.title ?? "New chat"}
+                      </span>
                     </SidebarMenuButton>
                     <Button
                       className="absolute right-1 size-6 shrink-0 opacity-0 transition-opacity group-hover/menu-item:opacity-100"
