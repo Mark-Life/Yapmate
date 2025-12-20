@@ -93,7 +93,7 @@ html {
       oklch(39.96% 0.1348 25.77)
     );
     --border: oklch(from var(--primary-base) l c h / 0.2);
-    --input: var(--background);
+    --input: oklch(from var(--primary-base) l c h / 0.2);
     --ring: var(--primary);
     --chart-1: light-dark(
       oklch(67.72% 0.1571 35.19),

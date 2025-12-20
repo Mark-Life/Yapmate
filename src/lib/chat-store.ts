@@ -14,18 +14,17 @@ import {
 } from "@/db/service/chats";
 import { getMessagesByChatId, saveMessages } from "@/db/service/messages";
 
-// TODO: Replace with actual auth when implemented
-const TEMP_USER_ID = "9e67edd6-7142-4f10-9dc5-3899bbcf54a6";
-
 /**
  * Creates a new chat and returns its ID
+ * @param userId - ID of the user creating the chat
  * @param title - Optional chat title
  * @param id - Optional pre-generated ID (for client-side ID generation)
  */
 export const createChat = async (
+  userId: string,
   title?: string,
   id?: string
-): Promise<string> => dbCreateChat(TEMP_USER_ID, title, id);
+): Promise<string> => dbCreateChat(userId, title, id);
 
 /**
  * Gets a chat by ID
@@ -34,9 +33,10 @@ export const createChat = async (
 export const getChat = dbGetChat;
 
 /**
- * Gets all chats for the current user
+ * Gets all chats for a user
+ * @param userId - ID of the user
  */
-export const getUserChats = async () => dbGetChatsByUser(TEMP_USER_ID);
+export const getUserChats = async (userId: string) => dbGetChatsByUser(userId);
 
 /**
  * Deletes a chat

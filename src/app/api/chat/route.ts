@@ -1,11 +1,17 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { loadChatMessages, saveChatMessages } from "@/lib/chat-store";
+import { getChat, loadChatMessages, saveChatMessages } from "@/lib/chat-store";
 import { openrouter } from "@/lib/openrouter";
+import { getCurrentUserId } from "@/lib/supabase/server";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const {
     message,
     model,
@@ -20,6 +26,15 @@ export async function POST(req: Request) {
 
   if (!id) {
     return new Response("Chat ID is required", { status: 400 });
+  }
+
+  // Verify chat exists and belongs to user
+  const chat = await getChat(id);
+  if (!chat) {
+    return new Response("Chat not found", { status: 404 });
+  }
+  if (chat.userId !== userId) {
+    return new Response("Forbidden", { status: 403 });
   }
 
   // Load previous messages from database
@@ -48,9 +63,10 @@ export async function POST(req: Request) {
     sendReasoning: true,
     onFinish: async ({ messages: finalMessages }) => {
       // Save all messages (upsert handles both new and updated)
+      const lastMessageId = finalMessages.at(-1)?.id;
       await saveChatMessages(id, finalMessages, {
         // Add model info to the last assistant message
-        [finalMessages[finalMessages.length - 1]?.id]: { model },
+        ...(lastMessageId ? { [lastMessageId]: { model } } : {}),
       });
     },
   });

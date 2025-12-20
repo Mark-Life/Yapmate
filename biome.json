@@ -8,7 +8,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!**/components/ui",
+      "!**/components/ai-elements"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -28,6 +35,13 @@
         "useConsistentTypeDefinitions": {
           "options": {
             "style": "interface"
+          }
+        }
+      },
+      "correctness": {
+        "noUndeclaredVariables": {
+          "options": {
+            "checkTypes": true
           }
         }
       }
