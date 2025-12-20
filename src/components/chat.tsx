@@ -1,6 +1,7 @@
 "use client";
 
-import { useChat, type UIMessage } from "@ai-sdk/react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
 import { useRef, useState, useMemo } from "react";
 import {
@@ -85,23 +86,32 @@ export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Memoize transport to avoid recreating on every render
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest({ messages: allMessages, id: chatId }) {
+          // Send only the last message - server loads previous from DB
+          return {
+            body: {
+              message: allMessages[allMessages.length - 1],
+              id: chatId,
+              model,
+              searchEnabled,
+            },
+          };
+        },
+      }),
+    [model, searchEnabled]
+  );
+
   const { messages, sendMessage, status, regenerate } = useChat({
     id,
     messages: initialMessages,
-    // TODO: When implementing persistence, use prepareSendMessagesRequest to send only the last message
-    // transport: new DefaultChatTransport({
-    //   api: "/api/chat",
-    //   prepareSendMessagesRequest({ messages: allMessages, id: chatId }) {
-    //     return {
-    //       body: {
-    //         message: allMessages[allMessages.length - 1],
-    //         id: chatId,
-    //         model,
-    //         searchEnabled,
-    //       },
-    //     };
-    //   },
-    // }),
+    transport,
+    // Generate UUID v4 for message IDs (compatible with DB schema)
+    generateId: () => crypto.randomUUID(),
   });
 
   const groupedModels = useMemo(() => groupModelsByProvider(models), []);
@@ -116,19 +126,11 @@ export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
     if (!(hasText || hasAttachments)) {
       return;
     }
-    sendMessage(
-      {
-        text: message.text || "Sent with attachments",
-        files: message.files,
-      },
-      {
-        body: {
-          id,
-          model,
-          searchEnabled,
-        },
-      }
-    );
+    // Transport's prepareSendMessagesRequest handles the body
+    sendMessage({
+      text: message.text || "Sent with attachments",
+      files: message.files,
+    });
     setInput("");
   };
 

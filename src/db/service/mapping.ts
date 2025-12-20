@@ -46,8 +46,12 @@ const mapToolState = (state: string): ToolState => {
 
 // ─── UI → DB Mapping ─────────────────────────────────────────────────────────
 
+/** Transient part types that should not be persisted */
+const TRANSIENT_PART_TYPES = ["step-start"] as const;
+
 /**
  * Maps a single UI part to a DB part insert
+ * Returns null for transient parts that shouldn't be persisted
  * @param part - UI message part from AI SDK
  * @param messageId - ID of the parent message
  * @param order - Position within the message
@@ -56,9 +60,14 @@ export const mapUIPartToDb = (
   part: UIMessage["parts"][number],
   messageId: string,
   order: number
-): PartInsert => {
+): PartInsert | null => {
   const base = { messageId, order };
   const partType = part.type;
+
+  // Skip transient parts (streaming markers, etc.)
+  if (TRANSIENT_PART_TYPES.includes(partType as (typeof TRANSIENT_PART_TYPES)[number])) {
+    return null;
+  }
 
   // Text part
   if (partType === "text") {
@@ -172,9 +181,10 @@ export const mapUIMessageToDb = (
     metadata: metadata ?? null,
   };
 
-  const parts: PartInsert[] = uiMessage.parts.map((part, idx) =>
-    mapUIPartToDb(part, uiMessage.id, idx)
-  );
+  // Filter out null parts (transient streaming markers)
+  const parts: PartInsert[] = uiMessage.parts
+    .map((part, idx) => mapUIPartToDb(part, uiMessage.id, idx))
+    .filter((part): part is PartInsert => part !== null);
 
   return { message, parts };
 };

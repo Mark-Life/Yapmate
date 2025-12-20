@@ -1,22 +1,18 @@
-import {
-  convertToModelMessages,
-  streamText,
-  type UIMessage,
-  createIdGenerator,
-} from "ai";
+import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { openrouter } from "@/lib/openrouter";
+import { loadChatMessages, saveChatMessages } from "@/lib/chat-store";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const {
-    messages,
+    message,
     model,
     searchEnabled,
     id,
   }: {
-    messages: UIMessage[];
+    message: UIMessage;
     model: string;
     searchEnabled?: boolean;
     id: string;
@@ -26,14 +22,16 @@ export async function POST(req: Request) {
     return new Response("Chat ID is required", { status: 400 });
   }
 
-  // TODO: When implementing persistence, load previous messages from database here
-  // const previousMessages = await loadChat(id);
-  // const messages = [...previousMessages, message];
+  // Load previous messages from database
+  const previousMessages = await loadChatMessages(id);
+
+  // Combine with new message
+  const allMessages = [...previousMessages, message];
 
   const modelWithSearch = searchEnabled ? `${model}:online` : model;
   const result = streamText({
     model: openrouter.chat(modelWithSearch),
-    messages: convertToModelMessages(messages),
+    messages: convertToModelMessages(allMessages),
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
   });
@@ -44,16 +42,16 @@ export async function POST(req: Request) {
 
   // Send sources and reasoning back to the client
   return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    generateMessageId: createIdGenerator({
-      prefix: "msg",
-      size: 16,
-    }),
+    originalMessages: allMessages,
+    generateMessageId: () => Bun.randomUUIDv7(),
     sendSources: true,
     sendReasoning: true,
-    // TODO: When implementing persistence, save messages to database here
-    // onFinish: ({ messages: finalMessages }) => {
-    //   saveChat({ chatId: id, messages: finalMessages });
-    // },
+    onFinish: async ({ messages: finalMessages }) => {
+      // Save all messages (upsert handles both new and updated)
+      await saveChatMessages(id, finalMessages, {
+        // Add model info to the last assistant message
+        [finalMessages[finalMessages.length - 1]?.id]: { model },
+      });
+    },
   });
 }
