@@ -46,7 +46,10 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
   return (
     <Sidebar>
       <SidebarHeader className="border-sidebar-border border-b">
-        <Button className="w-full gap-2" onClick={handleNewChat}>
+        <Button
+          className="w-full gap-2 border border-primary/15 bg-primary/5 text-primary hover:bg-primary/10"
+          onClick={handleNewChat}
+        >
           New Chat
         </Button>
       </SidebarHeader>

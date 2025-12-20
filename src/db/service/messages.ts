@@ -2,10 +2,11 @@
  * Messages service - CRUD operations for messages and parts
  */
 import type { UIMessage } from "ai";
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, ne } from "drizzle-orm";
 import { db } from "../client";
 import { type MessageMetadata, messages } from "../schema/messages";
 import { parts } from "../schema/parts";
+import { getFileAccessUrl, getFilesByIds } from "./files";
 import {
   type DbMessageWithParts,
   mapDbMessageToUI,
@@ -40,6 +41,24 @@ export const getMessagesByChatId = async (
     .where(inArray(parts.messageId, messageIds))
     .orderBy(parts.messageId, parts.order);
 
+  // Collect file IDs from file parts
+  const fileIds = dbParts
+    .filter((p) => p.type === "file" && p.file_id)
+    .map((p) => p.file_id)
+    .filter((id): id is string => Boolean(id));
+
+  // Load all files
+  const filesMap = new Map<
+    string,
+    Awaited<ReturnType<typeof getFilesByIds>>[number]
+  >();
+  if (fileIds.length > 0) {
+    const files = await getFilesByIds(fileIds);
+    for (const file of files) {
+      filesMap.set(file.id, file);
+    }
+  }
+
   // Group parts by messageId for efficient lookup
   const partsByMessageId = new Map<string, typeof dbParts>();
   for (const part of dbParts) {
@@ -54,7 +73,63 @@ export const getMessagesByChatId = async (
     parts: partsByMessageId.get(msg.id) ?? [],
   }));
 
-  return messagesWithParts.map(mapDbMessageToUI);
+  /**
+   * Populates file URLs for a single part
+   */
+  const populateFilePartUrl = async (
+    part: UIMessage["parts"][number],
+    dbPart: (typeof dbParts)[number] | undefined,
+    fileMap: Map<string, Awaited<ReturnType<typeof getFilesByIds>>[number]>
+  ): Promise<UIMessage["parts"][number]> => {
+    if (part.type !== "file" || !dbPart?.file_id) {
+      return part;
+    }
+
+    const file = fileMap.get(dbPart.file_id);
+    if (!file) {
+      return part;
+    }
+
+    try {
+      const url = await getFileAccessUrl(file);
+      return {
+        ...part,
+        url,
+        mediaType: file.mimeType,
+        filename: file.filename,
+      };
+    } catch (e) {
+      console.error(`Failed to get file URL for ${dbPart.file_id}:`, e);
+      return {
+        ...part,
+        url: "",
+        mediaType: file.mimeType,
+        filename: file.filename,
+      };
+    }
+  };
+
+  // Map to UI messages and populate file URLs
+  const uiMessages = await Promise.all(
+    messagesWithParts.map(async (dbMsg) => {
+      const uiMessage = mapDbMessageToUI(dbMsg);
+
+      // Replace file parts with URLs
+      const partsWithUrls = await Promise.all(
+        uiMessage.parts.map(async (part, idx) => {
+          const dbPart = dbMsg.parts[idx];
+          return await populateFilePartUrl(part, dbPart, filesMap);
+        })
+      );
+
+      return {
+        ...uiMessage,
+        parts: partsWithUrls,
+      };
+    })
+  );
+
+  return uiMessages;
 };
 
 // ─── Write Operations ────────────────────────────────────────────────────────
@@ -63,6 +138,7 @@ export const getMessagesByChatId = async (
 type SaveMessageOptions = {
   model?: string;
   metadata?: MessageMetadata;
+  fileIdMap?: Map<number, string>;
 };
 
 /**
@@ -76,12 +152,17 @@ export const saveMessages = async (
   uiMessages: UIMessage[],
   options?: Record<string, SaveMessageOptions>
 ): Promise<void> => {
-  if (uiMessages.length === 0) return;
+  if (uiMessages.length === 0) {
+    return;
+  }
 
   // Map all messages and parts
   const mapped = uiMessages.map((msg, idx) => {
     const opts = options?.[msg.id];
-    return mapUIMessageToDb(msg, chatId, idx, opts?.model, opts?.metadata);
+    return mapUIMessageToDb(msg, chatId, idx, {
+      model: opts?.model,
+      metadata: opts?.metadata,
+    });
   });
 
   const messagesToUpsert = mapped.map((m) => m.message);
@@ -106,15 +187,29 @@ export const saveMessages = async (
         });
     }
 
-    // Delete existing parts for these messages (will be replaced)
+    // Delete existing parts for these messages
     const messageIds = messagesToUpsert
       .map((m) => m.id)
       .filter(Boolean) as string[];
+
+    // Check if we have new file parts to insert (initial save vs re-save)
+    const hasNewFileParts = partsToInsert.some((p) => p.type === "file");
+
     if (messageIds.length > 0) {
-      await tx.delete(parts).where(inArray(parts.messageId, messageIds));
+      if (hasNewFileParts) {
+        // Initial save: delete all parts
+        await tx.delete(parts).where(inArray(parts.messageId, messageIds));
+      } else {
+        // Re-save: preserve file parts, delete others
+        await tx
+          .delete(parts)
+          .where(
+            and(inArray(parts.messageId, messageIds), ne(parts.type, "file"))
+          );
+      }
     }
 
-    // Insert new parts
+    // Insert new parts (file parts without fileId are skipped in mapping)
     if (partsToInsert.length > 0) {
       await tx.insert(parts).values(partsToInsert);
     }
@@ -139,8 +234,11 @@ export const saveMessage = async (
     uiMessage,
     chatId,
     order,
-    options?.model,
-    options?.metadata
+    {
+      model: options?.model,
+      metadata: options?.metadata,
+      fileIdMap: options?.fileIdMap,
+    }
   );
 
   await db.transaction(async (tx) => {
@@ -158,12 +256,23 @@ export const saveMessage = async (
         },
       });
 
+    // Check if we have new file parts to insert (initial save vs re-save)
+    const hasNewFileParts = messageParts.some((p) => p.type === "file");
+
     // Delete existing parts for this message
     if (message.id) {
-      await tx.delete(parts).where(eq(parts.messageId, message.id));
+      if (hasNewFileParts) {
+        // Initial save: delete all parts
+        await tx.delete(parts).where(eq(parts.messageId, message.id));
+      } else {
+        // Re-save: preserve file parts, delete others
+        await tx
+          .delete(parts)
+          .where(and(eq(parts.messageId, message.id), ne(parts.type, "file")));
+      }
     }
 
-    // Insert new parts
+    // Insert new parts (file parts without fileId are skipped in mapping)
     if (messageParts.length > 0) {
       await tx.insert(parts).values(messageParts);
     }

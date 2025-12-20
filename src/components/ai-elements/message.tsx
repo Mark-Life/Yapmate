@@ -322,12 +322,14 @@ export type MessageAttachmentProps = HTMLAttributes<HTMLDivElement> & {
   data: FileUIPart;
   className?: string;
   onRemove?: () => void;
+  from?: UIMessage["role"];
 };
 
 export function MessageAttachment({
   data,
   className,
   onRemove,
+  from,
   ...props
 }: MessageAttachmentProps) {
   const filename = data.filename || "";
@@ -339,7 +341,8 @@ export function MessageAttachment({
   return (
     <div
       className={cn(
-        "group relative size-24 overflow-hidden rounded-lg",
+        "group relative size-48 w-fit overflow-hidden rounded-lg",
+        from === "user" && "ml-auto",
         className
       )}
       {...props}
@@ -350,9 +353,9 @@ export function MessageAttachment({
           <img
             alt={filename || "attachment"}
             className="size-full object-cover"
-            height={100}
+            height={192}
             src={data.url}
-            width={100}
+            width={192}
           />
           {onRemove && (
             <Button

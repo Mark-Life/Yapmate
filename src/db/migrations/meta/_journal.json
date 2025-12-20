@@ -22,6 +22,13 @@
       "when": 1766232525642,
       "tag": "0002_dusty_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766234641823,
+      "tag": "0003_cool_namorita",
+      "breakpoints": true
     }
   ]
 }

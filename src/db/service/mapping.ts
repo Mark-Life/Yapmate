@@ -39,8 +39,12 @@ const extractToolName = (type: string): string | null => {
 
 /** Maps tool state from AI SDK to DB format */
 const mapToolState = (state: string): ToolState => {
-  if (state === "result" || state === "output") return "result";
-  if (state === "call") return "call";
+  if (state === "result" || state === "output") {
+    return "result";
+  }
+  if (state === "call") {
+    return "call";
+  }
   return "partial-call";
 };
 
@@ -55,11 +59,13 @@ const TRANSIENT_PART_TYPES = ["step-start"] as const;
  * @param part - UI message part from AI SDK
  * @param messageId - ID of the parent message
  * @param order - Position within the message
+ * @param fileId - Optional file ID for file parts
  */
 export const mapUIPartToDb = (
   part: UIMessage["parts"][number],
   messageId: string,
-  order: number
+  order: number,
+  fileId?: string
 ): PartInsert | null => {
   const base = { messageId, order };
   const partType = part.type;
@@ -113,10 +119,15 @@ export const mapUIPartToDb = (
 
   // File part
   if (partType === "file") {
+    if (!fileId) {
+      // No fileId means this is a re-save and file part already exists in DB
+      // Return null to skip creating a new part (existing will be preserved)
+      return null;
+    }
     return {
       ...base,
       type: "file" as PartType,
-      // file_id should be set separately when file is uploaded to storage
+      file_id: fileId,
     };
   }
 
@@ -161,21 +172,27 @@ export const mapUIPartToDb = (
   };
 };
 
+/** Options for mapping UIMessage to DB */
+type MapUIMessageOptions = {
+  model?: string;
+  metadata?: MessageMetadata;
+  fileIdMap?: Map<number, string>;
+};
+
 /**
  * Maps a UIMessage to database format (message + parts)
  * @param uiMessage - AI SDK UIMessage
  * @param chatId - ID of the parent chat
  * @param order - Position within the chat
- * @param model - Model used (for assistant messages)
- * @param metadata - Optional message metadata (usage, cost, etc.)
+ * @param options - Optional model, metadata, and file ID mapping
  */
 export const mapUIMessageToDb = (
   uiMessage: UIMessage,
   chatId: string,
   order: number,
-  model?: string,
-  metadata?: MessageMetadata
+  options?: MapUIMessageOptions
 ): MappedMessage => {
+  const { model, metadata, fileIdMap } = options ?? {};
   const message: MessageInsert = {
     id: uiMessage.id,
     chatId,
@@ -187,7 +204,10 @@ export const mapUIMessageToDb = (
 
   // Filter out null parts (transient streaming markers)
   const parts: PartInsert[] = uiMessage.parts
-    .map((part, idx) => mapUIPartToDb(part, uiMessage.id, idx))
+    .map((part, idx) => {
+      const fileId = fileIdMap?.get(idx);
+      return mapUIPartToDb(part, uiMessage.id, idx, fileId);
+    })
     .filter((part): part is PartInsert => part !== null);
 
   return { message, parts };
@@ -259,9 +279,10 @@ export const mapDbPartToUI = (
     case "file":
       // File parts need URL reconstruction from storage
       // This should be handled by the caller with signed URLs
+      // The caller should pass file data via context
       return {
         type: "file",
-        url: "", // Needs to be populated with signed URL
+        url: "", // Will be populated by caller with signed URL or dataUrl
         mediaType: "application/octet-stream",
       };
 

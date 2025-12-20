@@ -15,22 +15,10 @@ import {
   Message,
   MessageAction,
   MessageActions,
+  MessageAttachment,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  type ModelSelectorLogoProps,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
 import {
   PromptInput,
   PromptInputAddFileButton,
@@ -52,31 +40,9 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { DragDropZone } from "@/components/drag-drop-zone";
-import { MODELS, parseModel } from "@/lib/models";
+import { ModelSelectorCombobox } from "@/components/model-selector";
+import { MODELS } from "@/lib/models";
 import { cn } from "@/lib/utils";
-
-const models = MODELS.map((value) => ({
-  name: parseModel(value).modelName,
-  value,
-  provider: parseModel(value).provider,
-}));
-
-const groupModelsByProvider = (
-  modelsList: Array<{ name: string; value: string; provider: string }>
-) => {
-  const grouped = new Map<string, Array<{ name: string; value: string }>>();
-  for (const model of modelsList) {
-    const existing = grouped.get(model.provider) ?? [];
-    grouped.set(model.provider, [
-      ...existing,
-      { name: model.name, value: model.value },
-    ]);
-  }
-  return Array.from(grouped.entries()).map(([provider, items]) => ({
-    provider,
-    items,
-  }));
-};
 
 type ChatProps = {
   id?: string;
@@ -117,10 +83,9 @@ const createChat = async (
 export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<string>(models[0].value);
+  const [model, setModel] = useState<string>(MODELS[0]);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // For new chats, generate ID client-side; track if chat exists in DB
@@ -167,12 +132,6 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     // Generate UUID v4 for message IDs (compatible with DB schema)
     generateId: () => crypto.randomUUID(),
   });
-
-  const groupedModels = useMemo(() => groupModelsByProvider(models), []);
-  const currentModel = useMemo(
-    () => models.find((m) => m.value === model),
-    [model]
-  );
 
   /**
    * Creates chat in DB on first message, updates URL and sidebar
@@ -223,7 +182,7 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
             <Conversation className="h-full">
               <ConversationContent>
                 {messages.map((message) => (
-                  <div key={message.id}>
+                  <div className="flex flex-col gap-2" key={message.id}>
                     {message.parts.map((part, i) => {
                       switch (part.type) {
                         case "text":
@@ -271,6 +230,23 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
                               <ReasoningContent>{part.text}</ReasoningContent>
                             </Reasoning>
                           );
+                        case "file":
+                          return (
+                            <Message
+                              from={message.role}
+                              key={`${message.id}-${i}`}
+                            >
+                              <MessageAttachment
+                                data={{
+                                  type: "file",
+                                  url: part.url,
+                                  mediaType: part.mediaType,
+                                  filename: part.filename,
+                                }}
+                                from={message.role}
+                              />
+                            </Message>
+                          );
                         default:
                           return null;
                       }
@@ -300,76 +276,10 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
               </PromptInputBody>
               <PromptInputFooter>
                 <PromptInputTools>
-                  <ModelSelector
-                    onOpenChange={setModelSelectorOpen}
-                    open={modelSelectorOpen}
-                  >
-                    <ModelSelectorTrigger asChild>
-                      <PromptInputButton
-                        aria-expanded={modelSelectorOpen}
-                        className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
-                      >
-                        {currentModel ? (
-                          <ModelSelectorLogo
-                            provider={
-                              currentModel.provider as ModelSelectorLogoProps["provider"]
-                            }
-                          />
-                        ) : null}
-                        <span>{currentModel?.name}</span>
-                      </PromptInputButton>
-                    </ModelSelectorTrigger>
-                    <ModelSelectorContent>
-                      <ModelSelectorInput placeholder="Search models..." />
-                      <ModelSelectorList>
-                        <ModelSelectorEmpty>
-                          No models found.
-                        </ModelSelectorEmpty>
-                        {groupedModels.map((group) => {
-                          const getProviderDisplayName = (
-                            provider: string
-                          ): string => {
-                            if (provider === "google") {
-                              return "Google";
-                            }
-                            if (provider === "openai") {
-                              return "OpenAI";
-                            }
-                            return (
-                              provider.charAt(0).toUpperCase() +
-                              provider.slice(1)
-                            );
-                          };
-                          return (
-                            <ModelSelectorGroup key={group.provider}>
-                              <div className="cmdk-group-heading pb-1 pl-2">
-                                {getProviderDisplayName(group.provider)}
-                              </div>
-                              {group.items.map((item) => (
-                                <ModelSelectorItem
-                                  key={item.value}
-                                  onSelect={() => {
-                                    setModel(item.value);
-                                    setModelSelectorOpen(false);
-                                  }}
-                                  value={item.value}
-                                >
-                                  <ModelSelectorLogo
-                                    provider={
-                                      group.provider as ModelSelectorLogoProps["provider"]
-                                    }
-                                  />
-                                  <ModelSelectorName>
-                                    {item.name}
-                                  </ModelSelectorName>
-                                </ModelSelectorItem>
-                              ))}
-                            </ModelSelectorGroup>
-                          );
-                        })}
-                      </ModelSelectorList>
-                    </ModelSelectorContent>
-                  </ModelSelector>
+                  <ModelSelectorCombobox
+                    model={model}
+                    onModelChange={setModel}
+                  />
                   <PromptInputAddFileButton />
                   <PromptInputButton
                     aria-label="Toggle search"
