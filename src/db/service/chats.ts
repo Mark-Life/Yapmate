@@ -3,7 +3,7 @@
  */
 import { desc, eq } from "drizzle-orm";
 import { db } from "../client";
-import { chats, type ChatInsert, type ChatSelect } from "../schema/chats";
+import { type ChatInsert, type ChatSelect, chats } from "../schema/chats";
 import { messages } from "../schema/messages";
 import { parts } from "../schema/parts";
 

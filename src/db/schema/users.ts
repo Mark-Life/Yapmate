@@ -2,7 +2,7 @@
  * Users table - reference to Supabase Auth users
  * We store minimal info here, auth is handled by Supabase
  */
-import { pgTable, uuid, text } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { timestamps } from "./columns.helpers";
 
 export const users = pgTable("users", {

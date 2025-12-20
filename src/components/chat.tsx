@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
-import { useRef, useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -18,6 +18,19 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  type ModelSelectorLogoProps,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from "@/components/ai-elements/model-selector";
 import {
   PromptInput,
   PromptInputAddFileButton,
@@ -34,18 +47,6 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
-import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
@@ -61,10 +62,10 @@ const models = MODELS.map((value) => ({
 }));
 
 const groupModelsByProvider = (
-  models: Array<{ name: string; value: string; provider: string }>
+  modelsList: Array<{ name: string; value: string; provider: string }>
 ) => {
   const grouped = new Map<string, Array<{ name: string; value: string }>>();
-  for (const model of models) {
+  for (const model of modelsList) {
     const existing = grouped.get(model.provider) ?? [];
     grouped.set(model.provider, [
       ...existing,
@@ -89,7 +90,9 @@ const MAX_TITLE_LENGTH = 50;
  */
 const truncateTitle = (text: string): string => {
   const trimmed = text.trim();
-  if (trimmed.length <= MAX_TITLE_LENGTH) return trimmed;
+  if (trimmed.length <= MAX_TITLE_LENGTH) {
+    return trimmed;
+  }
   return `${trimmed.slice(0, MAX_TITLE_LENGTH)}...`;
 };
 
@@ -105,7 +108,9 @@ const createChat = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, title }),
   });
-  if (!res.ok) throw new Error("Failed to create chat");
+  if (!res.ok) {
+    throw new Error("Failed to create chat");
+  }
   return res.json();
 };
 
@@ -144,7 +149,7 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
           // Send only the last message - server loads previous from DB
           return {
             body: {
-              message: allMessages[allMessages.length - 1],
+              message: allMessages.at(-1),
               id: transportChatId,
               model,
               searchEnabled,
@@ -174,7 +179,9 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
    */
   const ensureChatExists = useCallback(
     async (firstMessageText: string) => {
-      if (!isNewChat) return;
+      if (!isNewChat) {
+        return;
+      }
       const title = truncateTitle(firstMessageText);
       await createChatMutation.mutateAsync({ id: chatId, title });
       setIsNewChat(false);
@@ -294,19 +301,21 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
               <PromptInputFooter>
                 <PromptInputTools>
                   <ModelSelector
-                    open={modelSelectorOpen}
                     onOpenChange={setModelSelectorOpen}
+                    open={modelSelectorOpen}
                   >
                     <ModelSelectorTrigger asChild>
                       <PromptInputButton
-                        className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
                         aria-expanded={modelSelectorOpen}
+                        className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
                       >
-                        {currentModel && (
+                        {currentModel ? (
                           <ModelSelectorLogo
-                            provider={currentModel.provider as any}
+                            provider={
+                              currentModel.provider as ModelSelectorLogoProps["provider"]
+                            }
                           />
-                        )}
+                        ) : null}
                         <span>{currentModel?.name}</span>
                       </PromptInputButton>
                     </ModelSelectorTrigger>
@@ -316,35 +325,48 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
                         <ModelSelectorEmpty>
                           No models found.
                         </ModelSelectorEmpty>
-                        {groupedModels.map((group) => (
-                          <ModelSelectorGroup key={group.provider}>
-                            <div className="cmdk-group-heading pb-1 pl-2">
-                              {group.provider === "google"
-                                ? "Google"
-                                : group.provider === "openai"
-                                  ? "OpenAI"
-                                  : group.provider.charAt(0).toUpperCase() +
-                                    group.provider.slice(1)}
-                            </div>
-                            {group.items.map((item) => (
-                              <ModelSelectorItem
-                                key={item.value}
-                                value={item.value}
-                                onSelect={() => {
-                                  setModel(item.value);
-                                  setModelSelectorOpen(false);
-                                }}
-                              >
-                                <ModelSelectorLogo
-                                  provider={group.provider as any}
-                                />
-                                <ModelSelectorName>
-                                  {item.name}
-                                </ModelSelectorName>
-                              </ModelSelectorItem>
-                            ))}
-                          </ModelSelectorGroup>
-                        ))}
+                        {groupedModels.map((group) => {
+                          const getProviderDisplayName = (
+                            provider: string
+                          ): string => {
+                            if (provider === "google") {
+                              return "Google";
+                            }
+                            if (provider === "openai") {
+                              return "OpenAI";
+                            }
+                            return (
+                              provider.charAt(0).toUpperCase() +
+                              provider.slice(1)
+                            );
+                          };
+                          return (
+                            <ModelSelectorGroup key={group.provider}>
+                              <div className="cmdk-group-heading pb-1 pl-2">
+                                {getProviderDisplayName(group.provider)}
+                              </div>
+                              {group.items.map((item) => (
+                                <ModelSelectorItem
+                                  key={item.value}
+                                  onSelect={() => {
+                                    setModel(item.value);
+                                    setModelSelectorOpen(false);
+                                  }}
+                                  value={item.value}
+                                >
+                                  <ModelSelectorLogo
+                                    provider={
+                                      group.provider as ModelSelectorLogoProps["provider"]
+                                    }
+                                  />
+                                  <ModelSelectorName>
+                                    {item.name}
+                                  </ModelSelectorName>
+                                </ModelSelectorItem>
+                              ))}
+                            </ModelSelectorGroup>
+                          );
+                        })}
                       </ModelSelectorList>
                     </ModelSelectorContent>
                   </ModelSelector>

@@ -4,12 +4,12 @@
 import type { UIMessage } from "ai";
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { db } from "../client";
-import { messages, type MessageMetadata } from "../schema/messages";
+import { type MessageMetadata, messages } from "../schema/messages";
 import { parts } from "../schema/parts";
 import {
-  mapUIMessageToDb,
-  mapDbMessageToUI,
   type DbMessageWithParts,
+  mapDbMessageToUI,
+  mapUIMessageToDb,
 } from "./mapping";
 
 // ─── Read Operations ─────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { openrouter } from "@/lib/openrouter";
 import { loadChatMessages, saveChatMessages } from "@/lib/chat-store";
+import { openrouter } from "@/lib/openrouter";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;

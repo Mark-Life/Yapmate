@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserChats, createChat } from "@/lib/chat-store";
+import { createChat, getUserChats } from "@/lib/chat-store";
 
 /**
  * GET /api/chats - Returns all chats for current user

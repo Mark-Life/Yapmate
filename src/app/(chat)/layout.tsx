@@ -43,7 +43,7 @@ const HeaderControls = () => {
     <div className="absolute top-3 left-3 z-10 flex items-center gap-1">
       <SidebarTrigger />
       {!open && (
-        <Button size="icon" variant="ghost" onClick={handleNewChat}>
+        <Button onClick={handleNewChat} size="icon" variant="ghost">
           <PlusIcon className="size-4" />
           <span className="sr-only">New Chat</span>
         </Button>
@@ -57,7 +57,9 @@ const HeaderControls = () => {
  */
 const fetchChats = async (): Promise<Chat[]> => {
   const res = await fetch("/api/chats");
-  if (!res.ok) throw new Error("Failed to fetch chats");
+  if (!res.ok) {
+    throw new Error("Failed to fetch chats");
+  }
   const data: ChatApiResponse[] = await res.json();
   return data.map((chat) => ({
     ...chat,

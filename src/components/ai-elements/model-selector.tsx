@@ -42,8 +42,8 @@ export const ModelSelectorContent = ({
   ...props
 }: ModelSelectorContentProps) => (
   <PopoverContent
-    className={cn("min-w-64 p-0", className)}
     align="start"
+    className={cn("min-w-64 p-0", className)}
     sideOffset={4}
     {...props}
   >

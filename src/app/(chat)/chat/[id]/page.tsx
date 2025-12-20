@@ -18,5 +18,5 @@ export default async function ChatPage({ params }: PageProps) {
   // Load messages from database
   const messages = await loadChatMessages(id);
 
-  return <Chat key={id} id={id} initialMessages={messages} />;
+  return <Chat id={id} initialMessages={messages} key={id} />;
 }

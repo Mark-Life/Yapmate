@@ -1,17 +1,18 @@
 /**
  * Chat store - thin wrapper around DB service for app-level operations
  */
-import {
-  createChat as dbCreateChat,
-  getChat as dbGetChat,
-  getChatsByUser as dbGetChatsByUser,
-  deleteChat as dbDeleteChat,
-  updateChatTitle as dbUpdateChatTitle,
-  touchChat as dbTouchChat,
-} from "@/db/service/chats";
-import { getMessagesByChatId, saveMessages } from "@/db/service/messages";
+
 import type { UIMessage } from "ai";
 import type { MessageMetadata } from "@/db/schema/messages";
+import {
+  createChat as dbCreateChat,
+  deleteChat as dbDeleteChat,
+  getChat as dbGetChat,
+  getChatsByUser as dbGetChatsByUser,
+  touchChat as dbTouchChat,
+  updateChatTitle as dbUpdateChatTitle,
+} from "@/db/service/chats";
+import { getMessagesByChatId, saveMessages } from "@/db/service/messages";
 
 // TODO: Replace with actual auth when implemented
 const TEMP_USER_ID = "9e67edd6-7142-4f10-9dc5-3899bbcf54a6";

@@ -10,8 +10,8 @@ import {
   text,
   uuid,
 } from "drizzle-orm/pg-core";
-import { timestamps } from "./columns.helpers";
 import { chats } from "./chats";
+import { timestamps } from "./columns.helpers";
 import { parts } from "./parts";
 
 /** Valid message roles */
