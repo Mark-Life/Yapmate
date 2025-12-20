@@ -114,6 +114,144 @@ export const deleteChat = async (chatId: string): Promise<void> => {
 // ─── Branching ───────────────────────────────────────────────────────────────
 
 /**
+ * Creates a new branched chat in the transaction
+ */
+const createBranchedChat = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  originalTitle: string | null,
+  userId: string,
+  originalChatId: string
+) => {
+  const branchTitle = originalTitle
+    ? `${originalTitle} (branch)`
+    : "Branched chat";
+  const [newChat] = await tx
+    .insert(chats)
+    .values({
+      userId,
+      title: branchTitle,
+      parentChatId: originalChatId,
+    })
+    .returning({ id: chats.id });
+  return newChat.id;
+};
+
+/**
+ * Gets messages to copy up to and including the branch point
+ */
+const getMessagesToCopy = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  originalChatId: string,
+  fromMessageOrder: number
+) => {
+  const messagesToCopy = await tx
+    .select()
+    .from(messages)
+    .where(eq(messages.chatId, originalChatId))
+    .orderBy(messages.order);
+  return messagesToCopy.filter((m) => m.order <= fromMessageOrder);
+};
+
+/**
+ * Gets all parts for the given message IDs
+ */
+const getPartsForMessages = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  messageIds: string[]
+) => {
+  if (messageIds.length === 0) {
+    return [];
+  }
+  if (messageIds.length === 1) {
+    return tx.select().from(parts).where(eq(parts.messageId, messageIds[0]));
+  }
+  const results = await Promise.all(
+    messageIds.map((id) =>
+      tx.select().from(parts).where(eq(parts.messageId, id))
+    )
+  );
+  return results.flat();
+};
+
+/**
+ * Copies messages and returns a map of old message ID to new message ID
+ */
+const copyMessages = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  messagesToCopy: Awaited<ReturnType<typeof getMessagesToCopy>>,
+  newChatId: string
+) => {
+  const messageIdMap = new Map<string, string>();
+  for (const msg of messagesToCopy) {
+    const [newMsg] = await tx
+      .insert(messages)
+      .values({
+        chatId: newChatId,
+        role: msg.role,
+        model: msg.model,
+        order: msg.order,
+        metadata: msg.metadata,
+      })
+      .returning({ id: messages.id });
+    messageIdMap.set(msg.id, newMsg.id);
+  }
+  return messageIdMap;
+};
+
+/**
+ * Copies parts with updated message IDs
+ */
+const copyParts = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  partsToCopy: Awaited<ReturnType<typeof getPartsForMessages>>,
+  messageIdMap: Map<string, string>
+) => {
+  for (const part of partsToCopy) {
+    const newMessageId = messageIdMap.get(part.messageId);
+    if (newMessageId) {
+      await tx.insert(parts).values({
+        messageId: newMessageId,
+        type: part.type,
+        order: part.order,
+        text_content: part.text_content,
+        reasoning_content: part.reasoning_content,
+        source_url: part.source_url,
+        source_title: part.source_title,
+        tool_callId: part.tool_callId,
+        tool_name: part.tool_name,
+        tool_state: part.tool_state,
+        tool_input: part.tool_input,
+        tool_output: part.tool_output,
+        tool_error: part.tool_error,
+        file_id: part.file_id,
+      });
+    }
+  }
+};
+
+/**
+ * Updates the branch point message ID for the new chat
+ */
+const updateBranchPoint = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  newChatId: string,
+  filteredMessages: Awaited<ReturnType<typeof getMessagesToCopy>>,
+  messageIdMap: Map<string, string>
+) => {
+  const lastOriginalMessageId = filteredMessages.at(-1)?.id;
+  if (!lastOriginalMessageId) {
+    return;
+  }
+  const branchPointNewId = messageIdMap.get(lastOriginalMessageId);
+  if (branchPointNewId) {
+    await tx
+      .update(chats)
+      .set({ branchPointMessageId: branchPointNewId })
+      .where(eq(chats.id, newChatId));
+  }
+};
+
+/**
  * Creates a branch from an existing chat at a specific message
  * Copies all messages up to and including the branch point
  * @param originalChatId - ID of the chat to branch from
@@ -125,115 +263,35 @@ export const branchChat = async (
   fromMessageOrder: number,
   userId: string
 ): Promise<string> => {
-  // Get original chat for title
   const originalChat = await getChat(originalChatId);
   if (!originalChat) {
     throw new Error(`Chat ${originalChatId} not found`);
   }
 
   return db.transaction(async (tx) => {
-    // Create new branched chat
-    const branchTitle = originalChat.title
-      ? `${originalChat.title} (branch)`
-      : "Branched chat";
+    const newChatId = await createBranchedChat(
+      tx,
+      originalChat.title,
+      userId,
+      originalChatId
+    );
 
-    const [newChat] = await tx
-      .insert(chats)
-      .values({
-        userId,
-        title: branchTitle,
-        parentChatId: originalChatId,
-      })
-      .returning({ id: chats.id });
-
-    // Get messages to copy (up to and including branch point)
-    const messagesToCopy = await tx
-      .select()
-      .from(messages)
-      .where(eq(messages.chatId, originalChatId))
-      .orderBy(messages.order);
-
-    const filteredMessages = messagesToCopy.filter(
-      (m) => m.order <= fromMessageOrder
+    const filteredMessages = await getMessagesToCopy(
+      tx,
+      originalChatId,
+      fromMessageOrder
     );
 
     if (filteredMessages.length === 0) {
-      return newChat.id;
+      return newChatId;
     }
 
-    // Get parts for these messages
     const messageIds = filteredMessages.map((m) => m.id);
-    const partsToCopy = await tx
-      .select()
-      .from(parts)
-      .where(
-        messageIds.length === 1
-          ? eq(parts.messageId, messageIds[0])
-          : eq(parts.messageId, messageIds[0]) // Will handle multiple in loop
-      );
+    const allParts = await getPartsForMessages(tx, messageIds);
+    const messageIdMap = await copyMessages(tx, filteredMessages, newChatId);
+    await updateBranchPoint(tx, newChatId, filteredMessages, messageIdMap);
+    await copyParts(tx, allParts, messageIdMap);
 
-    // For multiple messages, we need to fetch parts properly
-    const allParts =
-      messageIds.length > 1
-        ? await Promise.all(
-            messageIds.map((id) =>
-              tx.select().from(parts).where(eq(parts.messageId, id))
-            )
-          ).then((results) => results.flat())
-        : partsToCopy;
-
-    // Create new message IDs mapping (old -> new)
-    const messageIdMap = new Map<string, string>();
-
-    // Insert copied messages with new IDs
-    for (const msg of filteredMessages) {
-      const [newMsg] = await tx
-        .insert(messages)
-        .values({
-          chatId: newChat.id,
-          role: msg.role,
-          model: msg.model,
-          order: msg.order,
-          metadata: msg.metadata,
-        })
-        .returning({ id: messages.id });
-
-      messageIdMap.set(msg.id, newMsg.id);
-    }
-
-    // Update branchPointMessageId to the last copied message's new ID
-    const lastOriginalMessageId =
-      filteredMessages[filteredMessages.length - 1].id;
-    const branchPointNewId = messageIdMap.get(lastOriginalMessageId);
-
-    await tx
-      .update(chats)
-      .set({ branchPointMessageId: branchPointNewId })
-      .where(eq(chats.id, newChat.id));
-
-    // Insert copied parts with new message IDs
-    for (const part of allParts) {
-      const newMessageId = messageIdMap.get(part.messageId);
-      if (newMessageId) {
-        await tx.insert(parts).values({
-          messageId: newMessageId,
-          type: part.type,
-          order: part.order,
-          text_content: part.text_content,
-          reasoning_content: part.reasoning_content,
-          source_url: part.source_url,
-          source_title: part.source_title,
-          tool_callId: part.tool_callId,
-          tool_name: part.tool_name,
-          tool_state: part.tool_state,
-          tool_input: part.tool_input,
-          tool_output: part.tool_output,
-          tool_error: part.tool_error,
-          file_id: part.file_id,
-        });
-      }
-    }
-
-    return newChat.id;
+    return newChatId;
   });
 };
