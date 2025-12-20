@@ -1,9 +1,10 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -74,11 +75,36 @@ const groupModelsByProvider = (
 };
 
 type ChatProps = {
-  id: string;
+  id?: string;
   initialMessages?: UIMessage[];
 };
 
-export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
+const MAX_TITLE_LENGTH = 50;
+
+/**
+ * Truncates text to max length with ellipsis
+ */
+const truncateTitle = (text: string): string => {
+  const trimmed = text.trim();
+  if (trimmed.length <= MAX_TITLE_LENGTH) return trimmed;
+  return `${trimmed.slice(0, MAX_TITLE_LENGTH)}...`;
+};
+
+/**
+ * Creates a new chat via API
+ */
+const createChat = async (id: string, title: string): Promise<{ id: string }> => {
+  const res = await fetch("/api/chats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, title }),
+  });
+  if (!res.ok) throw new Error("Failed to create chat");
+  return res.json();
+};
+
+export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
+  const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [searchEnabled, setSearchEnabled] = useState(false);
@@ -86,17 +112,30 @@ export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // For new chats, generate ID client-side; track if chat exists in DB
+  const [chatId] = useState(() => initialId ?? crypto.randomUUID());
+  const [isNewChat, setIsNewChat] = useState(!initialId);
+
+  // Mutation to create chat
+  const createChatMutation = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) => createChat(id, title),
+    onSuccess: () => {
+      // Invalidate chats query to update sidebar
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+
   // Memoize transport to avoid recreating on every render
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        prepareSendMessagesRequest({ messages: allMessages, id: chatId }) {
+        prepareSendMessagesRequest({ messages: allMessages, id: transportChatId }) {
           // Send only the last message - server loads previous from DB
           return {
             body: {
               message: allMessages[allMessages.length - 1],
-              id: chatId,
+              id: transportChatId,
               model,
               searchEnabled,
             },
@@ -107,7 +146,7 @@ export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
   );
 
   const { messages, sendMessage, status, regenerate } = useChat({
-    id,
+    id: chatId,
     messages: initialMessages,
     transport,
     // Generate UUID v4 for message IDs (compatible with DB schema)
@@ -120,12 +159,31 @@ export const Chat = ({ id, initialMessages = [] }: ChatProps) => {
     [model]
   );
 
-  const handleSubmit = (message: PromptInputMessage) => {
+  /**
+   * Creates chat in DB on first message, updates URL and sidebar
+   */
+  const ensureChatExists = useCallback(
+    async (firstMessageText: string) => {
+      if (!isNewChat) return;
+      const title = truncateTitle(firstMessageText);
+      await createChatMutation.mutateAsync({ id: chatId, title });
+      setIsNewChat(false);
+      // Update URL without navigation (avoids unmounting this component)
+      window.history.replaceState(null, "", `/chat/${chatId}`);
+    },
+    [isNewChat, chatId, createChatMutation]
+  );
+
+  const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
     if (!(hasText || hasAttachments)) {
       return;
     }
+
+    // Create chat in DB on first message
+    await ensureChatExists(message.text || "New chat");
+
     // Transport's prepareSendMessagesRequest handles the body
     sendMessage({
       text: message.text || "Sent with attachments",

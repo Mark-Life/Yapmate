@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -30,18 +31,24 @@ type AppSidebarProps = {
  * App sidebar with chat history and new chat button
  */
 export const AppSidebar = ({ chats }: AppSidebarProps) => {
+  const router = useRouter();
   const pathname = usePathname();
   const currentChatId = pathname.startsWith("/chat/")
     ? pathname.split("/chat/")[1]
     : null;
 
+  /**
+   * Navigate to new chat with unique timestamp to force component remount
+   */
+  const handleNewChat = useCallback(() => {
+    router.push(`/?new=${Date.now()}`);
+  }, [router]);
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
-        <Button asChild className="w-full gap-2">
-          <Link href="/">
-            New Chat
-          </Link>
+        <Button className="w-full gap-2" onClick={handleNewChat}>
+          New Chat
         </Button>
       </SidebarHeader>
       <SidebarContent>
@@ -57,8 +64,8 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
                     tooltip={chat.id}
                   >
                     <Link href={`/chat/${chat.id}`}>
-                      <span className="truncate font-mono text-xs">
-                        {chat.id}
+                      <span className="truncate text-sm">
+                        {chat.title ?? "New chat"}
                       </span>
                     </Link>
                   </SidebarMenuButton>
