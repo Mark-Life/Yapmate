@@ -43,7 +43,7 @@ export const ChatInput = ({
   onSubmit,
 }: ChatInputProps) => (
   <PromptInput
-    className="mt-4 rounded-md border border-primary/10 bg-primary/5"
+    className="mt-4 rounded-md border border-primary/10 bg-primary/3"
     multiple
     onSubmit={onSubmit}
   >

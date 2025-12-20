@@ -15,10 +15,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
-
-type ChatLayoutProps = {
-  children: React.ReactNode;
-};
+import { UserProvider } from "@/contexts/user-context";
 
 type ChatApiResponse = {
   id: string;
@@ -140,23 +137,25 @@ const ChatContainer = () => {
 /**
  * Layout for chat pages - includes sidebar with chat history
  */
-export default function ChatLayout(_props: ChatLayoutProps) {
+export default function ChatLayout() {
   const { data: chats = [] } = useQuery({
     queryKey: ["chats"],
     queryFn: fetchChats,
   });
 
   return (
-    <ChatProvider>
-      <SidebarProvider>
-        <AppSidebar chats={chats} />
-        <SidebarInset>
-          <HeaderControls />
-          <main className="flex-1">
-            <ChatContainer />
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
-    </ChatProvider>
+    <UserProvider>
+      <ChatProvider>
+        <SidebarProvider>
+          <AppSidebar chats={chats} />
+          <SidebarInset>
+            <HeaderControls />
+            <main className="flex-1">
+              <ChatContainer />
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </ChatProvider>
+    </UserProvider>
   );
 }

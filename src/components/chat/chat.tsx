@@ -140,6 +140,8 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     setIsNewChat(false);
     // Update URL without navigation (avoids unmounting this component)
     window.history.replaceState(null, "", `/chat/${chatId}`);
+    // Notify context about URL change
+    window.dispatchEvent(new CustomEvent("chatUrlChange"));
   }, [isNewChat, chatId, createChatMutation]);
 
   const handleSubmit = async (message: PromptInputMessage) => {

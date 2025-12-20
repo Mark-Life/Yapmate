@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOutIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useChatContext } from "@/contexts/chat-context";
+import { useUser } from "@/contexts/user-context";
 import { createClient } from "@/lib/supabase/client";
 
 type Chat = {
@@ -47,10 +48,6 @@ type AppSidebarProps = {
   chats: Chat[];
 };
 
-type User = {
-  email: string | undefined;
-};
-
 /**
  * App sidebar with chat history and new chat button
  */
@@ -58,24 +55,8 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
+  const { user } = useUser();
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-
-  /**
-   * Fetch current user from Supabase
-   */
-  useEffect(() => {
-    const fetchUser = async () => {
-      const supabase = createClient();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (authUser) {
-        setUser({ email: authUser.email });
-      }
-    };
-    fetchUser();
-  }, []);
 
   /**
    * Handle logout

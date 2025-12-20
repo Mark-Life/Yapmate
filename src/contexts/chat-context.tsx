@@ -44,7 +44,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
   /**
    * Syncs chatId from URL pathname
-   * Also checks URL periodically to catch manual pushState/replaceState calls
+   * Handles browser back/forward and custom events from manual URL changes
    */
   useEffect(() => {
     const syncFromUrl = () => {
@@ -62,13 +62,12 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     // Handle browser back/forward
     window.addEventListener("popstate", syncFromUrl);
 
-    // Poll URL to catch manual pushState/replaceState (e.g., from Chat component)
-    // Check every 100ms - fast enough to feel instant, not too frequent
-    const interval = setInterval(syncFromUrl, 100);
+    // Listen for custom event when Chat component calls replaceState
+    window.addEventListener("chatUrlChange", syncFromUrl);
 
     return () => {
       window.removeEventListener("popstate", syncFromUrl);
-      clearInterval(interval);
+      window.removeEventListener("chatUrlChange", syncFromUrl);
     };
   }, [pathname]);
 
