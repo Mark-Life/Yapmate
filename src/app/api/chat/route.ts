@@ -279,30 +279,28 @@ export async function POST(req: Request) {
   const modelWithSearch = searchEnabled ? `${model}:online` : model;
 
   const stream = createUIMessageStream({
-    execute: ({ writer }) => {
-      // If first message, generate title in parallel (skip if editing)
-      if (isFirstMessage && !editMessageId) {
-        const userText =
-          message.parts.find((p) => p.type === "text")?.text || "New chat";
-
-        // Fire off title generation (non-blocking)
-        generateChatTitle(userText)
-          .then((title) => {
-            // Update DB
-            return updateChatTitle(id, title).then(() => {
-              // Stream to client as transient data
-              writer.write({
-                type: "data-chat-title",
-                data: { title },
-                transient: true,
-              });
-            });
-          })
-          .catch((error) => {
-            // Log error for debugging
-            console.error("Title generation failed:", error);
-          });
-      }
+    execute: async ({ writer }) => {
+      // Start title generation in parallel (if first message, skip if editing)
+      // Returns Promise that writes title when ready
+      const titlePromise =
+        isFirstMessage && !editMessageId
+          ? (async () => {
+              const userText =
+                message.parts.find((p) => p.type === "text")?.text ||
+                "New chat";
+              try {
+                const title = await generateChatTitle(userText);
+                await updateChatTitle(id, title);
+                writer.write({
+                  type: "data-chat-title",
+                  data: { title },
+                  transient: true,
+                });
+              } catch (error) {
+                console.error("Title generation failed:", error);
+              }
+            })()
+          : Promise.resolve();
 
       const result = streamText({
         model: openrouter.chat(modelWithSearch),
@@ -322,6 +320,9 @@ export async function POST(req: Request) {
           sendReasoning: true,
         })
       );
+
+      // Wait for title generation - keeps stream open until title is written
+      await titlePromise;
     },
     originalMessages: allMessages,
     generateId: () => Bun.randomUUIDv7(),
