@@ -65,7 +65,11 @@ export const mapUIPartToDb = (
   const partType = part.type;
 
   // Skip transient parts (streaming markers, etc.)
-  if (TRANSIENT_PART_TYPES.includes(partType as (typeof TRANSIENT_PART_TYPES)[number])) {
+  if (
+    TRANSIENT_PART_TYPES.includes(
+      partType as (typeof TRANSIENT_PART_TYPES)[number]
+    )
+  ) {
     return null;
   }
 

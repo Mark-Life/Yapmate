@@ -30,11 +30,7 @@ export const PART_TYPES = [
 export type PartType = (typeof PART_TYPES)[number];
 
 /** Tool invocation states */
-export const TOOL_STATES = [
-  "partial-call",
-  "call",
-  "result",
-] as const;
+export const TOOL_STATES = ["partial-call", "call", "result"] as const;
 export type ToolState = (typeof TOOL_STATES)[number];
 
 export const parts = pgTable(
@@ -135,4 +131,3 @@ export const partsRelations = relations(parts, ({ one }) => ({
 export type PartInsert = typeof parts.$inferInsert;
 /** Select type for parts table */
 export type PartSelect = typeof parts.$inferSelect;
-

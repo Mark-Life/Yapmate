@@ -14,7 +14,11 @@ import { parts } from "../schema/parts";
  * @param chatId - ID of the chat to retrieve
  */
 export const getChat = async (chatId: string): Promise<ChatSelect | null> => {
-  const result = await db.select().from(chats).where(eq(chats.id, chatId)).limit(1);
+  const result = await db
+    .select()
+    .from(chats)
+    .where(eq(chats.id, chatId))
+    .limit(1);
   return result[0] ?? null;
 };
 
@@ -48,7 +52,10 @@ export const createChat = async (
     ...(id && { id }),
   };
 
-  const result = await db.insert(chats).values(values).returning({ id: chats.id });
+  const result = await db
+    .insert(chats)
+    .values(values)
+    .returning({ id: chats.id });
   return result[0].id;
 };
 
@@ -57,7 +64,10 @@ export const createChat = async (
  * @param chatId - ID of the chat to update
  * @param title - New title
  */
-export const updateChatTitle = async (chatId: string, title: string): Promise<void> => {
+export const updateChatTitle = async (
+  chatId: string,
+  title: string
+): Promise<void> => {
   await db
     .update(chats)
     .set({ title, updatedAt: new Date() })
@@ -85,7 +95,10 @@ export const updateActiveStreamId = async (
  * @param chatId - ID of the chat
  */
 export const touchChat = async (chatId: string): Promise<void> => {
-  await db.update(chats).set({ updatedAt: new Date() }).where(eq(chats.id, chatId));
+  await db
+    .update(chats)
+    .set({ updatedAt: new Date() })
+    .where(eq(chats.id, chatId));
 };
 
 // ─── Delete Operations ───────────────────────────────────────────────────────
@@ -140,7 +153,9 @@ export const branchChat = async (
       .where(eq(messages.chatId, originalChatId))
       .orderBy(messages.order);
 
-    const filteredMessages = messagesToCopy.filter((m) => m.order <= fromMessageOrder);
+    const filteredMessages = messagesToCopy.filter(
+      (m) => m.order <= fromMessageOrder
+    );
 
     if (filteredMessages.length === 0) {
       return newChat.id;
@@ -187,7 +202,8 @@ export const branchChat = async (
     }
 
     // Update branchPointMessageId to the last copied message's new ID
-    const lastOriginalMessageId = filteredMessages[filteredMessages.length - 1].id;
+    const lastOriginalMessageId =
+      filteredMessages[filteredMessages.length - 1].id;
     const branchPointNewId = messageIdMap.get(lastOriginalMessageId);
 
     await tx
@@ -221,4 +237,3 @@ export const branchChat = async (
     return newChat.id;
   });
 };
-

@@ -3,6 +3,7 @@
 ## Current State
 
 Your codebase is well-prepared for persistence:
+
 - Already generates chat IDs (UUID v7)
 - Already has `result.consumeStream()` for handling disconnects
 - TODO comments mark exact spots for persistence
@@ -12,19 +13,20 @@ Your codebase is well-prepared for persistence:
 
 ## Analysis: Your Requirements
 
-| Feature | Complexity | Dependencies |
-|---------|------------|--------------|
-| **Basic persistence** (save/load chats) | Low | PostgreSQL + Drizzle |
-| **Optimized transport** (send only last message) | Low | None (AI SDK built-in) |
-| **Stream resumption on reload** | Medium | Redis + `resumable-stream` |
-| **Multi-device real-time sync** | High | Redis pub/sub |
-| **Continue after all clients disconnect** | Already done ✓ | `consumeStream()` |
+| Feature                                          | Complexity     | Dependencies               |
+| ------------------------------------------------ | -------------- | -------------------------- |
+| **Basic persistence** (save/load chats)          | Low            | PostgreSQL + Drizzle       |
+| **Optimized transport** (send only last message) | Low            | None (AI SDK built-in)     |
+| **Stream resumption on reload**                  | Medium         | Redis + `resumable-stream` |
+| **Multi-device real-time sync**                  | High           | Redis pub/sub              |
+| **Continue after all clients disconnect**        | Already done ✓ | `consumeStream()`          |
 
 ---
 
 ## Options
 
 ### Option A: Simple Persistence First (Recommended Start)
+
 **Stack**: PostgreSQL + Drizzle ORM
 
 1. Store chats/messages in Postgres
@@ -32,29 +34,35 @@ Your codebase is well-prepared for persistence:
 3. Load previous messages from DB on server
 
 **Pros**:
+
 - Works today, can add resumability later
 - Matt Pocock's normalized schema is solid for tool calls/reasoning parts
 - No Redis dependency initially
 
 **Cons**:
+
 - No stream resumption across devices/reloads yet
 
 ---
 
 ### Option B: Full Resumability (Your Ideal UX)
+
 **Stack**: PostgreSQL + Drizzle + Redis + `resumable-stream`
 
 Everything from Option A, plus:
+
 1. Store active `streamId` in DB
 2. Use Redis to buffer SSE stream
 3. Multiple clients can connect to same stream
 4. GET endpoint to resume streams
 
 **Pros**:
+
 - Complete UX you described
 - Multiple devices see same stream in real-time
 
 **Cons**:
+
 - More infrastructure (Redis)
 - More complex initial setup
 - `resume` is incompatible with abort functionality
@@ -64,6 +72,7 @@ Everything from Option A, plus:
 ## My Recommendation: Phased Approach
 
 ### Phase 1: Simple Persistence (do first)
+
 ```
 PostgreSQL + Drizzle ORM
 ├── chats table (id, title, createdAt, updatedAt)
@@ -72,6 +81,7 @@ PostgreSQL + Drizzle ORM
 ```
 
 Changes needed:
+
 - Add Drizzle + PostgreSQL driver
 - Create schema (following Matt Pocock's normalized approach for parts)
 - Update `chat-store.ts` with `createChat`, `loadChat`, `saveChat`
@@ -79,6 +89,7 @@ Changes needed:
 - Update chat.tsx to use `prepareSendMessagesRequest`
 
 ### Phase 2: Stream Resumability (add later)
+
 - Add Redis (Vercel KV, Upstash, or self-hosted)
 - Add `resumable-stream` package
 - Create GET endpoint at `/api/chat/[id]/stream`
@@ -97,6 +108,7 @@ Changes needed:
 4. **Querying** – "show me all messages with reasoning" becomes SQL query
 
 **Simpler JSON blob** approach is fine if:
+
 - You only have text parts
 - You don't need to query by part type
 - You want faster initial setup
@@ -123,46 +135,50 @@ I can create the Phase 1 implementation:
 3. Update `chat-store.ts` with actual DB operations
 4. Wire up route.ts and chat.tsx
 
-
 ---
 
 # Phase 1 Completion Checklist
 
 ### ✅ Done
+
 - [x] Schema files (`users`, `chats`, `messages`, `parts`, `files`)
 - [x] `timestamps` helper
 - [x] Schema re-exports
 
-### 🔧 Infrastructure
-| Task | Description |
-|------|-------------|
-| 1. **Update `client.ts`** | Switch from `@vercel/postgres` to `postgres-js` for Supabase |
-| 2. **Add `postgres` package** | `bun add postgres` |
-| 3. **Update `drizzle.config.ts`** | Ensure path is correct for Supabase |
-| 4. **Create Supabase project** | Get connection string, set `DATABASE_URL` |
-| 5. **Run migration** | `bun run db:generate` + `bun run db:migrate` |
+### 🔧 Infrastructure (✅)
 
-### 📦 Service Layer (`src/db/service/`)
-| File | Functions |
-|------|-----------|
-| `chats.ts` | `createChat`, `getChat`, `getChatsByUser`, `updateChatTitle`, `deleteChat`, `branchChat` |
-| `messages.ts` | `getMessagesByChatId`, `saveMessages`, `deleteMessagesFromOrder` (for regenerate) |
-| `mapping.ts` | `mapUIMessageToDb`, `mapDbMessageToUI`, `mapUIPartToDb`, `mapDbPartToUI` |
+| Task                              | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| 1. **Update `client.ts`**         | Switch from `@vercel/postgres` to `postgres-js` for Supabase |
+| 2. **Add `postgres` package**     | `bun add postgres`                                           |
+| 3. **Update `drizzle.config.ts`** | Ensure path is correct for Supabase                          |
+| 4. **Create Supabase project**    | Get connection string, set `DATABASE_URL`                    |
+| 5. **Run migration**              | `bun run db:generate` + `bun run db:migrate`                 |
+
+### 📦 Service Layer (`src/db/service/`) (✅)
+
+| File          | Functions                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| `chats.ts`    | `createChat`, `getChat`, `getChatsByUser`, `updateChatTitle`, `deleteChat`, `branchChat` |
+| `messages.ts` | `getMessagesByChatId`, `saveMessages`, `deleteMessagesFromOrder` (for regenerate)        |
+| `mapping.ts`  | `mapUIMessageToDb`, `mapDbMessageToUI`, `mapUIPartToDb`, `mapDbPartToUI`                 |
 
 ### 🔄 Integration
-| Task | File | Description |
-|------|------|-------------|
-| 6. **Update `chat-store.ts`** | `src/lib/chat-store.ts` | Use service layer functions |
-| 7. **Update API route** | `src/app/api/chat/route.ts` | Load previous messages, save on finish |
-| 8. **Update chat component** | `src/components/chat.tsx` | Use `prepareSendMessagesRequest` to send only last message |
-| 9. **Create chat page** | `src/app/chat/[id]/page.tsx` | Load chat from DB, pass to component |
+
+| Task                          | File                         | Description                                                |
+| ----------------------------- | ---------------------------- | ---------------------------------------------------------- |
+| 6. **Update `chat-store.ts`** | `src/lib/chat-store.ts`      | Use service layer functions                                |
+| 7. **Update API route**       | `src/app/api/chat/route.ts`  | Load previous messages, save on finish                     |
+| 8. **Update chat component**  | `src/components/chat.tsx`    | Use `prepareSendMessagesRequest` to send only last message |
+| 9. **Create chat page**       | `src/app/chat/[id]/page.tsx` | Load chat from DB, pass to component                       |
 
 ### 📁 File Storage (can defer)
-| Task | Description |
-|------|-------------|
-| 10. **Create Supabase Storage bucket** | Private bucket for user files |
-| 11. **File service** | `src/db/service/files.ts` - upload, getSignedUrl, delete |
-| 12. **File upload API** | `/api/files/upload` endpoint |
+
+| Task                                   | Description                                              |
+| -------------------------------------- | -------------------------------------------------------- |
+| 10. **Create Supabase Storage bucket** | Private bucket for user files                            |
+| 11. **File service**                   | `src/db/service/files.ts` - upload, getSignedUrl, delete |
+| 12. **File upload API**                | `/api/files/upload` endpoint                             |
 
 ---
 
@@ -191,6 +207,7 @@ I can create the Phase 1 implementation:
 ## Key Functions to Implement
 
 ### `src/db/service/mapping.ts`
+
 ```typescript
 // UI → DB (when saving)
 mapUIMessageToDb(uiMessage: UIMessage, chatId: string, order: number) → { message: MessageInsert, parts: PartInsert[] }
@@ -200,6 +217,7 @@ mapDbMessageToUI(dbMessage: MessageSelect, dbParts: PartSelect[]) → UIMessage
 ```
 
 ### `src/db/service/messages.ts`
+
 ```typescript
 // Save all messages (upsert - handles new + updated)
 saveMessages(chatId: string, uiMessages: UIMessage[]) → Promise<void>
@@ -212,6 +230,7 @@ deleteMessagesFromOrder(chatId: string, fromOrder: number) → Promise<void>
 ```
 
 ### `src/db/service/chats.ts`
+
 ```typescript
 createChat(userId: string, title?: string) → Promise<string>
 getChat(chatId: string) → Promise<ChatSelect | null>

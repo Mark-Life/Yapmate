@@ -3,13 +3,7 @@
  * Files are stored in a private bucket, accessed via signed URLs
  */
 import { relations } from "drizzle-orm";
-import {
-  bigint,
-  index,
-  pgTable,
-  text,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { bigint, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { timestamps } from "./columns.helpers";
 import { users } from "./users";
 
@@ -51,4 +45,3 @@ export const filesRelations = relations(files, ({ one }) => ({
 export type FileInsert = typeof files.$inferInsert;
 /** Select type for files table */
 export type FileSelect = typeof files.$inferSelect;
-

@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/core", "ultracite/next"],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -29,19 +30,7 @@
             "style": "interface"
           }
         }
-      },
-      "domains": {
-        "next": "recommended",
-        "react": "recommended"
       }
-    },
-    "assist": {
-      "actions": {
-        "source": {
-          "organizeImports": "on"
-        }
-      }
-    },
-    "extends": ["ultracite/core", "ultracite/next"]
+    }
   }
 }

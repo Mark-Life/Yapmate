@@ -83,4 +83,3 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
     </Sidebar>
   );
 };
-

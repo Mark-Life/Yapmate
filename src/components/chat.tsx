@@ -66,7 +66,10 @@ const groupModelsByProvider = (
   const grouped = new Map<string, Array<{ name: string; value: string }>>();
   for (const model of models) {
     const existing = grouped.get(model.provider) ?? [];
-    grouped.set(model.provider, [...existing, { name: model.name, value: model.value }]);
+    grouped.set(model.provider, [
+      ...existing,
+      { name: model.name, value: model.value },
+    ]);
   }
   return Array.from(grouped.entries()).map(([provider, items]) => ({
     provider,
@@ -93,7 +96,10 @@ const truncateTitle = (text: string): string => {
 /**
  * Creates a new chat via API
  */
-const createChat = async (id: string, title: string): Promise<{ id: string }> => {
+const createChat = async (
+  id: string,
+  title: string
+): Promise<{ id: string }> => {
   const res = await fetch("/api/chats", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -118,7 +124,8 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
 
   // Mutation to create chat
   const createChatMutation = useMutation({
-    mutationFn: ({ id, title }: { id: string; title: string }) => createChat(id, title),
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      createChat(id, title),
     onSuccess: () => {
       // Invalidate chats query to update sidebar
       queryClient.invalidateQueries({ queryKey: ["chats"] });
@@ -130,7 +137,10 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        prepareSendMessagesRequest({ messages: allMessages, id: transportChatId }) {
+        prepareSendMessagesRequest({
+          messages: allMessages,
+          id: transportChatId,
+        }) {
           // Send only the last message - server loads previous from DB
           return {
             body: {
@@ -283,14 +293,19 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
               </PromptInputBody>
               <PromptInputFooter>
                 <PromptInputTools>
-                  <ModelSelector open={modelSelectorOpen} onOpenChange={setModelSelectorOpen}>
+                  <ModelSelector
+                    open={modelSelectorOpen}
+                    onOpenChange={setModelSelectorOpen}
+                  >
                     <ModelSelectorTrigger asChild>
                       <PromptInputButton
                         className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
                         aria-expanded={modelSelectorOpen}
                       >
                         {currentModel && (
-                          <ModelSelectorLogo provider={currentModel.provider as any} />
+                          <ModelSelectorLogo
+                            provider={currentModel.provider as any}
+                          />
                         )}
                         <span>{currentModel?.name}</span>
                       </PromptInputButton>
@@ -298,7 +313,9 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
                     <ModelSelectorContent>
                       <ModelSelectorInput placeholder="Search models..." />
                       <ModelSelectorList>
-                        <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                        <ModelSelectorEmpty>
+                          No models found.
+                        </ModelSelectorEmpty>
                         {groupedModels.map((group) => (
                           <ModelSelectorGroup key={group.provider}>
                             <div className="cmdk-group-heading pb-1 pl-2">
@@ -306,7 +323,8 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
                                 ? "Google"
                                 : group.provider === "openai"
                                   ? "OpenAI"
-                                  : group.provider.charAt(0).toUpperCase() + group.provider.slice(1)}
+                                  : group.provider.charAt(0).toUpperCase() +
+                                    group.provider.slice(1)}
                             </div>
                             {group.items.map((item) => (
                               <ModelSelectorItem
@@ -317,8 +335,12 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
                                   setModelSelectorOpen(false);
                                 }}
                               >
-                                <ModelSelectorLogo provider={group.provider as any} />
-                                <ModelSelectorName>{item.name}</ModelSelectorName>
+                                <ModelSelectorLogo
+                                  provider={group.provider as any}
+                                />
+                                <ModelSelectorName>
+                                  {item.name}
+                                </ModelSelectorName>
                               </ModelSelectorItem>
                             ))}
                           </ModelSelectorGroup>
@@ -347,4 +369,3 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     </PromptInputProvider>
   );
 };
-

@@ -18,7 +18,9 @@ import {
  * Loads all messages for a chat with their parts, returns as UIMessage[]
  * @param chatId - ID of the chat to load messages for
  */
-export const getMessagesByChatId = async (chatId: string): Promise<UIMessage[]> => {
+export const getMessagesByChatId = async (
+  chatId: string
+): Promise<UIMessage[]> => {
   // Fetch messages ordered by position
   const dbMessages = await db
     .select()
@@ -105,7 +107,9 @@ export const saveMessages = async (
     }
 
     // Delete existing parts for these messages (will be replaced)
-    const messageIds = messagesToUpsert.map((m) => m.id).filter(Boolean) as string[];
+    const messageIds = messagesToUpsert
+      .map((m) => m.id)
+      .filter(Boolean) as string[];
     if (messageIds.length > 0) {
       await tx.delete(parts).where(inArray(parts.messageId, messageIds));
     }
@@ -191,4 +195,3 @@ export const deleteMessagesFromOrder = async (
 export const deleteMessage = async (messageId: string): Promise<void> => {
   await db.delete(messages).where(eq(messages.id, messageId));
 };
-

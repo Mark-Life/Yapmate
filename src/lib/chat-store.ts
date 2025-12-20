@@ -21,8 +21,10 @@ const TEMP_USER_ID = "9e67edd6-7142-4f10-9dc5-3899bbcf54a6";
  * @param title - Optional chat title
  * @param id - Optional pre-generated ID (for client-side ID generation)
  */
-export const createChat = async (title?: string, id?: string): Promise<string> =>
-  dbCreateChat(TEMP_USER_ID, title, id);
+export const createChat = async (
+  title?: string,
+  id?: string
+): Promise<string> => dbCreateChat(TEMP_USER_ID, title, id);
 
 /**
  * Gets a chat by ID

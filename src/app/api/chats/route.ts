@@ -27,4 +27,3 @@ export async function POST(req: Request) {
   const chatId = await createChat(title, id);
   return NextResponse.json({ id: chatId });
 }
-

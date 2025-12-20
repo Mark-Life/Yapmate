@@ -29,7 +29,9 @@ export const ModelSelectorTrigger = (props: ModelSelectorTriggerProps) => (
   <PopoverTrigger {...props} />
 );
 
-export type ModelSelectorContentProps = ComponentProps<typeof PopoverContent> & {
+export type ModelSelectorContentProps = ComponentProps<
+  typeof PopoverContent
+> & {
   title?: ReactNode;
 };
 

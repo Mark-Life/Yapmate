@@ -88,4 +88,3 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
 export type MessageInsert = typeof messages.$inferInsert;
 /** Select type for messages table */
 export type MessageSelect = typeof messages.$inferSelect;
-

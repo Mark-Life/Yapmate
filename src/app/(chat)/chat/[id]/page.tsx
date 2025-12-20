@@ -20,4 +20,3 @@ export default async function ChatPage({ params }: PageProps) {
 
   return <Chat key={id} id={id} initialMessages={messages} />;
 }
-
