@@ -92,7 +92,7 @@ export const MessageAction = ({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent hideArrow side="bottom">
             <p>{tooltip}</p>
           </TooltipContent>
         </Tooltip>

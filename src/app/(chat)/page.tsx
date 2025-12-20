@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Chat } from "@/components/chat";
+import { Chat } from "@/components/chat/chat";
 
 /**
  * Component that reads search params and renders Chat

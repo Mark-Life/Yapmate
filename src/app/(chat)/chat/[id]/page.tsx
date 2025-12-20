@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Chat } from "@/components/chat";
+import { Chat } from "@/components/chat/chat";
 import { getChat, loadChatMessages } from "@/lib/chat-store";
 import { getCurrentUserId } from "@/lib/supabase/server";
 

@@ -7,7 +7,11 @@ import {
 } from "ai";
 import type { FileSelect } from "@/db/schema/files";
 import { createPendingFile } from "@/db/service/files";
-import { saveMessage as saveMessageService } from "@/db/service/messages";
+import {
+  deleteMessagesFromOrder,
+  getMessageOrder,
+  saveMessage as saveMessageService,
+} from "@/db/service/messages";
 import {
   getChat,
   loadChatMessages,
@@ -106,6 +110,60 @@ const processFileParts = async (
   return fileRecords;
 };
 
+/**
+ * Handles regeneration by deleting stale messages after the regeneration point
+ * @param chatId - ID of the chat
+ * @param regenerateMessageId - ID of the message being regenerated from
+ * @param regenerateRole - Role of the message being regenerated from
+ */
+const handleRegeneration = async (
+  chatId: string,
+  regenerateMessageId: string,
+  regenerateRole?: "user" | "assistant"
+): Promise<void> => {
+  const regenerateOrder = await getMessageOrder(regenerateMessageId);
+  if (regenerateOrder !== null) {
+    // For assistant messages: delete messages with order >= regenerateOrder (including the assistant message itself)
+    // For user messages: delete messages with order > regenerateOrder (excluding the user message, but including assistant after it)
+    const fromOrder =
+      regenerateRole === "assistant" ? regenerateOrder : regenerateOrder + 1;
+    await deleteMessagesFromOrder(chatId, fromOrder);
+  }
+};
+
+/**
+ * Processes file parts and maps them to part indices
+ * @param message - The message containing file parts
+ * @param userId - ID of the user
+ * @returns Object with file records and fileIdByPartIndex map
+ */
+const processMessageFiles = async (
+  message: UIMessage,
+  userId: string
+): Promise<{
+  fileRecords: FileSelect[];
+  fileIdByPartIndex: Map<number, string>;
+}> => {
+  const fileParts = message.parts.filter((p) => p.type === "file");
+  let fileRecords: FileSelect[] = [];
+  const fileIdByPartIndex = new Map<number, string>();
+
+  if (fileParts.length > 0) {
+    fileRecords = await processFileParts(fileParts, userId);
+
+    // Map file records to part indices
+    let fileIndex = 0;
+    for (let i = 0; i < message.parts.length; i++) {
+      if (message.parts[i].type === "file" && fileIndex < fileRecords.length) {
+        fileIdByPartIndex.set(i, fileRecords[fileIndex].id);
+        fileIndex += 1;
+      }
+    }
+  }
+
+  return { fileRecords, fileIdByPartIndex };
+};
+
 export async function POST(req: Request) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -117,11 +175,15 @@ export async function POST(req: Request) {
     model,
     searchEnabled,
     id,
+    regenerateMessageId,
+    regenerateRole,
   }: {
     message: UIMessage;
     model: string;
     searchEnabled?: boolean;
     id: string;
+    regenerateMessageId?: string;
+    regenerateRole?: "user" | "assistant";
   } = await req.json();
 
   if (!id) {
@@ -138,21 +200,14 @@ export async function POST(req: Request) {
   }
 
   // Process file parts and create file records
-  const fileParts = message.parts.filter((p) => p.type === "file");
-  let fileRecords: FileSelect[] = [];
-  const fileIdByPartIndex = new Map<number, string>();
+  const { fileRecords, fileIdByPartIndex } = await processMessageFiles(
+    message,
+    userId
+  );
 
-  if (fileParts.length > 0) {
-    fileRecords = await processFileParts(fileParts, userId);
-
-    // Map file records to part indices
-    let fileIndex = 0;
-    for (let i = 0; i < message.parts.length; i++) {
-      if (message.parts[i].type === "file" && fileIndex < fileRecords.length) {
-        fileIdByPartIndex.set(i, fileRecords[fileIndex].id);
-        fileIndex += 1;
-      }
-    }
+  // Handle regeneration: delete stale messages after the regeneration point
+  if (regenerateMessageId) {
+    await handleRegeneration(id, regenerateMessageId, regenerateRole);
   }
 
   // Save user message before sending to LLM

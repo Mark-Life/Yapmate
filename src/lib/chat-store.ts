@@ -12,7 +12,7 @@ import {
   touchChat as dbTouchChat,
   updateChatTitle as dbUpdateChatTitle,
 } from "@/db/service/chats";
-import { getMessagesByChatId, saveMessages } from "@/db/service/messages";
+import { getMessagesByChatId, syncMessages } from "@/db/service/messages";
 
 /**
  * Creates a new chat and returns its ID
@@ -66,6 +66,7 @@ type SaveChatOptions = {
 /**
  * Saves messages for a chat
  * Also touches the chat to update its timestamp
+ * Uses sync to handle regeneration scenarios (deletes stale messages)
  * @param chatId - ID of the chat
  * @param messages - UIMessages to save
  * @param options - Optional metadata per message (keyed by message id)
@@ -75,6 +76,6 @@ export const saveChatMessages = async (
   messages: UIMessage[],
   options?: Record<string, SaveChatOptions>
 ): Promise<void> => {
-  await saveMessages(chatId, messages, options);
+  await syncMessages(chatId, messages, options);
   await dbTouchChat(chatId);
 };

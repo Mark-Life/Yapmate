@@ -142,6 +142,24 @@ type SaveMessageOptions = {
 };
 
 /**
+ * Syncs messages for a chat - deletes stale messages and saves new/updated ones
+ * Used for regeneration scenarios where messages after a certain point need to be removed
+ * @param chatId - ID of the chat
+ * @param uiMessages - Array of UIMessages to save
+ * @param options - Optional metadata per message (keyed by message id)
+ */
+export const syncMessages = async (
+  chatId: string,
+  uiMessages: UIMessage[],
+  options?: Record<string, SaveMessageOptions>
+): Promise<void> => {
+  // Delete messages with order >= messages.length (stale messages after regeneration point)
+  await deleteMessagesFromOrder(chatId, uiMessages.length);
+  // Save the messages (upsert handles new and updated)
+  await saveMessages(chatId, uiMessages, options);
+};
+
+/**
  * Saves messages for a chat (upsert - handles new and updated messages)
  * @param chatId - ID of the chat
  * @param uiMessages - Array of UIMessages to save
@@ -280,6 +298,23 @@ export const saveMessage = async (
 };
 
 // ─── Delete Operations ───────────────────────────────────────────────────────
+
+/**
+ * Gets a message's order by its ID
+ * @param messageId - ID of the message
+ * @returns The message's order, or null if not found
+ */
+export const getMessageOrder = async (
+  messageId: string
+): Promise<number | null> => {
+  const result = await db
+    .select({ order: messages.order })
+    .from(messages)
+    .where(eq(messages.id, messageId))
+    .limit(1);
+
+  return result[0]?.order ?? null;
+};
 
 /**
  * Deletes messages from a specific order onwards (for regenerate functionality)
