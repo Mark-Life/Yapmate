@@ -1,14 +1,66 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+  type UIMessage,
+} from "ai";
 import type { FileSelect } from "@/db/schema/files";
 import { createPendingFile } from "@/db/service/files";
 import { saveMessage as saveMessageService } from "@/db/service/messages";
-import { getChat, loadChatMessages, saveChatMessages } from "@/lib/chat-store";
+import {
+  getChat,
+  loadChatMessages,
+  saveChatMessages,
+  updateChatTitle,
+} from "@/lib/chat-store";
 import { uploadFilesInBackground } from "@/lib/file-upload";
 import { openrouter } from "@/lib/openrouter";
 import { getCurrentUserId } from "@/lib/supabase/server";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 120;
+
+const TITLE_GENERATION_MODEL = "google/gemma-3n-e4b-it:free";
+const MAX_TITLE_LENGTH = 50;
+
+/**
+ * Truncates text to max length with ellipsis
+ */
+const truncateTitle = (text: string): string => {
+  const trimmed = text.trim();
+  if (trimmed.length <= MAX_TITLE_LENGTH) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, MAX_TITLE_LENGTH)}...`;
+};
+
+/**
+ * Generates a chat title from the first user message
+ * @param userMessage - The first user message text
+ * @returns Generated title, or truncated user message on error
+ */
+const generateChatTitle = async (userMessage: string): Promise<string> => {
+  try {
+    const result = await streamText({
+      model: openrouter.chat(TITLE_GENERATION_MODEL),
+      messages: [
+        {
+          role: "user",
+          content: `Generate a short, descriptive title (max 50 chars) for a chat starting with: "${userMessage}"\n\nReturn ONLY the title, no quotes or explanation.\n\nThese are chat titles from user to LLM, so they should be short and descriptive. Use more generalized and model perspective titles, not specific to the user's message. So if user says "tell me about SSR", the best Title would be "SSR Explanation"`,
+        },
+      ],
+      maxOutputTokens: 30,
+    });
+
+    const title = await result.text;
+    const trimmed = title.trim().slice(0, MAX_TITLE_LENGTH);
+    return trimmed || truncateTitle(userMessage);
+  } catch {
+    // Fallback to truncated user message on error
+    return truncateTitle(userMessage);
+  }
+};
 
 /**
  * Processes file parts from a message and creates file records
@@ -105,6 +157,7 @@ export async function POST(req: Request) {
 
   // Save user message before sending to LLM
   const previousMessages = await loadChatMessages(id);
+  const isFirstMessage = previousMessages.length === 0;
   const messageOrder = previousMessages.length;
 
   // Save message with file IDs
@@ -121,23 +174,54 @@ export async function POST(req: Request) {
   }
 
   const modelWithSearch = searchEnabled ? `${model}:online` : model;
-  const result = streamText({
-    model: openrouter.chat(modelWithSearch),
-    messages: convertToModelMessages(allMessages),
-    system:
-      "You are a helpful assistant that can answer questions and help with tasks",
-  });
 
-  // Consume the stream to ensure it runs to completion & triggers onFinish
-  // even when the client response is aborted
-  result.consumeStream();
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      // If first message, generate title in parallel
+      if (isFirstMessage) {
+        const userText =
+          message.parts.find((p) => p.type === "text")?.text || "New chat";
 
-  // Send sources and reasoning back to the client
-  return result.toUIMessageStreamResponse({
+        // Fire off title generation (non-blocking)
+        generateChatTitle(userText)
+          .then((title) => {
+            // Update DB
+            return updateChatTitle(id, title).then(() => {
+              // Stream to client as transient data
+              writer.write({
+                type: "data-chat-title",
+                data: { title },
+                transient: true,
+              });
+            });
+          })
+          .catch((error) => {
+            // Log error for debugging
+            console.error("Title generation failed:", error);
+          });
+      }
+
+      const result = streamText({
+        model: openrouter.chat(modelWithSearch),
+        messages: convertToModelMessages(allMessages),
+        system:
+          "You are a helpful assistant that can answer questions and help with tasks",
+      });
+
+      // Consume the stream to ensure it runs to completion & triggers onFinish
+      // even when the client response is aborted
+      result.consumeStream();
+
+      // Merge the main response stream
+      writer.merge(
+        result.toUIMessageStream({
+          sendSources: true,
+          sendReasoning: true,
+        })
+      );
+    },
     originalMessages: allMessages,
-    generateMessageId: () => Bun.randomUUIDv7(),
-    sendSources: true,
-    sendReasoning: true,
+    generateId: () => Bun.randomUUIDv7(),
     onFinish: async ({ messages: finalMessages }) => {
       // Save all messages (upsert handles both new and updated)
       const lastMessageId = finalMessages.at(-1)?.id;
@@ -147,4 +231,6 @@ export async function POST(req: Request) {
       });
     },
   });
+
+  return createUIMessageStreamResponse({ stream });
 }

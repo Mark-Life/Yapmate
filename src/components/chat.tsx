@@ -41,25 +41,13 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { DragDropZone } from "@/components/drag-drop-zone";
 import { ModelSelectorCombobox } from "@/components/model-selector";
+import type { ChatUIMessage } from "@/lib/chat-types";
 import { MODELS } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 type ChatProps = {
   id?: string;
   initialMessages?: UIMessage[];
-};
-
-const MAX_TITLE_LENGTH = 50;
-
-/**
- * Truncates text to max length with ellipsis
- */
-const truncateTitle = (text: string): string => {
-  const trimmed = text.trim();
-  if (trimmed.length <= MAX_TITLE_LENGTH) {
-    return trimmed;
-  }
-  return `${trimmed.slice(0, MAX_TITLE_LENGTH)}...`;
 };
 
 /**
@@ -125,30 +113,35 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     [model, searchEnabled]
   );
 
-  const { messages, sendMessage, status, regenerate } = useChat({
+  const { messages, sendMessage, status, regenerate } = useChat<ChatUIMessage>({
     id: chatId,
-    messages: initialMessages,
+    messages: initialMessages as ChatUIMessage[],
     transport,
     // Generate UUID v4 for message IDs (compatible with DB schema)
     generateId: () => crypto.randomUUID(),
+    onData: (dataPart) => {
+      // Handle streamed title updates
+      if (dataPart.type === "data-chat-title") {
+        // Refresh sidebar to show new title
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      }
+    },
   });
 
   /**
    * Creates chat in DB on first message, updates URL and sidebar
+   * Uses placeholder title - real title comes via stream
    */
-  const ensureChatExists = useCallback(
-    async (firstMessageText: string) => {
-      if (!isNewChat) {
-        return;
-      }
-      const title = truncateTitle(firstMessageText);
-      await createChatMutation.mutateAsync({ id: chatId, title });
-      setIsNewChat(false);
-      // Update URL without navigation (avoids unmounting this component)
-      window.history.replaceState(null, "", `/chat/${chatId}`);
-    },
-    [isNewChat, chatId, createChatMutation]
-  );
+  const ensureChatExists = useCallback(async () => {
+    if (!isNewChat) {
+      return;
+    }
+    // Create with placeholder - real title comes via stream
+    await createChatMutation.mutateAsync({ id: chatId, title: "New chat" });
+    setIsNewChat(false);
+    // Update URL without navigation (avoids unmounting this component)
+    window.history.replaceState(null, "", `/chat/${chatId}`);
+  }, [isNewChat, chatId, createChatMutation]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -158,7 +151,7 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     }
 
     // Create chat in DB on first message
-    await ensureChatExists(message.text || "New chat");
+    await ensureChatExists();
 
     // Transport's prepareSendMessagesRequest handles the body
     sendMessage({
