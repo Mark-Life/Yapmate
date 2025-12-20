@@ -533,17 +533,17 @@ NODE_ENV=production bun dist/index.js
 
 ### Phase 1: Setup
 
-- [ ] Create `src/server/` structure
-- [ ] Create `src/client/` structure
-- [ ] Move `globals.css` and static assets to `src/client/`
-- [ ] Create `index.html` entry point
+- [x] Create `src/server/` structure
+- [x] Create `src/client/` structure
+- [x] Move `globals.css` and static assets to `src/client/`
+- [x] Create `index.html` entry point
 
 ### Phase 2: Server
 
-- [ ] Migrate Supabase client to use Bun cookies
-- [ ] Create auth routes (`/auth/callback`, `/api/auth/magic-link`)
-- [ ] Create API routes (`/api/chats`, `/api/chats/:id/messages`, `/api/chat`)
-- [ ] Set up main server entry (`src/server/index.ts`)
+- [x] Migrate Supabase client to use Bun cookies
+- [x] Create auth routes (`/auth/callback`, `/api/auth/magic-link`)
+- [x] Create API routes (`/api/chats`, `/api/chats/:id/messages`, `/api/chat`)
+- [x] Set up main server entry (`src/server/index.ts`)
 
 ### Phase 3: Frontend
 
