@@ -35,15 +35,15 @@ const HeaderControls = () => {
   const { open } = useSidebar();
   const router = useRouter();
 
-  const handleNewChat = () => {
-    router.push(`/?new=${Date.now()}`);
+  const openNewChat = () => {
+    router.push("/");
   };
 
   return (
     <div className="absolute top-3 left-3 z-10 flex items-center gap-1">
       <SidebarTrigger />
       {!open && (
-        <Button onClick={handleNewChat} size="icon" variant="ghost">
+        <Button onClick={openNewChat} size="icon" variant="ghost">
           <PlusIcon className="size-4" />
           <span className="sr-only">New Chat</span>
         </Button>

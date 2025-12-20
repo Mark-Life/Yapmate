@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -90,8 +90,14 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     },
   });
 
-  // Memoize transport to avoid recreating on every render
-  const transport = useMemo(
+  // Use refs to always have latest values for transport closure
+  const modelRef = useRef(model);
+  const searchEnabledRef = useRef(searchEnabled);
+  modelRef.current = model;
+  searchEnabledRef.current = searchEnabled;
+
+  // Create transport once with refs to avoid stale closures
+  const [transport] = useState(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
@@ -99,34 +105,40 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
           messages: allMessages,
           id: transportChatId,
         }) {
-          // Send only the last message - server loads previous from DB
+          // Use refs to get latest values
           return {
             body: {
               message: allMessages.at(-1),
               id: transportChatId,
-              model,
-              searchEnabled,
+              model: modelRef.current,
+              searchEnabled: searchEnabledRef.current,
             },
           };
         },
-      }),
-    [model, searchEnabled]
+      })
   );
 
-  const { messages, sendMessage, status, regenerate } = useChat<ChatUIMessage>({
-    id: chatId,
-    messages: initialMessages as ChatUIMessage[],
-    transport,
-    // Generate UUID v4 for message IDs (compatible with DB schema)
-    generateId: () => crypto.randomUUID(),
-    onData: (dataPart) => {
-      // Handle streamed title updates
-      if (dataPart.type === "data-chat-title") {
-        // Refresh sidebar to show new title
-        queryClient.invalidateQueries({ queryKey: ["chats"] });
-      }
-    },
-  });
+  const { messages, sendMessage, status, regenerate, setMessages } =
+    useChat<ChatUIMessage>({
+      id: chatId,
+      messages: initialMessages as ChatUIMessage[],
+      transport,
+      generateId: () => crypto.randomUUID(),
+      onData: (dataPart) => {
+        // Handle streamed title updates
+        if (dataPart.type === "data-chat-title") {
+          // Refresh sidebar to show new title
+          queryClient.invalidateQueries({ queryKey: ["chats"] });
+        }
+      },
+      onFinish: ({ messages: finishedMessages }) => {
+        // Manually update messages state to ensure UI reflects completed stream
+        setMessages(finishedMessages);
+      },
+      onError: (error) => {
+        console.error("useChat error:", error);
+      },
+    });
 
   /**
    * Creates chat in DB on first message, updates URL and sidebar
@@ -158,6 +170,7 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
       text: message.text || "Sent with attachments",
       files: message.files,
     });
+
     setInput("");
   };
 

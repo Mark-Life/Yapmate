@@ -47,7 +47,7 @@ const generateChatTitle = async (userMessage: string): Promise<string> => {
       messages: [
         {
           role: "user",
-          content: `Generate a short, descriptive title (max 50 chars) for a chat starting with: "${userMessage}"\n\nReturn ONLY the title, no quotes or explanation.\n\nThese are chat titles from user to LLM, so they should be short and descriptive. Use more generalized and model perspective titles, not specific to the user's message. So if user says "tell me about SSR", the best Title would be "SSR Explanation"`,
+          content: `Generate a short, descriptive title (max 50 chars) for a chat starting with: "${userMessage}"\n\nReturn ONLY the title, no quotes or explanation.\n\nThese are chat titles from user to LLM, so they should be short and descriptive. Use more model perspective titles, not specific to the user's message. So if user says "tell me about SSR", the best Title would be "SSR Explanation" or if user asks whats the capital of France, simply name it "Capital of France"`,
         },
       ],
       maxOutputTokens: 30,

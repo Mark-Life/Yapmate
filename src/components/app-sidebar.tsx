@@ -39,8 +39,8 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
   /**
    * Navigate to new chat with unique timestamp to force component remount
    */
-  const handleNewChat = useCallback(() => {
-    router.push(`/?new=${Date.now()}`);
+  const openNewChat = useCallback(() => {
+    router.push("/");
   }, [router]);
 
   return (
@@ -48,7 +48,7 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
       <SidebarHeader className="border-sidebar-border border-b">
         <Button
           className="w-full gap-2 border border-primary/15 bg-primary/5 text-primary hover:bg-primary/10"
-          onClick={handleNewChat}
+          onClick={openNewChat}
         >
           New Chat
         </Button>
