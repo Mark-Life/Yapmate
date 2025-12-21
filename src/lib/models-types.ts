@@ -81,15 +81,6 @@ export type ProviderMetadata = {
 export type ModelsDevApiResponse = Record<string, ProviderMetadata>;
 
 /**
- * Cached models data structure
- */
-export type CachedModelsData = {
-  timestamp: number;
-  ttl: number;
-  models: Record<string, ModelMetadata>;
-};
-
-/**
  * Model ID format (lowercase provider/model-name)
  */
 export type ModelId = string;

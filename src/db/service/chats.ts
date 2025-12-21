@@ -1,7 +1,7 @@
 /**
  * Chats service - CRUD operations for chat sessions
  */
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../client";
 import { type ChatInsert, type ChatSelect, chats } from "../schema/chats";
 import { messages } from "../schema/messages";
@@ -109,6 +109,39 @@ export const touchChat = async (chatId: string): Promise<void> => {
  */
 export const deleteChat = async (chatId: string): Promise<void> => {
   await db.delete(chats).where(eq(chats.id, chatId));
+};
+
+/**
+ * Gets the model from the last assistant message in the most recent chat for a user
+ * @param userId - ID of the user
+ * @returns The model string, or null if no assistant messages exist
+ */
+export const getLastAssistantMessageModel = async (
+  userId: string
+): Promise<string | null> => {
+  // Get the most recent chat for the user
+  const mostRecentChat = await db
+    .select({ id: chats.id })
+    .from(chats)
+    .where(eq(chats.userId, userId))
+    .orderBy(desc(chats.updatedAt))
+    .limit(1);
+
+  if (mostRecentChat.length === 0) {
+    return null;
+  }
+
+  const chatId = mostRecentChat[0].id;
+
+  // Get the last assistant message from that chat
+  const result = await db
+    .select({ model: messages.model })
+    .from(messages)
+    .where(and(eq(messages.chatId, chatId), eq(messages.role, "assistant")))
+    .orderBy(desc(messages.order))
+    .limit(1);
+
+  return result[0]?.model ?? null;
 };
 
 // ─── Branching ───────────────────────────────────────────────────────────────

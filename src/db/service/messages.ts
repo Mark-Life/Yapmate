@@ -2,7 +2,7 @@
  * Messages service - CRUD operations for messages and parts
  */
 import type { UIMessage } from "ai";
-import { and, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { db } from "../client";
 import { type MessageMetadata, messages } from "../schema/messages";
 import { parts } from "../schema/parts";
@@ -341,4 +341,22 @@ export const deleteMessagesFromOrder = async (
  */
 export const deleteMessage = async (messageId: string): Promise<void> => {
   await db.delete(messages).where(eq(messages.id, messageId));
+};
+
+/**
+ * Gets the model from the last message in a chat
+ * @param chatId - ID of the chat
+ * @returns The model string, or null if no messages exist
+ */
+export const getLastMessageModel = async (
+  chatId: string
+): Promise<string | null> => {
+  const result = await db
+    .select({ model: messages.model })
+    .from(messages)
+    .where(eq(messages.chatId, chatId))
+    .orderBy(desc(messages.order))
+    .limit(1);
+
+  return result[0]?.model ?? null;
 };

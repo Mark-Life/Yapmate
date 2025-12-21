@@ -1,12 +1,6 @@
-import type {
-  CachedModelsData,
-  ModelMetadata,
-  ModelsDevApiResponse,
-} from "./models-types";
+import type { ModelMetadata, ModelsDevApiResponse } from "./models-types";
 
 const API_URL = "https://models.dev/api.json";
-const CACHE_FILE = ".cache/models.json";
-const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const API_TIMEOUT_MS = 10_000; // 10 seconds
 
 /**
@@ -40,50 +34,6 @@ const extractOpenRouterModels = (
 };
 
 /**
- * Reads cached models from filesystem
- */
-const readCacheFile = async (): Promise<CachedModelsData | null> => {
-  try {
-    const file = Bun.file(CACHE_FILE);
-    if (!(await file.exists())) {
-      return null;
-    }
-
-    const content = await file.json();
-    return content as CachedModelsData;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Writes models cache to filesystem
- */
-const writeCacheFile = async (
-  models: Record<string, ModelMetadata>
-): Promise<void> => {
-  try {
-    const cacheData: CachedModelsData = {
-      timestamp: Date.now(),
-      ttl: TTL_MS,
-      models,
-    };
-    // Bun.write will create directories automatically
-    await Bun.write(CACHE_FILE, JSON.stringify(cacheData, null, 2));
-  } catch {
-    // Silently fail - filesystem cache is optional
-  }
-};
-
-/**
- * Checks if cached data is still valid (within TTL)
- */
-const isCacheValid = (cache: CachedModelsData): boolean => {
-  const age = Date.now() - cache.timestamp;
-  return age < cache.ttl;
-};
-
-/**
  * Fetches models from models.dev API with timeout
  */
 const fetchFromApi = async (): Promise<Record<string, ModelMetadata>> => {
@@ -107,37 +57,16 @@ const fetchFromApi = async (): Promise<Record<string, ModelMetadata>> => {
 };
 
 /**
- * Fetches models from API or cache
- * Returns null if fetch fails and no valid cache exists
+ * Fetches models from models.dev API
+ * Returns null if fetch fails
  */
 export const fetchModels = async (): Promise<Record<
   string,
   ModelMetadata
 > | null> => {
-  // Try to read from filesystem cache first
-  const cached = await readCacheFile();
-  if (cached && isCacheValid(cached)) {
-    return cached.models;
-  }
-
-  // Fetch from API
   try {
-    const models = await fetchFromApi();
-    // Save to cache (non-blocking)
-    writeCacheFile(models).catch(() => {
-      // Silently fail
-    });
-    return models;
+    return await fetchFromApi();
   } catch {
-    // If API fails, return stale cache if available
-    if (cached) {
-      return cached.models;
-    }
     return null;
   }
 };
-
-/**
- * Gets the cache file path (for testing/debugging)
- */
-export const getCacheFilePath = (): string => CACHE_FILE;

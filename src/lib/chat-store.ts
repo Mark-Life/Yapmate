@@ -9,10 +9,15 @@ import {
   deleteChat as dbDeleteChat,
   getChat as dbGetChat,
   getChatsByUser as dbGetChatsByUser,
+  getLastAssistantMessageModel as dbGetLastAssistantMessageModel,
   touchChat as dbTouchChat,
   updateChatTitle as dbUpdateChatTitle,
 } from "@/db/service/chats";
-import { getMessagesByChatId, syncMessages } from "@/db/service/messages";
+import {
+  getLastMessageModel as dbGetLastMessageModel,
+  getMessagesByChatId,
+  syncMessages,
+} from "@/db/service/messages";
 
 /**
  * Creates a new chat and returns its ID
@@ -80,3 +85,17 @@ export const saveChatMessages = async (
   await syncMessages(chatId, messages, options);
   await dbTouchChat(chatId);
 };
+
+/**
+ * Gets the model from the last message in a chat
+ * @param chatId - ID of the chat
+ * @returns The model string, or null if no messages exist
+ */
+export const getLastMessageModel = dbGetLastMessageModel;
+
+/**
+ * Gets the model from the last assistant message in the most recent chat for a user
+ * @param userId - ID of the user
+ * @returns The model string, or null if no assistant messages exist
+ */
+export const getLastAssistantMessageModel = dbGetLastAssistantMessageModel;

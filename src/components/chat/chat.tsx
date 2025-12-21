@@ -49,13 +49,120 @@ export const Chat = ({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
+  const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+
+  /**
+   * Fetches the last message model for an existing chat
+   */
+  const fetchLastMessageModel = useCallback(
+    async (targetChatId: string): Promise<string | null> => {
+      try {
+        const res = await fetch(`/api/chats/${targetChatId}/last-model`);
+        if (!res.ok) {
+          return null;
+        }
+        const data = await res.json();
+        return data.model;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
+  /**
+   * Fetches the last assistant message model from the most recent chat
+   */
+  const fetchLastAssistantMessageModel = useCallback(async (): Promise<
+    string | null
+  > => {
+    try {
+      const res = await fetch("/api/chats/last-model");
+      if (!res.ok) {
+        return null;
+      }
+      const data = await res.json();
+      return data.model;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /**
+   * Checks if a model exists in the available models list
+   */
+  const isModelAvailable = useCallback(
+    (modelValue: string | null): boolean => {
+      if (!modelValue) {
+        return false;
+      }
+      return models.some((m) => m.value === modelValue);
+    },
+    [models]
+  );
+
+  /**
+   * Gets the default model for existing chats
+   */
+  const getDefaultModelForExistingChat = useCallback(
+    async (targetChatId: string): Promise<string | null> => {
+      const lastModelId = await fetchLastMessageModel(targetChatId);
+      if (lastModelId && isModelAvailable(lastModelId)) {
+        return lastModelId;
+      }
+      return null;
+    },
+    [fetchLastMessageModel, isModelAvailable]
+  );
+
+  /**
+   * Gets the default model for new chats
+   */
+  const getDefaultModelForNewChat = useCallback(async (): Promise<
+    string | null
+  > => {
+    const lastAssistantModelId = await fetchLastAssistantMessageModel();
+    if (lastAssistantModelId && isModelAvailable(lastAssistantModelId)) {
+      return lastAssistantModelId;
+    }
+    return null;
+  }, [fetchLastAssistantMessageModel, isModelAvailable]);
 
   // Set default model on mount when models are loaded
   useEffect(() => {
-    if (models.length > 0 && !model) {
-      setModel(models[0].value);
+    if (models.length === 0 || model) {
+      return;
     }
-  }, [models, model]);
+
+    const determineDefaultModel = async (): Promise<string> => {
+      let defaultModelId: string | null = null;
+
+      if (initialId) {
+        defaultModelId = await getDefaultModelForExistingChat(initialId);
+      } else {
+        defaultModelId = await getDefaultModelForNewChat();
+      }
+
+      if (defaultModelId) {
+        return defaultModelId;
+      }
+
+      if (isModelAvailable(FALLBACK_MODEL)) {
+        return FALLBACK_MODEL;
+      }
+
+      return models[0]?.value ?? FALLBACK_MODEL;
+    };
+
+    determineDefaultModel().then(setModel);
+  }, [
+    models,
+    model,
+    initialId,
+    getDefaultModelForExistingChat,
+    getDefaultModelForNewChat,
+    isModelAvailable,
+  ]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? crypto.randomUUID());

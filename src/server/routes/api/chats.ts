@@ -6,6 +6,7 @@ import {
   createChat,
   deleteChat,
   getChat,
+  getLastAssistantMessageModel,
   getUserChats,
 } from "@/lib/chat-store";
 import { getCurrentUserId } from "../../lib/supabase";
@@ -71,5 +72,21 @@ export const chatsHandler = {
 
     await deleteChat(chatId);
     return Response.json({ success: true });
+  },
+};
+
+/**
+ * Last assistant message model API route handler
+ * Handles GET for /api/chats/last-model
+ */
+export const lastAssistantModelHandler = {
+  async GET(req: Request) {
+    const userId = await getCurrentUserId(req);
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const model = await getLastAssistantMessageModel(userId);
+    return Response.json({ model });
   },
 };

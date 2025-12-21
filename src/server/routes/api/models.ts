@@ -1,7 +1,7 @@
 /**
  * Models API route handler
  * Handles GET for /api/models
- * Returns cached models list from models.dev via server-side caching
+ * Returns models list from models.dev API
  */
 import { getModels } from "@/lib/models-service";
 
