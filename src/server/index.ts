@@ -30,6 +30,9 @@ const server = serve({
     "/api/chat": chatHandler,
     "/api/auth/magic-link": magicLinkHandler,
 
+    // Health check endpoint
+    "/health": () => Response.json({ status: "ok" }),
+
     // SPA fallback - catches /chat/:id and any other client routes
     "/*": index,
   },

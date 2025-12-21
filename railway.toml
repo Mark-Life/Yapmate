@@ -1,0 +1,13 @@
+# Railway deployment configuration
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "railpack"
+buildCommand = "bun install && bun --bun build.ts"
+
+[deploy]
+startCommand = "cd dist && bun --bun index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 15
+restartPolicyType = "NEVER"
+

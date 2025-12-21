@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite/core", "ultracite/next"],
+  "extends": ["ultracite/core"],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -10,7 +10,6 @@
     "ignoreUnknown": true,
     "includes": [
       "!node_modules",
-      "!.next",
       "!dist",
       "!build",
       "!**/components/ui",
