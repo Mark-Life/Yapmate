@@ -18,7 +18,6 @@ const server = Bun.serve({
     // Frontend SPA routes - HTML import bundles React app
     "/": index,
     "/login": index,
-    "/chat/*": index,
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,
@@ -28,6 +27,9 @@ const server = Bun.serve({
     "/api/chats/:id/messages": messagesHandler,
     "/api/chat": chatHandler,
     "/api/auth/magic-link": magicLinkHandler,
+
+    // SPA fallback - catches /chat/:id and any other client routes
+    "/*": index,
   },
 
   // Fallback for unmatched routes

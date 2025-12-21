@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bun --hot src/server/index.ts",
-    "build": "bun --bun next build",
-    "start": "bun --bun next start",
+    "dev": "bun run --bun --hot src/server/index.ts",
+    "build": "bun run --bun build.ts",
+    "start": "cd dist && bun --env-file=../.env index.js",
     "lint": "biome check",
     "format": "biome format --write",
     "db:generate": "bun run drizzle-kit generate",

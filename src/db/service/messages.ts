@@ -17,9 +17,11 @@ import {
 
 /**
  * Loads all messages for a chat with their parts, returns as UIMessage[]
+ * @param req - Request object for Bun cookie access
  * @param chatId - ID of the chat to load messages for
  */
 export const getMessagesByChatId = async (
+  req: Request,
   chatId: string
 ): Promise<UIMessage[]> => {
   // Fetch messages ordered by position
@@ -77,6 +79,7 @@ export const getMessagesByChatId = async (
    * Populates file URLs for a single part
    */
   const populateFilePartUrl = async (
+    req: Request,
     part: UIMessage["parts"][number],
     dbPart: (typeof dbParts)[number] | undefined,
     fileMap: Map<string, Awaited<ReturnType<typeof getFilesByIds>>[number]>
@@ -91,7 +94,7 @@ export const getMessagesByChatId = async (
     }
 
     try {
-      const url = await getFileAccessUrl(file);
+      const url = await getFileAccessUrl(req, file);
       return {
         ...part,
         url,
@@ -118,7 +121,7 @@ export const getMessagesByChatId = async (
       const partsWithUrls = await Promise.all(
         uiMessage.parts.map(async (part, idx) => {
           const dbPart = dbMsg.parts[idx];
-          return await populateFilePartUrl(part, dbPart, filesMap);
+          return await populateFilePartUrl(req, part, dbPart, filesMap);
         })
       );
 

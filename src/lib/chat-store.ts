@@ -53,6 +53,7 @@ export const updateChatTitle = dbUpdateChatTitle;
 
 /**
  * Loads messages for a chat as UIMessage[]
+ * @param req - Request object for Bun cookie access
  * @param chatId - ID of the chat
  */
 export const loadChatMessages = getMessagesByChatId;

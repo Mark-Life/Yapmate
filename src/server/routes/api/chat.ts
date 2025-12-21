@@ -125,11 +125,12 @@ const handleRegeneration = async (
  * Handles editing a user message by updating its text and deleting stale messages
  */
 const handleEdit = async (
+  req: Request,
   chatId: string,
   editMessageId: string,
   editedText: string
 ): Promise<void> => {
-  const allMessages = await loadChatMessages(chatId);
+  const allMessages = await loadChatMessages(req, chatId);
   const messageToEdit = allMessages.find((msg) => msg.id === editMessageId);
 
   if (messageToEdit && messageToEdit.role === "user") {
@@ -224,7 +225,7 @@ export const chatHandler = {
 
     // Handle edit: update message text and delete stale messages
     if (editMessageId && editedText) {
-      await handleEdit(id, editMessageId, editedText);
+      await handleEdit(req, id, editMessageId, editedText);
     } else {
       // Process file parts and create file records (only if not editing)
       const processedFiles = await processMessageFiles(message, userId);
@@ -237,7 +238,7 @@ export const chatHandler = {
       }
 
       // Save user message before sending to LLM
-      const previousMessages = await loadChatMessages(id);
+      const previousMessages = await loadChatMessages(req, id);
       isFirstMessage = previousMessages.length === 0;
       const messageOrder = previousMessages.length;
 
@@ -248,12 +249,12 @@ export const chatHandler = {
 
       // Trigger background upload (non-blocking)
       if (fileRecords.length > 0) {
-        uploadFilesInBackground(fileRecords, id);
+        uploadFilesInBackground(req, fileRecords, id);
       }
     }
 
     // Load all messages (includes the newly saved/updated message)
-    const allMessages = await loadChatMessages(id);
+    const allMessages = await loadChatMessages(req, id);
 
     const modelWithSearch = searchEnabled ? `${model}:online` : model;
 
