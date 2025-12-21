@@ -2,6 +2,8 @@
  * Main Bun server entry point
  * Sets up routes and starts the server
  */
+
+import { serve } from "bun";
 import index from "../client/index.html";
 import { chatHandler } from "./routes/api/chat";
 import { chatsHandler } from "./routes/api/chats";
@@ -11,7 +13,7 @@ import { magicLinkHandler } from "./routes/auth/magic-link";
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-const server = Bun.serve({
+const server = serve({
   port,
 
   routes: {
