@@ -46,6 +46,7 @@ export const MessageContent = ({
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-sm group-[.is-user]:bg-primary group-[.is-user]:px-3 group-[.is-user]:py-1 group-[.is-user]:text-primary-foreground",
+      "group-[.is-user]:[&_code:not(pre>code)]:bg-background/10 group-[.is-user]:[&_code:not(pre>code)]:border group-[.is-user]:[&_code:not(pre>code)]:border-background/30 group-[.is-user]:[&_code:not(pre>code)]:rounded group-[.is-user]:[&_code:not(pre>code)]:px-1 group-[.is-user]:[&_code:not(pre>code)]:py-0.5",
       "group-[.is-assistant]:text-foreground",
       className
     )}
