@@ -64,6 +64,8 @@ const main = async () => {
     define: {
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
+    // Use absolute paths so SPA routing works correctly
+    publicPath: "/",
     // Ensure all output goes to dist/ root so paths resolve correctly
     naming: {
       entry: "[name].[ext]",
@@ -84,7 +86,7 @@ const main = async () => {
   console.log("📊 Build outputs:");
   const outputs: Array<{ File: string; Type: string; Size: string }> = [];
   for (const output of result.outputs) {
-    const relativePath = output.path.replace(process.cwd() + "/", "");
+    const relativePath = output.path.replace(`${process.cwd()}/`, "");
     outputs.push({
       File: relativePath,
       Type: output.kind,
