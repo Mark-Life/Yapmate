@@ -27,6 +27,7 @@ type ChatInputProps = {
   onSearchEnabledChange: (enabled: boolean) => void;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
+  onStop?: () => void;
 };
 
 /**
@@ -41,6 +42,7 @@ export const ChatInput = ({
   onSearchEnabledChange,
   status,
   onSubmit,
+  onStop,
 }: ChatInputProps) => (
   <PromptInput
     className="mt-4 rounded-md border border-primary/10 bg-primary/3"
@@ -70,7 +72,11 @@ export const ChatInput = ({
           <GlobeIcon className="size-4" />
         </PromptInputButton>
       </PromptInputTools>
-      <PromptInputSubmit disabled={!(input || status)} status={status} />
+      <PromptInputSubmit
+        disabled={!(input || status)}
+        onStop={onStop}
+        status={status}
+      />
     </PromptInputFooter>
   </PromptInput>
 );

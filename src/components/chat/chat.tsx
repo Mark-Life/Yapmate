@@ -6,6 +6,13 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
+import {
+  createChat,
+  determineDefaultModel,
+  handleEdit as handleEditHelper,
+  handleRegenerate as handleRegenerateHelper,
+  resumeStream,
+} from "@/components/chat/chat-helpers";
 import { ChatInput } from "@/components/chat/chat-input";
 import { MessagesHistory } from "@/components/chat/messages-history";
 import { DragDropZone } from "@/components/drag-drop-zone";
@@ -17,24 +24,6 @@ type ChatProps = {
   id?: string;
   initialMessages?: UIMessage[];
   onChatCreated?: (id: string) => void;
-};
-
-/**
- * Creates a new chat via API
- */
-const createChat = async (
-  id: string,
-  title: string
-): Promise<{ id: string }> => {
-  const res = await fetch("/api/chats", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, title }),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to create chat");
-  }
-  return res.json();
 };
 
 export const Chat = ({
@@ -51,118 +40,14 @@ export const Chat = ({
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
-  /**
-   * Fetches the last message model for an existing chat
-   */
-  const fetchLastMessageModel = useCallback(
-    async (targetChatId: string): Promise<string | null> => {
-      try {
-        const res = await fetch(`/api/chats/${targetChatId}/last-model`);
-        if (!res.ok) {
-          return null;
-        }
-        const data = await res.json();
-        return data.model;
-      } catch {
-        return null;
-      }
-    },
-    []
-  );
-
-  /**
-   * Fetches the last assistant message model from the most recent chat
-   */
-  const fetchLastAssistantMessageModel = useCallback(async (): Promise<
-    string | null
-  > => {
-    try {
-      const res = await fetch("/api/chats/last-model");
-      if (!res.ok) {
-        return null;
-      }
-      const data = await res.json();
-      return data.model;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  /**
-   * Checks if a model exists in the available models list
-   */
-  const isModelAvailable = useCallback(
-    (modelValue: string | null): boolean => {
-      if (!modelValue) {
-        return false;
-      }
-      return models.some((m) => m.value === modelValue);
-    },
-    [models]
-  );
-
-  /**
-   * Gets the default model for existing chats
-   */
-  const getDefaultModelForExistingChat = useCallback(
-    async (targetChatId: string): Promise<string | null> => {
-      const lastModelId = await fetchLastMessageModel(targetChatId);
-      if (lastModelId && isModelAvailable(lastModelId)) {
-        return lastModelId;
-      }
-      return null;
-    },
-    [fetchLastMessageModel, isModelAvailable]
-  );
-
-  /**
-   * Gets the default model for new chats
-   */
-  const getDefaultModelForNewChat = useCallback(async (): Promise<
-    string | null
-  > => {
-    const lastAssistantModelId = await fetchLastAssistantMessageModel();
-    if (lastAssistantModelId && isModelAvailable(lastAssistantModelId)) {
-      return lastAssistantModelId;
-    }
-    return null;
-  }, [fetchLastAssistantMessageModel, isModelAvailable]);
-
   // Set default model on mount when models are loaded
   useEffect(() => {
     if (models.length === 0 || model) {
       return;
     }
 
-    const determineDefaultModel = async (): Promise<string> => {
-      let defaultModelId: string | null = null;
-
-      if (initialId) {
-        defaultModelId = await getDefaultModelForExistingChat(initialId);
-      } else {
-        defaultModelId = await getDefaultModelForNewChat();
-      }
-
-      if (defaultModelId) {
-        return defaultModelId;
-      }
-
-      if (isModelAvailable(FALLBACK_MODEL)) {
-        return FALLBACK_MODEL;
-      }
-
-      return models[0]?.value ?? FALLBACK_MODEL;
-    };
-
-    determineDefaultModel().then(setModel);
-  }, [
-    models,
-    model,
-    initialId,
-    getDefaultModelForExistingChat,
-    getDefaultModelForNewChat,
-    isModelAvailable,
-  ]);
+    determineDefaultModel(initialId, models, FALLBACK_MODEL).then(setModel);
+  }, [models, model, initialId]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? crypto.randomUUID());
@@ -248,6 +133,46 @@ export const Chat = ({
     });
 
   /**
+   * Handles stopping the current stream
+   */
+  const handleStop = useCallback(async () => {
+    if (!chatId) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/chat/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to stop stream");
+      }
+    } catch (error) {
+      console.error("Stop request failed:", error);
+    }
+  }, [chatId]);
+
+  /**
+   * Resumes an active stream on mount
+   */
+  useEffect(() => {
+    if (!chatId || isNewChat) {
+      return;
+    }
+
+    const isCancelled = { current: false };
+
+    resumeStream(chatId, setMessages, queryClient, isCancelled);
+
+    return () => {
+      isCancelled.current = true;
+    };
+  }, [chatId, isNewChat, setMessages, queryClient]);
+
+  /**
    * Creates chat in DB on first message, updates URL and sidebar
    * Uses placeholder title - real title comes via stream
    */
@@ -299,45 +224,17 @@ export const Chat = ({
       role?: "user" | "assistant",
       selectedModel?: string
     ) => {
-      // Update model state if provided (before regenerate to ensure transport uses correct model)
-      if (selectedModel) {
-        setModel(selectedModel);
-      }
-
-      if (!messageId) {
-        // Default behavior: regenerate last assistant message
-        regenerate();
-        return;
-      }
-
-      // Find the message index
-      const messageIndex = messages.findIndex((msg) => msg.id === messageId);
-      if (messageIndex === -1) {
-        return;
-      }
-
-      // Truncate messages based on role
-      // For user message: keep 0..N (including the user message)
-      // For assistant message: keep 0..N-1 (excluding the assistant message)
-      const truncateTo = role === "user" ? messageIndex + 1 : messageIndex;
-      const truncatedMessages = messages.slice(0, truncateTo);
-
-      // Update local state
-      setMessages(truncatedMessages);
-
-      // Store regenerateMessageId and role for transport to pass to API
-      // This tells the API which message we're regenerating from to delete stale messages
-      regenerateMessageIdRef.current = messageId;
-      regenerateRoleRef.current = role;
-
-      // Trigger regeneration
-      // For assistant messages: regenerate() without messageId (message already removed from array)
-      // For user messages: regenerate({ messageId }) with the user message ID (still in array)
-      if (role === "assistant") {
-        regenerate();
-      } else {
-        regenerate({ messageId });
-      }
+      handleRegenerateHelper({
+        messageId,
+        role,
+        selectedModel,
+        messages,
+        setModel,
+        setMessages,
+        regenerate,
+        regenerateMessageIdRef,
+        regenerateRoleRef,
+      });
     },
     [messages, regenerate, setMessages]
   );
@@ -350,46 +247,15 @@ export const Chat = ({
    */
   const handleEdit = useCallback(
     (messageId: string, editedText: string) => {
-      // Find the message index
-      const messageIndex = messages.findIndex((msg) => msg.id === messageId);
-      if (messageIndex === -1) {
-        return;
-      }
-
-      const message = messages[messageIndex];
-      if (message.role !== "user") {
-        return;
-      }
-
-      // Update the message text in local state
-      const updatedMessages = [...messages];
-      const textPartIndex = updatedMessages[messageIndex].parts.findIndex(
-        (p) => p.type === "text"
-      );
-
-      if (textPartIndex !== -1) {
-        updatedMessages[messageIndex] = {
-          ...updatedMessages[messageIndex],
-          parts: [
-            ...updatedMessages[messageIndex].parts.slice(0, textPartIndex),
-            { type: "text", text: editedText },
-            ...updatedMessages[messageIndex].parts.slice(textPartIndex + 1),
-          ],
-        };
-      }
-
-      // Truncate messages after the edited message
-      const truncatedMessages = updatedMessages.slice(0, messageIndex + 1);
-
-      // Update local state
-      setMessages(truncatedMessages);
-
-      // Store editMessageId and editedText for transport to pass to API
-      editMessageIdRef.current = messageId;
-      editedTextRef.current = editedText;
-
-      // Trigger regeneration from the edited message
-      regenerate({ messageId });
+      handleEditHelper({
+        messageId,
+        editedText,
+        messages,
+        setMessages,
+        regenerate,
+        editMessageIdRef,
+        editedTextRef,
+      });
     },
     [messages, regenerate, setMessages]
   );
@@ -418,6 +284,7 @@ export const Chat = ({
               onInputChange={setInput}
               onModelChange={setModel}
               onSearchEnabledChange={setSearchEnabled}
+              onStop={handleStop}
               onSubmit={handleSubmit}
               searchEnabled={searchEnabled}
               status={status}
