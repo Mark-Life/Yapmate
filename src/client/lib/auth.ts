@@ -21,4 +21,3 @@ export const signInWithMagicLink = async (
 
   return res.json();
 };
-
