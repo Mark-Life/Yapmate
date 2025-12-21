@@ -10,7 +10,6 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-  useSidebar,
 } from "@/client/components/ui/sidebar";
 import { ChatProvider, useChatContext } from "@/client/contexts/chat-context";
 
@@ -30,18 +29,17 @@ type ChatItem = {
  * Header controls - sidebar trigger + new chat button when collapsed
  */
 const HeaderControls = () => {
-  const { open } = useSidebar();
   const { navigateToNew } = useChatContext();
 
   return (
-    <div className="absolute top-3 left-3 z-10 flex items-center gap-1">
+    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-md supports-backdrop-filter:bg-background/60">
       <SidebarTrigger />
-      {!open && (
-        <Button onClick={navigateToNew} size="icon" variant="ghost">
-          <PlusIcon className="size-4" />
-          <span className="sr-only">New Chat</span>
-        </Button>
-      )}
+      {/* {!open && ( */}
+      <Button className="size-7" onClick={navigateToNew} variant="ghost">
+        <PlusIcon className="size-4" />
+        <span className="sr-only">New Chat</span>
+      </Button>
+      {/* )} */}
     </div>
   );
 };

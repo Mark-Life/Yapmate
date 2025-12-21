@@ -264,31 +264,33 @@ export const Chat = ({
     <PromptInputProvider initialInput={input}>
       <div
         className={cn(
-          "relative mx-auto size-full h-screen max-w-4xl p-6 transition-all",
+          "relative size-full h-screen transition-all",
           isDragging && "rounded-lg border-2 border-primary border-dashed"
         )}
         ref={containerRef}
       >
         <DragDropZone containerRef={containerRef} setIsDragging={setIsDragging}>
-          <div className="flex h-full flex-col">
-            <MessagesHistory
-              messages={messages}
-              onEdit={handleEdit}
-              onRegenerate={handleRegenerate}
-              status={status}
-            />
+          <MessagesHistory
+            messages={messages}
+            onEdit={handleEdit}
+            onRegenerate={handleRegenerate}
+            status={status}
+          />
 
-            <ChatInput
-              input={input}
-              model={model}
-              onInputChange={setInput}
-              onModelChange={setModel}
-              onSearchEnabledChange={setSearchEnabled}
-              onStop={handleStop}
-              onSubmit={handleSubmit}
-              searchEnabled={searchEnabled}
-              status={status}
-            />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-4xl px-2 pb-2">
+            <div className="pointer-events-auto rounded-lg backdrop-blur-md supports-backdrop-filter:bg-background/80">
+              <ChatInput
+                input={input}
+                model={model}
+                onInputChange={setInput}
+                onModelChange={setModel}
+                onSearchEnabledChange={setSearchEnabled}
+                onStop={handleStop}
+                onSubmit={handleSubmit}
+                searchEnabled={searchEnabled}
+                status={status}
+              />
+            </div>
           </div>
         </DragDropZone>
       </div>

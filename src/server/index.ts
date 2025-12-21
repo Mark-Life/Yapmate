@@ -4,7 +4,7 @@
  */
 
 import { serve } from "bun";
-import index from "../client/index.html";
+import index from "@/client/index.html";
 import { chatHandler } from "./routes/api/chat/handler";
 import { chatsHandler, lastAssistantModelHandler } from "./routes/api/chats";
 import { lastModelHandler, messagesHandler } from "./routes/api/messages";

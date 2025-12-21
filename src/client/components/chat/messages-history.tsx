@@ -413,53 +413,55 @@ export const MessagesHistory = ({
   return (
     <Conversation className="h-full">
       <ConversationContent>
-        {messages.map((message, messageIndex) => (
-          <div className="flex flex-col gap-2" key={message.id}>
-            {message.parts.map((part, i) => {
-              const partId = `${message.id}-${i}`;
-              const isCopied = copiedPartId === partId;
-              const isLastPart = i === message.parts.length - 1;
-              const isLastMessage = messageIndex === messages.length - 1;
+        <div className="mx-auto w-full max-w-4xl px-6 pb-34">
+          {messages.map((message, messageIndex) => (
+            <div className="flex flex-col gap-2" key={message.id}>
+              {message.parts.map((part, i) => {
+                const partId = `${message.id}-${i}`;
+                const isCopied = copiedPartId === partId;
+                const isLastPart = i === message.parts.length - 1;
+                const isLastMessage = messageIndex === messages.length - 1;
 
-              switch (part.type) {
-                case "text":
-                  return (
-                    <TextPart
-                      disabled={disabled}
-                      groupedModels={groupedModels}
-                      isCopied={isCopied}
-                      isEditing={editingMessageId === message.id}
-                      key={partId}
-                      message={message}
-                      onCancelEdit={() => setEditingMessageId(null)}
-                      onCopy={handleCopy}
-                      onEdit={onEdit}
-                      onRegenerate={onRegenerate}
-                      onStartEdit={setEditingMessageId}
-                      part={part}
-                      partId={partId}
-                      status={status}
-                    />
-                  );
-                case "reasoning":
-                  return renderReasoningPart({
-                    message,
-                    part,
-                    partId,
-                    partIndex: i,
-                    isLastPart,
-                    isLastMessage,
-                    status,
-                  });
-                case "file":
-                  return renderFilePart({ message, part, partId });
-                default:
-                  return null;
-              }
-            })}
-          </div>
-        ))}
-        {status === "submitted" && <Loader />}
+                switch (part.type) {
+                  case "text":
+                    return (
+                      <TextPart
+                        disabled={disabled}
+                        groupedModels={groupedModels}
+                        isCopied={isCopied}
+                        isEditing={editingMessageId === message.id}
+                        key={partId}
+                        message={message}
+                        onCancelEdit={() => setEditingMessageId(null)}
+                        onCopy={handleCopy}
+                        onEdit={onEdit}
+                        onRegenerate={onRegenerate}
+                        onStartEdit={setEditingMessageId}
+                        part={part}
+                        partId={partId}
+                        status={status}
+                      />
+                    );
+                  case "reasoning":
+                    return renderReasoningPart({
+                      message,
+                      part,
+                      partId,
+                      partIndex: i,
+                      isLastPart,
+                      isLastMessage,
+                      status,
+                    });
+                  case "file":
+                    return renderFilePart({ message, part, partId });
+                  default:
+                    return null;
+                }
+              })}
+            </div>
+          ))}
+          {status === "submitted" && <Loader />}
+        </div>
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
