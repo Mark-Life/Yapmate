@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 type ChatProps = {
   id?: string;
   initialMessages?: UIMessage[];
+  onChatCreated?: (id: string) => void;
 };
 
 /**
@@ -36,7 +37,11 @@ const createChat = async (
   return res.json();
 };
 
-export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
+export const Chat = ({
+  id: initialId,
+  initialMessages = [],
+  onChatCreated,
+}: ChatProps) => {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(MODELS[0]);
@@ -138,11 +143,15 @@ export const Chat = ({ id: initialId, initialMessages = [] }: ChatProps) => {
     // Create with placeholder - real title comes via stream
     await createChatMutation.mutateAsync({ id: chatId, title: "New chat" });
     setIsNewChat(false);
+
+    // Notify parent BEFORE URL update
+    onChatCreated?.(chatId);
+
     // Update URL without navigation (avoids unmounting this component)
     window.history.replaceState(null, "", `/chat/${chatId}`);
     // Notify context about URL change
     window.dispatchEvent(new CustomEvent("chatUrlChange"));
-  }, [isNewChat, chatId, createChatMutation]);
+  }, [isNewChat, chatId, createChatMutation, onChatCreated]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);

@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import { PlusIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Chat } from "@/components/chat/chat";
 import { MessagesSkeleton } from "@/components/chat/messages-skeleton";
@@ -77,56 +77,46 @@ const fetchMessages = async (chatId: string): Promise<UIMessage[]> => {
  * Tracks locally created chats to avoid remounting when new chat gets saved
  */
 const ChatContainer = () => {
-  const { currentChatId } = useChatContext();
-  const prevChatIdRef = useRef<string | null | undefined>(undefined);
-  const locallyCreatedIdRef = useRef<string | null>(null);
+  const { currentChatId, newChatKey } = useChatContext();
+  const queryClient = useQueryClient();
 
-  // Detect synchronously during render when chat transitions from new to saved
-  // This must happen BEFORE using isLocallyCreated in render logic
-  const prevId = prevChatIdRef.current;
-  if (prevId === null && currentChatId !== null) {
-    // Chat was just created locally (transitioned from new → saved)
-    locallyCreatedIdRef.current = currentChatId;
-  } else if (currentChatId === null) {
-    // Going to new chat, reset
-    locallyCreatedIdRef.current = null;
-  } else if (
-    prevId !== undefined &&
-    prevId !== null &&
-    prevId !== currentChatId
-  ) {
-    // Navigating from one existing chat to another, reset
-    locallyCreatedIdRef.current = null;
-  }
+  // Track which chat was created by this session
+  const [createdChatId, setCreatedChatId] = useState<string | null>(null);
 
-  // Update prevChatIdRef after render to track for next render
+  // Reset when navigating away from own chat
   useEffect(() => {
-    prevChatIdRef.current = currentChatId;
-  }, [currentChatId]);
+    if (currentChatId !== createdChatId) {
+      setCreatedChatId(null);
+    }
+  }, [currentChatId]); // Intentionally exclude createdChatId
 
-  const isLocallyCreated =
-    locallyCreatedIdRef.current === currentChatId && currentChatId !== null;
+  const handleChatCreated = useCallback((id: string) => {
+    setCreatedChatId(id);
+  }, []);
+
+  const isOwnChat = createdChatId !== null && currentChatId === createdChatId;
+
+  // Keep stable key for own chats to prevent remount when new chat gets saved
+  const chatKey =
+    isOwnChat || !currentChatId ? `new-${newChatKey}` : currentChatId;
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["chat-messages", currentChatId],
     queryFn: () =>
       currentChatId ? fetchMessages(currentChatId) : Promise.resolve([]),
-    // Don't fetch for locally created chats - they already have state
-    enabled: Boolean(currentChatId) && !isLocallyCreated,
+    enabled: Boolean(currentChatId) && !isOwnChat,
   });
 
-  // Use stable key for new chat and locally created chat to prevent remount
-  const chatKey = isLocallyCreated || !currentChatId ? "local" : currentChatId;
-
-  if (currentChatId && !isLocallyCreated && isLoading) {
+  if (currentChatId && !isOwnChat && isLoading) {
     return <MessagesSkeleton />;
   }
 
   return (
     <Chat
       id={currentChatId ?? undefined}
-      initialMessages={isLocallyCreated ? undefined : messages}
+      initialMessages={isOwnChat ? undefined : messages}
       key={chatKey}
+      onChatCreated={handleChatCreated}
     />
   );
 };
@@ -135,15 +125,27 @@ const ChatContainer = () => {
  * Layout for chat pages - includes sidebar with chat history
  */
 export const ChatLayout = () => {
+  const queryClient = useQueryClient();
   const { data: chats = [] } = useQuery({
     queryKey: ["chats"],
     queryFn: fetchChats,
   });
 
+  const prefetchMessages = useCallback(
+    (chatId: string) => {
+      queryClient.prefetchQuery({
+        queryKey: ["chat-messages", chatId],
+        queryFn: () => fetchMessages(chatId),
+        staleTime: 60 * 1000,
+      });
+    },
+    [queryClient]
+  );
+
   return (
     <ChatProvider>
       <SidebarProvider>
-        <AppSidebar chats={chats} />
+        <AppSidebar chats={chats} onPrefetch={prefetchMessages} />
         <SidebarInset>
           <HeaderControls />
           <main className="flex-1">

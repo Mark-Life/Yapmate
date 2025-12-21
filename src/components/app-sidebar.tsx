@@ -43,12 +43,13 @@ type Chat = {
 
 type AppSidebarProps = {
   chats: Chat[];
+  onPrefetch?: (chatId: string) => void;
 };
 
 /**
  * App sidebar with chat history and new chat button
  */
-export const AppSidebar = ({ chats }: AppSidebarProps) => {
+export const AppSidebar = ({ chats, onPrefetch }: AppSidebarProps) => {
   const queryClient = useQueryClient();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { user } = useUser();
@@ -126,6 +127,7 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
                       className="flex-1 pr-8"
                       isActive={chat.id === currentChatId}
                       onClick={() => navigateToChat(chat.id)}
+                      onMouseEnter={() => onPrefetch?.(chat.id)}
                       tooltip={chat.id}
                     >
                       <span className="truncate text-sm">

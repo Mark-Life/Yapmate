@@ -8,6 +8,7 @@ import {
 
 type ChatContextValue = {
   currentChatId: string | null;
+  newChatKey: number;
   navigateToChat: (id: string) => void;
   navigateToNew: () => void;
 };
@@ -36,6 +37,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(() =>
     getChatIdFromPath(window.location.pathname)
   );
+  const [newChatKey, setNewChatKey] = useState(0);
 
   /**
    * Syncs chatId from URL pathname
@@ -80,6 +82,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const navigateToNew = useCallback(() => {
     window.history.pushState(null, "", "/");
     setCurrentChatId(null);
+    setNewChatKey((prev) => prev + 1);
     // Trigger popstate event for router sync
     window.dispatchEvent(new PopStateEvent("popstate"));
   }, []);
@@ -88,6 +91,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     <ChatContext.Provider
       value={{
         currentChatId,
+        newChatKey,
         navigateToChat,
         navigateToNew,
       }}
