@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Spinner } from "@/components/ui/spinner";
-import { useUser } from "@/contexts/user-context";
-import { ChatLayout } from "./pages/ChatLayout";
-import { LoginPage } from "./pages/Login";
+import { Spinner } from "@/client/components/ui/spinner";
+import { useUser } from "@/client/contexts/user-context";
+import { ChatLayout } from "./pages/chat-layout";
+import { LoginPage } from "./pages/login";
 
 /**
  * Loading component shown during auth check

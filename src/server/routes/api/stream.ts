@@ -2,13 +2,13 @@
  * Stream resume API route handler
  * Handles GET for /api/chat/:id/stream
  */
-import { getChat } from "@/db/service/chats";
+import { getChat } from "@/server/lib/db/service/chats";
 import {
   getBufferedChunks,
   getStreamStatus,
   subscribeToStream,
-} from "@/lib/redis-stream";
-import { getCurrentUserId } from "../../lib/supabase";
+} from "@/server/lib/redis/stream";
+import { getCurrentUserId } from "@/server/lib/supabase";
 
 export const streamResumeHandler = {
   async GET(req: Request & { params: { id: string } }) {

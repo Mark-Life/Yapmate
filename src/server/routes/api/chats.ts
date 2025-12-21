@@ -8,7 +8,7 @@ import {
   getChat,
   getLastAssistantMessageModel,
   getUserChats,
-} from "@/lib/chat-store";
+} from "@/server/routes/api/chat/store";
 import { getCurrentUserId } from "../../lib/supabase";
 
 type CreateChatBody = {

@@ -1,15 +1,15 @@
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/client/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { useUser } from "@/contexts/user-context";
+} from "@/client/components/ui/card";
+import { Input } from "@/client/components/ui/input";
+import { useUser } from "@/client/contexts/user-context";
 import { signInWithMagicLink } from "../lib/auth";
 
 type State = "idle" | "loading" | "success" | "error";

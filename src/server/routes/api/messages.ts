@@ -6,7 +6,7 @@ import {
   getChat,
   getLastMessageModel,
   loadChatMessages,
-} from "@/lib/chat-store";
+} from "@/server/routes/api/chat/store";
 import { getCurrentUserId } from "../../lib/supabase";
 
 export const messagesHandler = {

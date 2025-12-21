@@ -9,6 +9,7 @@
     "start": "cd dist && bun --bun --env-file=../.env index.js",
     "lint": "biome check",
     "format": "biome format --write",
+    "typecheck": "tsc --noEmit",
     "db:generate": "bun run drizzle-kit generate",
     "db:generate:custom": "bun run drizzle-kit generate --custom",
     "db:migrate": "bun run drizzle-kit migrate",

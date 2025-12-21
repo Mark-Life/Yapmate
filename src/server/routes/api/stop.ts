@@ -3,11 +3,11 @@
  * Handles POST for /api/chat/stop
  */
 
-import { getChat, updateActiveStreamId } from "@/db/service/chats";
-import { savePartialAssistantMessage } from "@/db/service/messages";
-import { getBufferedChunks, setStreamStatus } from "@/lib/redis-stream";
-import { abortStream } from "@/lib/stream-controller";
-import { getCurrentUserId } from "../../lib/supabase";
+import { getChat, updateActiveStreamId } from "@/server/lib/db/service/chats";
+import { savePartialAssistantMessage } from "@/server/lib/db/service/messages";
+import { abortStream } from "@/server/lib/redis/controller";
+import { getBufferedChunks, setStreamStatus } from "@/server/lib/redis/stream";
+import { getCurrentUserId } from "@/server/lib/supabase";
 
 export const stopHandler = {
   async POST(req: Request) {

@@ -3,7 +3,7 @@
  * Handles GET for /api/models
  * Returns models list from models.dev API
  */
-import { getModels } from "@/lib/models-service";
+import { getModels } from "@/server/lib/models/service";
 
 export const modelsHandler = {
   async GET() {
