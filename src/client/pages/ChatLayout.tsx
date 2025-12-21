@@ -78,7 +78,6 @@ const fetchMessages = async (chatId: string): Promise<UIMessage[]> => {
  */
 const ChatContainer = () => {
   const { currentChatId, newChatKey } = useChatContext();
-  const queryClient = useQueryClient();
 
   // Track which chat was created by this session
   const [createdChatId, setCreatedChatId] = useState<string | null>(null);
@@ -88,7 +87,7 @@ const ChatContainer = () => {
     if (currentChatId !== createdChatId) {
       setCreatedChatId(null);
     }
-  }, [currentChatId]); // Intentionally exclude createdChatId
+  }, [currentChatId, createdChatId]);
 
   const handleChatCreated = useCallback((id: string) => {
     setCreatedChatId(id);
@@ -126,7 +125,7 @@ const ChatContainer = () => {
  */
 export const ChatLayout = () => {
   const queryClient = useQueryClient();
-  const { data: chats = [] } = useQuery({
+  const { data: chats = [], isPending } = useQuery({
     queryKey: ["chats"],
     queryFn: fetchChats,
   });
@@ -145,7 +144,11 @@ export const ChatLayout = () => {
   return (
     <ChatProvider>
       <SidebarProvider>
-        <AppSidebar chats={chats} onPrefetch={prefetchMessages} />
+        <AppSidebar
+          chats={chats}
+          isLoading={isPending}
+          onPrefetch={prefetchMessages}
+        />
         <SidebarInset>
           <HeaderControls />
           <main className="flex-1">

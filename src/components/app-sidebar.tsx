@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useChatContext } from "@/contexts/chat-context";
 import { useUser } from "@/contexts/user-context";
 import { createClient } from "@/lib/supabase/client";
@@ -43,13 +44,34 @@ type Chat = {
 
 type AppSidebarProps = {
   chats: Chat[];
+  isLoading?: boolean;
   onPrefetch?: (chatId: string) => void;
+};
+
+/**
+ * Skeleton loader for chat list items
+ */
+const ChatListSkeleton = () => {
+  const skeletonKeys = ["skeleton-0", "skeleton-1", "skeleton-2", "skeleton-3"];
+  return (
+    <>
+      {skeletonKeys.map((key) => (
+        <SidebarMenuItem key={key}>
+          <Skeleton className="h-10 w-full" />
+        </SidebarMenuItem>
+      ))}
+    </>
+  );
 };
 
 /**
  * App sidebar with chat history and new chat button
  */
-export const AppSidebar = ({ chats, onPrefetch }: AppSidebarProps) => {
+export const AppSidebar = ({
+  chats,
+  isLoading,
+  onPrefetch,
+}: AppSidebarProps) => {
   const queryClient = useQueryClient();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { user } = useUser();
@@ -120,40 +142,46 @@ export const AppSidebar = ({ chats, onPrefetch }: AppSidebarProps) => {
           {/* <SidebarGroupLabel>Chats</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
-              {chats.map((chat) => (
-                <SidebarMenuItem key={chat.id}>
-                  <div className="relative flex w-full items-center gap-1">
-                    <SidebarMenuButton
-                      className="flex-1 pr-8"
-                      isActive={chat.id === currentChatId}
-                      onClick={() => navigateToChat(chat.id)}
-                      onMouseEnter={() => onPrefetch?.(chat.id)}
-                      tooltip={chat.id}
-                    >
-                      <span className="truncate text-sm">
-                        {chat.title ?? "New chat"}
-                      </span>
-                    </SidebarMenuButton>
-                    <Button
-                      className="absolute right-1 size-6 shrink-0 opacity-0 transition-opacity group-hover/menu-item:opacity-100"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setChatToDelete(chat.id);
-                      }}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <XIcon className="size-3" />
-                      <span className="sr-only">Delete chat</span>
-                    </Button>
-                  </div>
-                </SidebarMenuItem>
-              ))}
-              {chats.length === 0 && (
-                <div className="px-2 py-4 text-center text-muted-foreground text-sm">
-                  No chats yet
-                </div>
+              {isLoading ? (
+                <ChatListSkeleton />
+              ) : (
+                <>
+                  {chats.map((chat) => (
+                    <SidebarMenuItem key={chat.id}>
+                      <div className="relative flex w-full items-center gap-1">
+                        <SidebarMenuButton
+                          className="flex-1 pr-8"
+                          isActive={chat.id === currentChatId}
+                          onClick={() => navigateToChat(chat.id)}
+                          onMouseEnter={() => onPrefetch?.(chat.id)}
+                          tooltip={chat.id}
+                        >
+                          <span className="truncate text-sm">
+                            {chat.title ?? "New chat"}
+                          </span>
+                        </SidebarMenuButton>
+                        <Button
+                          className="absolute right-1 size-6 shrink-0 opacity-0 transition-opacity group-hover/menu-item:opacity-100"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setChatToDelete(chat.id);
+                          }}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <XIcon className="size-3" />
+                          <span className="sr-only">Delete chat</span>
+                        </Button>
+                      </div>
+                    </SidebarMenuItem>
+                  ))}
+                  {chats.length === 0 && (
+                    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+                      No chats yet
+                    </div>
+                  )}
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
