@@ -555,16 +555,16 @@ NODE_ENV=production bun dist/index.js
 
 ### Phase 4: Testing & Cleanup
 
-- [ ] Test auth flow (login → callback → session)
-- [ ] Test chat functionality
-- [ ] Test streaming responses
-- [ ] Remove Next.js specific files
-- [ ] Update `package.json` scripts
+- [x] Test auth flow (login → callback → session)
+- [x] Test chat functionality
+- [x] Test streaming responses
+- [x] Remove Next.js specific files
+- [x] Update `package.json` scripts
 
 ### Phase 5: Production
 
-- [ ] Configure production build
-- [ ] Set up environment variables
+- [x] Configure production build
+- [x] Set up environment variables
 - [ ] Deploy and verify
 
 ---
