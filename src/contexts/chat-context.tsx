@@ -1,6 +1,3 @@
-"use client";
-
-import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -36,10 +33,8 @@ type ChatProviderProps = {
  * Handles browser back/forward via popstate
  */
 export const ChatProvider = ({ children }: ChatProviderProps) => {
-  const pathname = usePathname();
-  const router = useRouter();
   const [currentChatId, setCurrentChatId] = useState<string | null>(() =>
-    getChatIdFromPath(pathname)
+    getChatIdFromPath(window.location.pathname)
   );
 
   /**
@@ -55,10 +50,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     // Initial sync
     syncFromUrl();
 
-    // Sync when pathname changes (Next.js navigation)
-    const chatId = getChatIdFromPath(pathname);
-    setCurrentChatId(chatId);
-
     // Handle browser back/forward
     window.addEventListener("popstate", syncFromUrl);
 
@@ -69,22 +60,19 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       window.removeEventListener("popstate", syncFromUrl);
       window.removeEventListener("chatUrlChange", syncFromUrl);
     };
-  }, [pathname]);
+  }, []);
 
   /**
    * Navigates to a specific chat
-   * Updates URL without triggering Next.js navigation
+   * Updates URL and triggers popstate event for router sync
    */
-  const navigateToChat = useCallback(
-    (id: string) => {
-      const newPath = `/chat/${id}`;
-      window.history.pushState(null, "", newPath);
-      setCurrentChatId(id);
-      // Trigger router refresh to sync Next.js state
-      router.refresh();
-    },
-    [router]
-  );
+  const navigateToChat = useCallback((id: string) => {
+    const newPath = `/chat/${id}`;
+    window.history.pushState(null, "", newPath);
+    setCurrentChatId(id);
+    // Trigger popstate event for router sync
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, []);
 
   /**
    * Navigates to new chat
@@ -92,8 +80,9 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const navigateToNew = useCallback(() => {
     window.history.pushState(null, "", "/");
     setCurrentChatId(null);
-    router.refresh();
-  }, [router]);
+    // Trigger popstate event for router sync
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, []);
 
   return (
     <ChatContext.Provider

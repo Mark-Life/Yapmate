@@ -17,13 +17,18 @@ type CreateChatBody = {
 
 export const chatsHandler = {
   async GET(req: Request) {
-    const userId = await getCurrentUserId(req);
-    if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    try {
+      const userId = await getCurrentUserId(req);
+      if (!userId) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
 
-    const chats = await getUserChats(userId);
-    return Response.json(chats);
+      const chats = await getUserChats(userId);
+      return Response.json(chats);
+    } catch (error) {
+      console.error("Error in GET /api/chats:", error);
+      return Response.json({ error: "Internal server error" }, { status: 500 });
+    }
   },
 
   async POST(req: Request) {
@@ -68,4 +73,3 @@ export const chatsHandler = {
     return Response.json({ success: true });
   },
 };
-

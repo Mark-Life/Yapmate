@@ -14,7 +14,7 @@ export const magicLinkHandler = {
       );
     }
 
-    const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+    const appUrl = process.env.PUBLIC_APP_URL ?? "http://localhost:3000";
     const supabase = createClient(req);
 
     const { error } = await supabase.auth.signInWithOtp({

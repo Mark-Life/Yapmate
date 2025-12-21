@@ -316,4 +316,3 @@ export const chatHandler = {
     return createUIMessageStreamResponse({ stream });
   },
 };
-

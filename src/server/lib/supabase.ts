@@ -4,15 +4,15 @@
  */
 import { createServerClient } from "@supabase/ssr";
 
-if (typeof process.env.SUPABASE_URL !== "string") {
-  throw new Error("SUPABASE_URL is not set");
+if (typeof process.env.PUBLIC_SUPABASE_URL !== "string") {
+  throw new Error("PUBLIC_SUPABASE_URL is not set");
 }
-if (typeof process.env.SUPABASE_PUBLISHABLE_KEY !== "string") {
-  throw new Error("SUPABASE_PUBLISHABLE_KEY is not set");
+if (typeof process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
+  throw new Error("PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * Bun CookieMap interface for type safety
@@ -47,30 +47,57 @@ export const createClient = (req: Request) => {
   // BunRequest has .cookies property when using routes
   const bunReq = req as BunRequest;
 
+  // Check if cookies are available (they should be when using routes)
+  if (!bunReq.cookies) {
+    throw new Error(
+      "Cookies not available on request. Ensure you're using Bun.serve routes."
+    );
+  }
+
   return createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         const cookies: Array<{ name: string; value: string }> = [];
-        // Bun's CookieMap is iterable
-        for (const [name, value] of bunReq.cookies.entries()) {
-          cookies.push({ name, value });
+        // Bun's CookieMap is iterable - use entries() if available, otherwise fallback
+        try {
+          if (typeof bunReq.cookies.entries === "function") {
+            for (const [name, value] of bunReq.cookies.entries()) {
+              cookies.push({ name, value });
+            }
+          } else {
+            // Fallback: try to get common Supabase cookie names
+            const sbAccessToken = bunReq.cookies.get("sb-access-token");
+            const sbRefreshToken = bunReq.cookies.get("sb-refresh-token");
+            if (sbAccessToken) {
+              cookies.push({ name: "sb-access-token", value: sbAccessToken });
+            }
+            if (sbRefreshToken) {
+              cookies.push({ name: "sb-refresh-token", value: sbRefreshToken });
+            }
+          }
+        } catch (error) {
+          console.error("Error reading cookies:", error);
         }
         return cookies;
       },
       setAll(cookiesToSet) {
         // Cookies set via req.cookies.set() are auto-applied to response
-        for (const { name, value, options } of cookiesToSet) {
-          bunReq.cookies.set(name, value, {
-            path: options?.path ?? "/",
-            maxAge: options?.maxAge,
-            httpOnly: options?.httpOnly,
-            secure: options?.secure,
-            sameSite: options?.sameSite as
-              | "strict"
-              | "lax"
-              | "none"
-              | undefined,
-          });
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            bunReq.cookies.set(name, value, {
+              path: options?.path ?? "/",
+              maxAge: options?.maxAge,
+              httpOnly: options?.httpOnly,
+              secure: options?.secure,
+              sameSite: options?.sameSite as
+                | "strict"
+                | "lax"
+                | "none"
+                | undefined,
+            });
+          }
+        } catch (error) {
+          console.error("Error setting cookies:", error);
         }
       },
     },
@@ -83,11 +110,20 @@ export const createClient = (req: Request) => {
 export const getCurrentUserId = async (
   req: Request
 ): Promise<string | null> => {
-  const supabase = createClient(req);
-  const { data } = await supabase.auth.getClaims();
+  try {
+    const supabase = createClient(req);
+    const { data, error } = await supabase.auth.getClaims();
 
-  if (!data?.claims?.sub || typeof data.claims.sub !== "string") {
+    if (error) {
+      return null;
+    }
+
+    if (!data?.claims?.sub || typeof data.claims.sub !== "string") {
+      return null;
+    }
+
+    return data.claims.sub;
+  } catch {
     return null;
   }
-  return data.claims.sub;
 };
