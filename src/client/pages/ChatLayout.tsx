@@ -13,7 +13,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
-import { UserProvider } from "@/contexts/user-context";
 
 type ChatApiResponse = {
   id: string;
@@ -142,19 +141,17 @@ export const ChatLayout = () => {
   });
 
   return (
-    <UserProvider>
-      <ChatProvider>
-        <SidebarProvider>
-          <AppSidebar chats={chats} />
-          <SidebarInset>
-            <HeaderControls />
-            <main className="flex-1">
-              <ChatContainer />
-            </main>
-          </SidebarInset>
-        </SidebarProvider>
-      </ChatProvider>
-    </UserProvider>
+    <ChatProvider>
+      <SidebarProvider>
+        <AppSidebar chats={chats} />
+        <SidebarInset>
+          <HeaderControls />
+          <main className="flex-1">
+            <ChatContainer />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </ChatProvider>
   );
 };
 

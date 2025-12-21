@@ -1,5 +1,6 @@
 "use client";
 
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,6 +10,7 @@ type User = {
 
 type UserContextValue = {
   user: User | null;
+  isLoading: boolean;
 };
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
@@ -19,31 +21,58 @@ type UserProviderProps = {
 
 /**
  * Provides user context with Supabase auth
- * Fetches user once on mount
+ * Fetches user on mount and listens to auth state changes
  */
 export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Fetch current user from Supabase
-   */
   useEffect(() => {
-    const fetchUser = async () => {
-      const supabase = createClient();
+    const supabase = createClient();
+
+    /**
+     * Updates user state from Supabase auth user
+     */
+    const updateUser = (authUser: SupabaseUser | null) => {
+      if (authUser) {
+        setUser({ email: authUser.email });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    };
+
+    /**
+     * Initial auth check
+     */
+    const checkAuth = async () => {
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
-      if (authUser) {
-        setUser({ email: authUser.email });
-      }
+      updateUser(authUser);
     };
-    fetchUser();
+
+    checkAuth();
+
+    /**
+     * Listen to auth state changes (login, logout, session expiry)
+     */
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      updateUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
     <UserContext.Provider
       value={{
         user,
+        isLoading,
       }}
     >
       {children}
