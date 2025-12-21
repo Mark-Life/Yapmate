@@ -1,15 +1,15 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-if (typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "string") {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
+if (typeof process.env.PUBLIC_SUPABASE_URL !== "string") {
+  throw new Error("PUBLIC_SUPABASE_URL is not set");
 }
-if (typeof process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
-  throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
+if (typeof process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
+  throw new Error("PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export async function createClient() {
   const cookieStore = await cookies();

@@ -1,0 +1,6 @@
+[serve.static]
+plugins = ["bun-plugin-tailwind"]
+# Inline environment variables for client-side code
+# TODO: After migration, change to env = "PUBLIC_*" for better security
+# Currently using "inline" to support both PUBLIC_* and NEXT_PUBLIC_* during migration
+env = "inline"

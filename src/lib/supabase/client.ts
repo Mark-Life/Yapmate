@@ -1,15 +1,40 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-if (typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "string") {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
-}
-if (typeof process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
-  throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
-}
+/**
+ * Gets Supabase URL from environment or throws error
+ * Supports both NEXT_PUBLIC_ prefix (for migration) and PUBLIC_ prefix
+ * Bun replaces process.env.* references at build time for client code
+ */
+const getSupabaseUrl = (): string => {
+  const url =
+    process.env.PUBLIC_SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url || typeof url !== "string") {
+    throw new Error(
+      "PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL is not set"
+    );
+  }
+  return url;
+};
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+/**
+ * Gets Supabase publishable key from environment or throws error
+ * Supports both NEXT_PUBLIC_ prefix (for migration) and PUBLIC_ prefix
+ * Bun replaces process.env.* references at build time for client code
+ */
+const getSupabaseKey = (): string => {
+  const key =
+    process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!key || typeof key !== "string") {
+    throw new Error(
+      "PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set"
+    );
+  }
+  return key;
+};
 
-export function createClient() {
-  return createBrowserClient(supabaseUrl, supabaseKey);
-}
+/**
+ * Creates a Supabase browser client
+ */
+export const createClient = () =>
+  createBrowserClient(getSupabaseUrl(), getSupabaseKey());

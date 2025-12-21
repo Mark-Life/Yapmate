@@ -1,8 +1,5 @@
-"use client";
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOutIcon, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import {
   AlertDialog,
@@ -52,7 +49,6 @@ type AppSidebarProps = {
  * App sidebar with chat history and new chat button
  */
 export const AppSidebar = ({ chats }: AppSidebarProps) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { user } = useUser();
@@ -64,8 +60,9 @@ export const AppSidebar = ({ chats }: AppSidebarProps) => {
   const handleLogout = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut({ scope: "local" });
-    router.push("/login");
-  }, [router]);
+    // Use window.location for full page navigation to ensure auth state is cleared
+    window.location.href = "/login";
+  }, []);
 
   /**
    * Navigate to new chat

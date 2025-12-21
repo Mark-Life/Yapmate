@@ -6,15 +6,15 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  if (typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "string") {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
+  if (typeof process.env.PUBLIC_SUPABASE_URL !== "string") {
+    throw new Error("PUBLIC_SUPABASE_URL is not set");
   }
-  if (typeof process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
-    throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
+  if (typeof process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
+    throw new Error("PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
