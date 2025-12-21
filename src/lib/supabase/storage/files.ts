@@ -2,7 +2,7 @@
  * Supabase Storage service for file operations
  * Handles upload, download, and deletion of files in the user-files bucket
  */
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/server/lib/supabase";
 
 const BUCKET_NAME = "user-files";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -20,16 +20,18 @@ const dataUrlToBuffer = (dataUrl: string): Buffer => {
 
 /**
  * Uploads a file to Supabase Storage from a base64 data URL
+ * @param req - Request object for Bun cookie access
  * @param dataUrl - Base64 data URL (e.g., "data:image/png;base64,...")
  * @param storagePath - Path in storage bucket (format: "{userId}/{chatId}/{fileId}_{filename}")
  * @param mimeType - MIME type of the file
  */
 export const uploadFileFromDataUrl = async (
+  req: Request,
   dataUrl: string,
   storagePath: string,
   mimeType: string
 ): Promise<void> => {
-  const supabase = await createClient();
+  const supabase = createClient(req);
   const buffer = dataUrlToBuffer(dataUrl);
 
   if (buffer.length > MAX_FILE_SIZE) {
@@ -52,14 +54,16 @@ export const uploadFileFromDataUrl = async (
 
 /**
  * Gets a signed URL for accessing a file
+ * @param req - Request object for Bun cookie access
  * @param storagePath - Path in storage bucket
  * @param expiresIn - Seconds until expiry (default 1 hour)
  */
 export const getSignedUrl = async (
+  req: Request,
   storagePath: string,
   expiresIn = 3600
 ): Promise<string> => {
-  const supabase = await createClient();
+  const supabase = createClient(req);
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .createSignedUrl(storagePath, expiresIn);
@@ -77,10 +81,14 @@ export const getSignedUrl = async (
 
 /**
  * Deletes a file from storage
+ * @param req - Request object for Bun cookie access
  * @param storagePath - Path in storage bucket
  */
-export const deleteFile = async (storagePath: string): Promise<void> => {
-  const supabase = await createClient();
+export const deleteFile = async (
+  req: Request,
+  storagePath: string
+): Promise<void> => {
+  const supabase = createClient(req);
   const { error } = await supabase.storage
     .from(BUCKET_NAME)
     .remove([storagePath]);

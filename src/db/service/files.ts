@@ -38,11 +38,15 @@ export const getFilesByIds = async (
 
 /**
  * Gets accessible URL for a file (signed URL or dataUrl fallback)
+ * @param req - Request object for Bun cookie access
  * @param file - File record from database
  */
-export const getFileAccessUrl = async (file: FileSelect): Promise<string> => {
+export const getFileAccessUrl = async (
+  req: Request,
+  file: FileSelect
+): Promise<string> => {
   if (file.storagePath) {
-    return await getSignedUrl(file.storagePath);
+    return await getSignedUrl(req, file.storagePath);
   }
   if (file.dataUrl) {
     return file.dataUrl;
@@ -99,11 +103,13 @@ export const markFileFailed = async (fileId: string): Promise<void> => {
 
 /**
  * Uploads file to storage with retry logic
+ * @param req - Request object for Bun cookie access
  * @param file - File record to upload
  * @param chatId - ID of the chat (for storage path)
  * @returns Storage path on success
  */
 export const uploadFileWithRetry = async (
+  req: Request,
   file: FileSelect,
   chatId: string
 ): Promise<string> => {
@@ -116,7 +122,12 @@ export const uploadFileWithRetry = async (
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await uploadFileFromDataUrl(file.dataUrl, storagePath, file.mimeType);
+      await uploadFileFromDataUrl(
+        req,
+        file.dataUrl,
+        storagePath,
+        file.mimeType
+      );
       await markFileUploaded(file.id, storagePath);
       return storagePath;
     } catch (e) {
@@ -135,10 +146,12 @@ export const uploadFileWithRetry = async (
 
 /**
  * Deletes a file record and optionally removes from storage
+ * @param req - Request object for Bun cookie access
  * @param fileId - ID of the file to delete
  * @param removeFromStorage - Whether to also delete from Supabase Storage
  */
 export const deleteFile = async (
+  req: Request,
   fileId: string,
   removeFromStorage = true
 ): Promise<void> => {
@@ -152,7 +165,7 @@ export const deleteFile = async (
       "@/lib/supabase/storage/files"
     );
     try {
-      await deleteStorageFile(file.storagePath);
+      await deleteStorageFile(req, file.storagePath);
     } catch (e) {
       // Log but don't fail if storage deletion fails
       console.error(`Failed to delete file from storage: ${e}`);

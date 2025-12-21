@@ -24,7 +24,7 @@ export const messagesHandler = {
     }
 
     // Load messages
-    const messages = await loadChatMessages(id);
+    const messages = await loadChatMessages(req, id);
     return Response.json(messages);
   },
 };
