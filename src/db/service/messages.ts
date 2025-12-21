@@ -2,7 +2,8 @@
  * Messages service - CRUD operations for messages and parts
  */
 import type { UIMessage } from "ai";
-import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import type { StreamChunk } from "@/lib/redis-stream";
 import { db } from "../client";
 import { type MessageMetadata, messages } from "../schema/messages";
 import { parts } from "../schema/parts";
@@ -79,7 +80,7 @@ export const getMessagesByChatId = async (
    * Populates file URLs for a single part
    */
   const populateFilePartUrl = async (
-    req: Request,
+    request: Request,
     part: UIMessage["parts"][number],
     dbPart: (typeof dbParts)[number] | undefined,
     fileMap: Map<string, Awaited<ReturnType<typeof getFilesByIds>>[number]>
@@ -94,7 +95,7 @@ export const getMessagesByChatId = async (
     }
 
     try {
-      const url = await getFileAccessUrl(req, file);
+      const url = await getFileAccessUrl(request, file);
       return {
         ...part,
         url,
@@ -359,4 +360,117 @@ export const getLastMessageModel = async (
     .limit(1);
 
   return result[0]?.model ?? null;
+};
+
+/**
+ * Extracts content from stream chunks
+ * @param chunks - Stream chunks from Redis buffer
+ * @returns Object with textContent and reasoningContent
+ */
+const extractContentFromChunks = (
+  chunks: StreamChunk[]
+): { textContent: string; reasoningContent: string } => {
+  let textContent = "";
+  let reasoningContent = "";
+
+  for (const chunk of chunks) {
+    const data = chunk.data as Record<string, unknown>;
+
+    if (data.type === "text-delta" && typeof data.delta === "string") {
+      textContent += data.delta;
+    } else if (
+      data.type === "reasoning-delta" &&
+      typeof data.delta === "string"
+    ) {
+      reasoningContent += data.delta;
+    } else if (data.type === "reasoning" && typeof data.text === "string") {
+      reasoningContent = data.text;
+    } else if (data.type === "text" && typeof data.text === "string") {
+      textContent = data.text;
+    }
+  }
+
+  return { textContent, reasoningContent };
+};
+
+/**
+ * Inserts partial message parts into database
+ * @param tx - Database transaction
+ * @param messageId - Message ID
+ * @param textContent - Text content to insert
+ * @param reasoningContent - Reasoning content to insert
+ */
+const insertPartialMessageParts = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  messageId: string,
+  textContent: string,
+  reasoningContent: string
+): Promise<void> => {
+  if (textContent) {
+    await tx.insert(parts).values({
+      messageId,
+      type: "text",
+      order: 0,
+      text_content: textContent,
+    });
+  }
+
+  if (reasoningContent) {
+    await tx.insert(parts).values({
+      messageId,
+      type: "reasoning",
+      order: textContent ? 1 : 0,
+      reasoning_content: reasoningContent,
+    });
+  }
+};
+
+/**
+ * Saves a partial assistant message from Redis buffer chunks
+ * Called when user aborts or on error
+ * @param chatId - ID of the chat
+ * @param chunks - Stream chunks from Redis buffer
+ */
+export const savePartialAssistantMessage = async (
+  chatId: string,
+  chunks: StreamChunk[]
+): Promise<void> => {
+  if (chunks.length === 0) {
+    return;
+  }
+
+  const { textContent, reasoningContent } = extractContentFromChunks(chunks);
+
+  // Skip if no content to save
+  if (!(textContent || reasoningContent)) {
+    return;
+  }
+
+  // Always generate a proper UUID for database storage
+  // The AI SDK's generation ID (e.g., "gen-xxx") is not a valid UUID
+  const dbMessageId = Bun.randomUUIDv7();
+
+  // Get current message count for order
+  const existingMessages = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(messages)
+    .where(eq(messages.chatId, chatId));
+  const order = Number(existingMessages[0]?.count ?? 0);
+
+  // Insert partial message
+  await db.transaction(async (tx) => {
+    await tx.insert(messages).values({
+      id: dbMessageId,
+      chatId,
+      role: "assistant",
+      order,
+    });
+
+    await insertPartialMessageParts(
+      tx,
+      dbMessageId,
+      textContent,
+      reasoningContent
+    );
+  });
 };

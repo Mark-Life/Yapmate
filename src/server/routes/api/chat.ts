@@ -10,11 +10,13 @@ import {
   type UIMessage,
 } from "ai";
 import type { FileSelect } from "@/db/schema/files";
+import { updateActiveStreamId } from "@/db/service/chats";
 import { createPendingFile } from "@/db/service/files";
 import {
   deleteMessagesFromOrder,
   getMessageOrder,
   saveMessage as saveMessageService,
+  savePartialAssistantMessage,
 } from "@/db/service/messages";
 import {
   getChat,
@@ -24,6 +26,12 @@ import {
 } from "@/lib/chat-store";
 import { uploadFilesInBackground } from "@/lib/file-upload";
 import { openrouter } from "@/lib/openrouter";
+import {
+  getBufferedChunks,
+  publishStreamChunk,
+  setStreamStatus,
+} from "@/lib/redis-stream";
+import { registerStream, unregisterStream } from "@/lib/stream-controller";
 import { getCurrentUserId } from "../../lib/supabase";
 
 const TITLE_GENERATION_MODEL = "google/gemma-3n-e4b-it:free";
@@ -258,59 +266,187 @@ export const chatHandler = {
 
     const modelWithSearch = searchEnabled ? `${model}:online` : model;
 
+    // Generate stream ID and register abort controller
+    const streamId = Bun.randomUUIDv7();
+    const abortController = registerStream(streamId);
+
+    // Mark stream as active in DB and Redis
+    await updateActiveStreamId(id, streamId);
+    await setStreamStatus(streamId, "streaming");
+
+    let chunkIndex = 0;
+
+    /**
+     * Generates and publishes chat title
+     */
+    const generateAndPublishTitle = async (
+      writer: Parameters<
+        Parameters<typeof createUIMessageStream>[0]["execute"]
+      >[0]["writer"]
+    ): Promise<void> => {
+      const userText =
+        message.parts.find((p) => p.type === "text")?.text || "New chat";
+      try {
+        const title = await generateChatTitle(userText);
+        await updateChatTitle(id, title);
+        const titleChunk = {
+          type: "data-chat-title" as const,
+          data: { title },
+          transient: true,
+        };
+        writer.write(titleChunk);
+        // Publish title to Redis
+        await publishStreamChunk(streamId, {
+          type: titleChunk.type,
+          data: titleChunk.data,
+          index: chunkIndex,
+        });
+        chunkIndex += 1;
+      } catch (error) {
+        console.error("Title generation failed:", error);
+      }
+    };
+
+    /**
+     * Processes stream chunks: publishes to Redis and writes to client
+     */
+    const processStreamChunks = async (
+      uiStream: ReturnType<
+        typeof streamText
+      >["toUIMessageStream"] extends () => infer R
+        ? R
+        : never,
+      writer: Parameters<
+        Parameters<typeof createUIMessageStream>[0]["execute"]
+      >[0]["writer"]
+    ): Promise<void> => {
+      let writerActive = true;
+
+      for await (const chunk of uiStream) {
+        // Always publish to Redis (for other clients/resume)
+        await publishStreamChunk(streamId, {
+          type: (chunk as { type?: string }).type ?? "unknown",
+          data: chunk,
+          index: chunkIndex,
+        });
+        chunkIndex += 1;
+
+        // Write to current client (may fail if client disconnected)
+        if (writerActive) {
+          try {
+            writer.write(chunk as Parameters<typeof writer.write>[0]);
+          } catch {
+            // Client disconnected, continue consuming stream but don't write
+            console.log(
+              `[Stream ${streamId}] Client disconnected, continuing stream processing`
+            );
+            writerActive = false;
+          }
+        }
+      }
+      console.log(
+        `[Stream ${streamId}] Finished processing ${chunkIndex} chunks`
+      );
+    };
+
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
-        // Start title generation in parallel (if first message, skip if editing)
-        const titlePromise =
-          isFirstMessage && !editMessageId
-            ? (async () => {
-                const userText =
-                  message.parts.find((p) => p.type === "text")?.text ||
-                  "New chat";
-                try {
-                  const title = await generateChatTitle(userText);
-                  await updateChatTitle(id, title);
-                  writer.write({
-                    type: "data-chat-title",
-                    data: { title },
-                    transient: true,
-                  });
-                } catch (error) {
-                  console.error("Title generation failed:", error);
-                }
-              })()
-            : Promise.resolve();
+        try {
+          // Start title generation in parallel (if first message, skip if editing)
+          const titlePromise =
+            isFirstMessage && !editMessageId
+              ? generateAndPublishTitle(writer)
+              : Promise.resolve();
 
-        const result = streamText({
-          model: openrouter.chat(modelWithSearch),
-          messages: convertToModelMessages(allMessages),
-          system:
-            "You are a helpful assistant that can answer questions and help with tasks",
-        });
+          const result = streamText({
+            model: openrouter.chat(modelWithSearch),
+            messages: convertToModelMessages(allMessages),
+            system:
+              "You are a helpful assistant that can answer questions and help with tasks",
+            abortSignal: abortController.signal, // Our controller, not req.signal
+          });
 
-        // Consume the stream to ensure it runs to completion & triggers onFinish
-        result.consumeStream();
-
-        // Merge the main response stream
-        writer.merge(
-          result.toUIMessageStream({
+          // Get UI stream and process chunks
+          // We iterate over the stream ourselves, which ensures it completes
+          // even if the client disconnects (writer.write will fail silently)
+          const uiStream = result.toUIMessageStream({
             sendSources: true,
             sendReasoning: true,
-          })
-        );
+          });
 
-        // Wait for title generation - keeps stream open until title is written
-        await titlePromise;
+          // Process chunks: publish to Redis and write to client
+          // This MUST complete for onFinish to fire
+          await processStreamChunks(uiStream, writer);
+
+          // Wait for title generation - keeps stream open until title is written
+          await titlePromise;
+
+          // Stream completed successfully - manually save messages
+          // (onFinish may not fire if client disconnected)
+          console.log(
+            `[Stream ${streamId}] Stream completed, saving messages manually`
+          );
+          try {
+            // Reconstruct assistant message from Redis chunks
+            const chunks = await getBufferedChunks(streamId);
+            if (chunks.length > 0) {
+              // Use the same function we use for partial saves
+              await savePartialAssistantMessage(id, chunks);
+              console.log(
+                `[Stream ${streamId}] Messages saved to DB from Redis chunks`
+              );
+            } else {
+              console.warn(
+                `[Stream ${streamId}] No chunks found in Redis to save`
+              );
+            }
+            await updateActiveStreamId(id, null);
+            await setStreamStatus(streamId, "complete");
+            unregisterStream(streamId);
+            console.log(`[Stream ${streamId}] Stream marked as complete`);
+          } catch (saveError) {
+            console.error(
+              `[Stream ${streamId}] Error saving messages:`,
+              saveError
+            );
+            await setStreamStatus(streamId, "error");
+            // Don't throw - stream already completed, just log the error
+          }
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") {
+            // User stopped the stream - status already set to "aborted" by stop handler
+            // Partial message will be saved by stop handler
+            await setStreamStatus(streamId, "aborted");
+          } else {
+            // Other error
+            await setStreamStatus(streamId, "error");
+            throw err;
+          }
+        }
       },
       originalMessages: allMessages,
       generateId: () => Bun.randomUUIDv7(),
       onFinish: async ({ messages: finalMessages }) => {
-        // Save all messages (upsert handles both new and updated)
-        const lastMessageId = finalMessages.at(-1)?.id;
-        await saveChatMessages(id, finalMessages, {
-          // Add model info to the last assistant message
-          ...(lastMessageId ? { [lastMessageId]: { model } } : {}),
-        });
+        // This may not fire if client disconnected, so we also save manually in execute
+        console.log(
+          `[Stream ${streamId}] onFinish called with ${finalMessages.length} messages`
+        );
+        try {
+          // Save all messages (upsert handles both new and updated)
+          const lastMessageId = finalMessages.at(-1)?.id;
+          await saveChatMessages(id, finalMessages, {
+            // Add model info to the last assistant message
+            ...(lastMessageId ? { [lastMessageId]: { model } } : {}),
+          });
+          console.log(`[Stream ${streamId}] Messages saved to DB via onFinish`);
+          await updateActiveStreamId(id, null);
+          await setStreamStatus(streamId, "complete");
+          unregisterStream(streamId);
+        } catch (error) {
+          console.error(`[Stream ${streamId}] Error in onFinish:`, error);
+          await setStreamStatus(streamId, "error");
+          // Don't throw - this is a callback
+        }
       },
     });
 
