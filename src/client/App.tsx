@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UserProvider } from "@/contexts/user-context";
 import { Router } from "./Router";
 
 /**
@@ -24,9 +25,10 @@ export const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <Router />
+        <UserProvider>
+          <Router />
+        </UserProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
 };
-

@@ -1,5 +1,5 @@
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,18 +9,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@/contexts/user-context";
 import { signInWithMagicLink } from "../lib/auth";
 
 type State = "idle" | "loading" | "success" | "error";
 
 /**
  * Login page with magic link authentication
+ * Redirects authenticated users to home page
  */
 export const LoginPage = () => {
+  const { user, isLoading } = useUser();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<State>("idle");
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+
+  /**
+   * Redirect authenticated users to home page
+   */
+  useEffect(() => {
+    if (!isLoading && user) {
+      window.history.pushState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+  }, [isLoading, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +55,11 @@ export const LoginPage = () => {
     }
     setIsPending(false);
   };
+
+  // Show loading while checking auth or if already authenticated (redirecting)
+  if (isLoading || user) {
+    return null;
+  }
 
   // Success state - show confirmation
   if (state === "success") {

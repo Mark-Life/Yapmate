@@ -1,12 +1,25 @@
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
+import { useUser } from "@/contexts/user-context";
 import { ChatLayout } from "./pages/ChatLayout";
 import { LoginPage } from "./pages/Login";
 
 /**
- * Simple client-side router based on pathname
+ * Loading component shown during auth check
+ */
+const AuthLoading = () => (
+  <div className="flex min-h-svh items-center justify-center">
+    <Spinner className="size-8" />
+  </div>
+);
+
+/**
+ * Client-side router with authentication guard
+ * Redirects unauthenticated users to login before showing protected routes
  */
 export const Router = () => {
   const [pathname, setPathname] = useState(window.location.pathname);
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
     const handleNavigation = () => {
@@ -25,13 +38,35 @@ export const Router = () => {
     };
   }, []);
 
-  // Auth routes
+  /**
+   * Redirect to login if not authenticated and trying to access protected route
+   */
+  useEffect(() => {
+    if (!(isLoading || user)) {
+      const isProtectedRoute = pathname === "/" || pathname.startsWith("/chat");
+      if (isProtectedRoute) {
+        window.history.pushState(null, "", "/login");
+        setPathname("/login");
+      }
+    }
+  }, [isLoading, user, pathname]);
+
+  // Show loading spinner while checking auth
+  if (isLoading) {
+    return <AuthLoading />;
+  }
+
+  // Auth routes (public)
   if (pathname === "/login") {
     return <LoginPage />;
   }
 
-  // Chat routes (protected)
+  // Protected routes - only render if authenticated
   if (pathname === "/" || pathname.startsWith("/chat")) {
+    if (!user) {
+      // Still checking or redirecting, show loading
+      return <AuthLoading />;
+    }
     return <ChatLayout />;
   }
 

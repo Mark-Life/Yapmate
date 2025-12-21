@@ -547,11 +547,11 @@ NODE_ENV=production bun dist/index.js
 
 ### Phase 3: Frontend
 
-- [ ] Create React entry point (`main.tsx`)
-- [ ] Create client-side router
-- [ ] Move page components to `src/client/pages/`
-- [ ] Convert server actions to fetch calls
-- [ ] Update imports for new structure
+- [x] Create React entry point (`main.tsx`)
+- [x] Create client-side router
+- [x] Move page components to `src/client/pages/`
+- [x] Convert server actions to fetch calls
+- [x] Update imports for new structure
 
 ### Phase 4: Testing & Cleanup
 
