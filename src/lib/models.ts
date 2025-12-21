@@ -1,5 +1,7 @@
 /**
- * Array of available model identifiers in format "provider/model-name"
+ * Fallback array of available model identifiers in format "provider/model-name"
+ * Used when models.dev API is unavailable or cache is empty
+ * Prefer using getModels() from models-service.ts for dynamic model list
  */
 export const MODELS = [
   // GOOGLE

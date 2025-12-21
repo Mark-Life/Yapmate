@@ -15,13 +15,7 @@ import {
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
 import { PromptInputButton } from "@/components/ai-elements/prompt-input";
-import { MODELS, parseModel } from "@/lib/models";
-
-const models = MODELS.map((value) => ({
-  name: parseModel(value).modelName,
-  value,
-  provider: parseModel(value).provider,
-}));
+import { useModels } from "@/hooks/use-models";
 
 /**
  * Groups models by provider
@@ -69,11 +63,12 @@ export const ModelSelectorCombobox = ({
   onModelChange,
 }: ModelSelectorComboboxProps) => {
   const [open, setOpen] = useState(false);
+  const { models, loading } = useModels();
 
-  const groupedModels = useMemo(() => groupModelsByProvider(models), []);
+  const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
   const currentModel = useMemo(
     () => models.find((m) => m.value === model),
-    [model]
+    [model, models]
   );
 
   return (
@@ -96,7 +91,9 @@ export const ModelSelectorCombobox = ({
       <ModelSelectorContent>
         <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
-          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+          <ModelSelectorEmpty>
+            {loading ? "Loading models..." : "No models found."}
+          </ModelSelectorEmpty>
           {groupedModels.map((group) => (
             <ModelSelectorGroup key={group.provider}>
               <div className="cmdk-group-heading pb-1 pl-2">

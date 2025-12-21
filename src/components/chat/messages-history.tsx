@@ -53,8 +53,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useModels } from "@/hooks/use-models";
 import type { ChatUIMessage } from "@/lib/chat-types";
-import { MODELS, parseModel } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 type MessagesHistoryProps = {
@@ -387,15 +387,9 @@ export const MessagesHistory = ({
 }: MessagesHistoryProps) => {
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const { models } = useModels();
 
-  const groupedModels = useMemo(() => {
-    const modelsList = MODELS.map((value) => ({
-      name: parseModel(value).modelName,
-      value,
-      provider: parseModel(value).provider,
-    }));
-    return groupModelsByProvider(modelsList);
-  }, []);
+  const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
 
   useEffect(() => {
     if (copiedPartId === null) {

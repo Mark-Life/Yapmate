@@ -46,10 +46,28 @@ const formatFileSize = (bytes: number): string => {
 };
 
 /**
+ * Pre-warms models cache (non-blocking)
+ */
+const prewarmModelsCache = async (): Promise<void> => {
+  try {
+    const { prewarmCache } = await import("./src/lib/models-service");
+    await prewarmCache();
+    console.log("✅ Models cache pre-warmed");
+  } catch (error) {
+    console.warn("⚠️  Failed to pre-warm models cache:", error);
+  }
+};
+
+/**
  * Main build process
  */
 const main = async () => {
   console.log("🚀 Starting production build...\n");
+
+  // Pre-warm models cache in background (non-blocking)
+  prewarmModelsCache().catch(() => {
+    // Silently fail - cache pre-warming is optional
+  });
 
   const plugins = await loadPlugins();
 

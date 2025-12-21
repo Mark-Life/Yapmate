@@ -8,6 +8,7 @@ import index from "../client/index.html";
 import { chatHandler } from "./routes/api/chat";
 import { chatsHandler } from "./routes/api/chats";
 import { messagesHandler } from "./routes/api/messages";
+import { modelsHandler } from "./routes/api/models";
 import { callbackHandler } from "./routes/auth/callback";
 import { magicLinkHandler } from "./routes/auth/magic-link";
 
@@ -28,6 +29,7 @@ const server = serve({
     "/api/chats": chatsHandler,
     "/api/chats/:id/messages": messagesHandler,
     "/api/chat": chatHandler,
+    "/api/models": modelsHandler,
     "/api/auth/magic-link": magicLinkHandler,
 
     // Health check endpoint

@@ -3,14 +3,14 @@
 import { useChat } from "@ai-sdk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
 import { ChatInput } from "@/components/chat/chat-input";
 import { MessagesHistory } from "@/components/chat/messages-history";
 import { DragDropZone } from "@/components/drag-drop-zone";
+import { useModels } from "@/hooks/use-models";
 import type { ChatUIMessage } from "@/lib/chat-types";
-import { MODELS } from "@/lib/models";
 import { cn } from "@/lib/utils";
 
 type ChatProps = {
@@ -44,10 +44,18 @@ export const Chat = ({
 }: ChatProps) => {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<string>(MODELS[0]);
+  const [model, setModel] = useState<string>("");
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const { models } = useModels();
+
+  // Set default model on mount when models are loaded
+  useEffect(() => {
+    if (models.length > 0 && !model) {
+      setModel(models[0].value);
+    }
+  }, [models, model]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? crypto.randomUUID());
