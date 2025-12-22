@@ -15,6 +15,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  usePromptInputAttachments,
 } from "@/client/components/ai-elements/prompt-input";
 import { ModelSelectorCombobox } from "@/client/components/model-selector";
 
@@ -43,40 +44,47 @@ export const ChatInput = ({
   status,
   onSubmit,
   onStop,
-}: ChatInputProps) => (
-  <PromptInput
-    className="rounded-md border border-primary/10 bg-primary/3"
-    multiple
-    onSubmit={onSubmit}
-  >
-    <PromptInputHeader>
-      <PromptInputAttachments>
-        {(attachment) => <PromptInputAttachment data={attachment} />}
-      </PromptInputAttachments>
-    </PromptInputHeader>
-    <PromptInputBody>
-      <PromptInputTextarea
-        onChange={(e) => onInputChange(e.target.value)}
-        value={input}
-      />
-    </PromptInputBody>
-    <PromptInputFooter>
-      <PromptInputTools>
-        <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
-        <PromptInputAddFileButton />
-        <PromptInputButton
-          aria-label="Toggle search"
-          onClick={() => onSearchEnabledChange(!searchEnabled)}
-          variant={searchEnabled ? "default" : "ghost"}
-        >
-          <GlobeIcon className="size-4" />
-        </PromptInputButton>
-      </PromptInputTools>
-      <PromptInputSubmit
-        disabled={!(input || status)}
-        onStop={onStop}
-        status={status}
-      />
-    </PromptInputFooter>
-  </PromptInput>
-);
+}: ChatInputProps) => {
+  const attachments = usePromptInputAttachments();
+  const hasAttachments = attachments.files.length > 0;
+
+  return (
+    <PromptInput
+      className="rounded-md border border-primary/10 bg-primary/3"
+      multiple
+      onSubmit={onSubmit}
+    >
+      {hasAttachments ? (
+        <PromptInputHeader>
+          <PromptInputAttachments>
+            {(attachment) => <PromptInputAttachment data={attachment} />}
+          </PromptInputAttachments>
+        </PromptInputHeader>
+      ) : null}
+      <PromptInputBody>
+        <PromptInputTextarea
+          onChange={(e) => onInputChange(e.target.value)}
+          value={input}
+        />
+      </PromptInputBody>
+      <PromptInputFooter>
+        <PromptInputTools>
+          <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
+          <PromptInputAddFileButton />
+          <PromptInputButton
+            aria-label="Toggle search"
+            onClick={() => onSearchEnabledChange(!searchEnabled)}
+            variant={searchEnabled ? "default" : "ghost"}
+          >
+            <GlobeIcon className="size-4" />
+          </PromptInputButton>
+        </PromptInputTools>
+        <PromptInputSubmit
+          disabled={!(input || status)}
+          onStop={onStop}
+          status={status}
+        />
+      </PromptInputFooter>
+    </PromptInput>
+  );
+};

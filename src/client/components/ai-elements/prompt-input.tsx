@@ -393,7 +393,7 @@ export function PromptInputAttachments({
 
   return (
     <div
-      className={cn("flex w-full flex-wrap items-center gap-2 p-3", className)}
+      className={cn("flex w-full flex-wrap items-center gap-2 px-3 pt-2", className)}
       {...props}
     >
       {attachments.files.map((file) => (
@@ -927,7 +927,7 @@ export const PromptInputTextarea = ({
 
   return (
     <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", className)}
+      className={cn("field-sizing-content max-h-48 min-h-10 md:min-h-12", className)}
       name="message"
       onCompositionEnd={() => setIsComposing(false)}
       onCompositionStart={() => setIsComposing(true)}
