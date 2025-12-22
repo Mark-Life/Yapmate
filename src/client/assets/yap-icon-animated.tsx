@@ -2,10 +2,10 @@ import type { SVGProps } from "react";
 
 /**
  * Animated YAP CLI-style ASCII art icon with multiple animations:
- * - Glow pulse effect (filter drop-shadow)
+ * - Glow pulse effect (native SVG filter with SMIL animation)
  * - Blinking eyes with sleepy squint state
  * - Eye tracking (looks left/right occasionally)
- * All animations are CSS-only and GPU-accelerated.
+ * All animations are CSS/SMIL and GPU-accelerated.
  */
 export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -17,6 +17,36 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <title id="yap-icon-animated-title">YAP</title>
+
+    {/* Native SVG filter for glow - works on Safari iOS */}
+    <defs>
+      <filter
+        filterUnits="userSpaceOnUse"
+        height="200%"
+        id="yap-glow-filter"
+        width="200%"
+        x="-50%"
+        y="-50%"
+      >
+        <feGaussianBlur in="SourceGraphic" result="blur">
+          <animate
+            attributeName="stdDeviation"
+            begin="1.5s"
+            calcMode="spline"
+            dur="5s"
+            keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+            keyTimes="0; 0.5; 1"
+            repeatCount="indefinite"
+            values="1;6;1"
+          />
+        </feGaussianBlur>
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+
     <style>
       {`
         text {
@@ -24,16 +54,6 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
           font-size: 6px;
           white-space: pre;
           dominant-baseline: middle;
-        }
-        
-        /* Glow pulse */
-        .yap-glow {
-          filter: drop-shadow(0 0 1px currentColor);
-          animation: glow-pulse 4s ease-in-out 1.5s infinite;
-        }
-        @keyframes glow-pulse {
-          0%, 100% { filter: drop-shadow(0 0 1px currentColor); }
-          50% { filter: drop-shadow(0 0 4px currentColor); }
         }
         
         /* Eye blink with sleepy squint before closing */
@@ -63,8 +83,8 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
       `}
     </style>
 
-    {/* All content with glow */}
-    <g className="yap-glow">
+    {/* All content with native SVG glow filter */}
+    <g filter="url(#yap-glow-filter)">
       {/* YAP Logo text */}
       {/* biome-ignore format: preserve ASCII art spacing */}
       <text textAnchor="middle" x="49" y="17">{"██╗   ██╗ █████╗ █████╗"}</text>
@@ -84,9 +104,8 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
         {"╚═╝   ╚═╝  ╚═╝╚═╝"}
       </text>
 
-      {/* Face border with glow */}
+      {/* Border with glow */}
       <rect
-        className="yap-glow"
         fill="none"
         height="100"
         rx="16"
