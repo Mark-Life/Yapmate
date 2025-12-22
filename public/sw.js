@@ -46,6 +46,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/** Pattern to detect file extensions in URL paths */
+const FILE_EXTENSION_PATTERN = /\.[a-zA-Z0-9]+$/;
 /**
  * Fetch event - route requests by strategy
  */
@@ -66,17 +68,21 @@ self.addEventListener("fetch", (event) => {
   // Network-only: Service worker and manifest must always be fresh
   if (
     url.pathname === "/sw.js" ||
-    url.pathname === "/site.webmanifest" ||
+    url.pathname.endsWith(".webmanifest") ||
     url.pathname.startsWith("/api/")
   ) {
     return;
   }
 
-  // Network-first with cache fallback: HTML files
+  // Check if this is a static asset (has file extension)
+  const hasFileExtension = FILE_EXTENSION_PATTERN.test(url.pathname);
+
+  // Network-first with cache fallback: HTML files (exclude static assets)
   if (
-    request.headers.get("accept")?.includes("text/html") ||
-    url.pathname === "/" ||
-    url.pathname === "/index.html"
+    !hasFileExtension &&
+    (request.headers.get("accept")?.includes("text/html") ||
+      url.pathname === "/" ||
+      url.pathname === "/index.html")
   ) {
     event.respondWith(
       fetch(request)

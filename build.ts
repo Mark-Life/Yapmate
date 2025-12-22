@@ -110,6 +110,29 @@ const main = async () => {
     console.warn("⚠️  Failed to copy PWA files:", error);
   }
 
+  // Copy static assets (icons and favicons) to dist
+  console.log("🖼️  Copying static assets...");
+  const staticAssets = [
+    "android-chrome-192x192.png",
+    "android-chrome-512x512.png",
+    "apple-touch-icon.png",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "favicon.ico",
+    "favicon.svg",
+  ];
+  try {
+    for (const asset of staticAssets) {
+      const sourceFile = Bun.file(`./public/${asset}`);
+      if (await sourceFile.exists()) {
+        await Bun.write(`./dist/${asset}`, sourceFile);
+      }
+    }
+    console.log("✅ Static assets copied");
+  } catch (error) {
+    console.warn("⚠️  Failed to copy static assets:", error);
+  }
+
   // Display build outputs
   console.log("📊 Build outputs:");
   const outputs: Array<{ File: string; Type: string; Size: string }> = [];
