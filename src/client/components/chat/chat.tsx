@@ -275,7 +275,7 @@ export const Chat = ({
         <DragDropZone containerRef={containerRef} setIsDragging={setIsDragging}>
           {messages.length === 0 ? (
             <div className="flex size-full items-center justify-center">
-              <div className="flex items-center justify-center rounded-xl border-4 border-primary opacity-60">
+              <div className="flex items-center justify-center rounded-xl border-4 border-primary p-4 opacity-60">
                 <YapIcon className="size-72 text-primary" />
               </div>
             </div>
