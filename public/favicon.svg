@@ -3,7 +3,7 @@
   <style>
     text {
       font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", "Monaco", monospace;
-      font-size: 14px;
+      font-size: 16px;
       white-space: pre;
       dominant-baseline: middle;
     }
@@ -24,7 +24,7 @@
       fill: #3498a8;
     }
   </style>
-  <g transform="translate(0, 8)">
+  <g transform="translate(0, 5)">
     <!-- <text x="50" y="28" text-anchor="middle">██╗   ██╗ █████╗ █████╗</text>
     <text x="50" y="34" text-anchor="middle">  ██╗ ██╔╝██╔══██╗██╔═██╗</text>
     <text x="50" y="40" text-anchor="middle">   ████╔╝ ███████║█████╔╝</text>
@@ -35,10 +35,10 @@
     <text x="50" y="76" text-anchor="middle"> ████         ████</text>
     <text x="50" y="88" text-anchor="middle">             █</text>
     <text x="50" y="90" text-anchor="middle"> █████████████</text> -->
-    <text x="50" y="24" text-anchor="middle"> ▀▀▀▀    ▀▀▀▀</text>
-    <text x="50" y="34" text-anchor="middle"> ████    ████</text>
-    <text x="50" y="64" text-anchor="middle">        █</text>
-    <text x="50" y="70" text-anchor="middle"> ████████</text>
+    <text x="45" y="24" text-anchor="middle"> ▀▀▀▀  ▀▀▀▀</text>
+    <text x="45" y="34" text-anchor="middle"> ████  ████</text>
+    <text x="45" y="64" text-anchor="middle">        █</text>
+    <text x="45" y="70" text-anchor="middle"> ████████</text>
   </g>
 </svg>
 
