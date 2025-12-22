@@ -51,6 +51,17 @@ const formatFileSize = (bytes: number): string => {
 const main = async () => {
   console.log("🚀 Starting production build...\n");
 
+  // Copy manifest to client directory so Bun can resolve it during HTML processing
+  console.log("📋 Preparing PWA files...");
+  try {
+    await Bun.write(
+      "./src/client/site.webmanifest",
+      Bun.file("./public/site.webmanifest")
+    );
+  } catch (error) {
+    console.warn("⚠️  Failed to prepare manifest:", error);
+  }
+
   const plugins = await loadPlugins();
 
   const result = await Bun.build({
@@ -86,9 +97,13 @@ const main = async () => {
   console.log("📦 Copying PWA files...");
   try {
     await Bun.write("./dist/sw.js", Bun.file("./public/sw.js"));
+    // Copy manifest from client directory (where Bun processed it) or fallback to public
+    const manifestSource =
+      (await Bun.file("./src/client/site.webmanifest").exists()) &&
+      Bun.file("./src/client/site.webmanifest");
     await Bun.write(
       "./dist/site.webmanifest",
-      Bun.file("./public/site.webmanifest")
+      manifestSource || Bun.file("./public/site.webmanifest")
     );
     console.log("✅ PWA files copied");
   } catch (error) {

@@ -41,6 +41,34 @@ const server = serve({
     // Health check endpoint
     "/health": () => Response.json({ status: "ok" }),
 
+    // PWA files - serve from dist in production, public in development
+    "/site.webmanifest": async () => {
+      const manifestPath =
+        process.env.NODE_ENV === "production"
+          ? "./dist/site.webmanifest"
+          : "./public/site.webmanifest";
+      const file = Bun.file(manifestPath);
+      if (await file.exists()) {
+        return new Response(file, {
+          headers: { "Content-Type": "application/manifest+json" },
+        });
+      }
+      return new Response("Not Found", { status: 404 });
+    },
+    "/sw.js": async () => {
+      const swPath =
+        process.env.NODE_ENV === "production"
+          ? "./dist/sw.js"
+          : "./public/sw.js";
+      const file = Bun.file(swPath);
+      if (await file.exists()) {
+        return new Response(file, {
+          headers: { "Content-Type": "application/javascript" },
+        });
+      }
+      return new Response("Not Found", { status: 404 });
+    },
+
     // SPA fallback - catches /chat/:id and any other client routes
     "/*": index,
   },

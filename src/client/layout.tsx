@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ThemeProvider } from "@/client/components/theme-provider";
-import { UpdatePrompt } from "@/client/components/update-prompt";
 import { Toaster } from "@/client/components/ui/sonner";
+import { UpdatePrompt } from "@/client/components/update-prompt";
 import { UserProvider } from "@/client/contexts/user-context";
 import { Router } from "./router";
 
