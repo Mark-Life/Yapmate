@@ -82,6 +82,19 @@ const main = async () => {
     process.exit(1);
   }
 
+  // Copy PWA files to dist
+  console.log("📦 Copying PWA files...");
+  try {
+    await Bun.write("./dist/sw.js", Bun.file("./public/sw.js"));
+    await Bun.write(
+      "./dist/site.webmanifest",
+      Bun.file("./public/site.webmanifest")
+    );
+    console.log("✅ PWA files copied");
+  } catch (error) {
+    console.warn("⚠️  Failed to copy PWA files:", error);
+  }
+
   // Display build outputs
   console.log("📊 Build outputs:");
   const outputs: Array<{ File: string; Type: string; Size: string }> = [];
