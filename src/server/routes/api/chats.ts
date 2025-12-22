@@ -1,6 +1,6 @@
 /**
  * Chat API route handlers
- * Handles GET, POST, DELETE for /api/chats
+ * Handles GET, POST, PATCH, DELETE for /api/chats
  */
 import {
   createChat,
@@ -8,12 +8,17 @@ import {
   getChat,
   getLastAssistantMessageModel,
   getUserChats,
+  updateChatTitle,
 } from "@/server/routes/api/chat/store";
 import { getCurrentUserId } from "../../lib/supabase";
 
 type CreateChatBody = {
   id: string;
   title?: string;
+};
+
+type UpdateChatBody = {
+  title: string;
 };
 
 export const chatsHandler = {
@@ -46,6 +51,38 @@ export const chatsHandler = {
 
     const chatId = await createChat(userId, title, id);
     return Response.json({ id: chatId });
+  },
+
+  async PATCH(req: Request) {
+    const userId = await getCurrentUserId(req);
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const chatId = url.searchParams.get("id");
+
+    if (!chatId) {
+      return Response.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const { title }: UpdateChatBody = await req.json();
+
+    if (!title || typeof title !== "string") {
+      return Response.json({ error: "title is required" }, { status: 400 });
+    }
+
+    // Verify chat exists and belongs to user
+    const chat = await getChat(chatId);
+    if (!chat) {
+      return Response.json({ error: "Chat not found" }, { status: 404 });
+    }
+    if (chat.userId !== userId) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await updateChatTitle(chatId, title);
+    return Response.json({ success: true });
   },
 
   async DELETE(req: Request) {

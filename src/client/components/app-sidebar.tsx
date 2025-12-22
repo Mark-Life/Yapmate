@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LogOutIcon, XIcon } from "lucide-react";
+import { LogOutIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import {
   AlertDialog,
@@ -14,11 +14,26 @@ import {
 import { Avatar, AvatarFallback } from "@/client/components/ui/avatar";
 import { Button } from "@/client/components/ui/button";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/client/components/ui/context-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/client/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
+import { Input } from "@/client/components/ui/input";
 import {
   Sidebar,
   SidebarContent,
@@ -76,6 +91,11 @@ export const AppSidebar = ({
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { user } = useUser();
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [chatToRename, setChatToRename] = useState<{
+    id: string;
+    currentTitle: string;
+  } | null>(null);
+  const [renameInput, setRenameInput] = useState("");
 
   /**
    * Handle logout
@@ -93,6 +113,34 @@ export const AppSidebar = ({
   const openNewChat = useCallback(() => {
     navigateToNew();
   }, [navigateToNew]);
+
+  /**
+   * Rename chat mutation
+   */
+  const renameChatMutation = useMutation({
+    mutationFn: async ({
+      chatId,
+      title,
+    }: {
+      chatId: string;
+      title: string;
+    }) => {
+      const res = await fetch(`/api/chats?id=${chatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error ?? "Failed to rename chat");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      setChatToRename(null);
+      setRenameInput("");
+    },
+  });
 
   /**
    * Delete chat mutation
@@ -117,6 +165,29 @@ export const AppSidebar = ({
       setChatToDelete(null);
     },
   });
+
+  /**
+   * Handle rename dialog open
+   */
+  const handleRenameClick = useCallback(
+    (chatId: string, currentTitle: string | null) => {
+      setChatToRename({ id: chatId, currentTitle: currentTitle ?? "" });
+      setRenameInput(currentTitle ?? "");
+    },
+    []
+  );
+
+  /**
+   * Handle rename confirmation
+   */
+  const handleRenameConfirm = useCallback(() => {
+    if (chatToRename && renameInput.trim()) {
+      renameChatMutation.mutate({
+        chatId: chatToRename.id,
+        title: renameInput.trim(),
+      });
+    }
+  }, [chatToRename, renameInput, renameChatMutation]);
 
   /**
    * Handle delete confirmation
@@ -148,32 +219,40 @@ export const AppSidebar = ({
                 <>
                   {chats.map((chat) => (
                     <SidebarMenuItem key={chat.id}>
-                      <div className="relative flex w-full items-center gap-1">
-                        <SidebarMenuButton
-                          className="flex-1 pr-8"
-                          isActive={chat.id === currentChatId}
-                          onClick={() => navigateToChat(chat.id)}
-                          onMouseEnter={() => onPrefetch?.(chat.id)}
-                          tooltip={chat.id}
-                        >
-                          <span className="truncate text-sm">
-                            {chat.title ?? "New chat"}
-                          </span>
-                        </SidebarMenuButton>
-                        <Button
-                          className="absolute right-1 size-6 shrink-0 opacity-0 transition-opacity group-hover/menu-item:opacity-100"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setChatToDelete(chat.id);
-                          }}
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <XIcon className="size-3" />
-                          <span className="sr-only">Delete chat</span>
-                        </Button>
-                      </div>
+                      <ContextMenu>
+                        <ContextMenuTrigger asChild>
+                          <div className="w-full">
+                            <SidebarMenuButton
+                              className="w-full"
+                              isActive={chat.id === currentChatId}
+                              onClick={() => navigateToChat(chat.id)}
+                              onMouseEnter={() => onPrefetch?.(chat.id)}
+                              tooltip={chat.id}
+                            >
+                              <span className="truncate text-sm">
+                                {chat.title ?? "New chat"}
+                              </span>
+                            </SidebarMenuButton>
+                          </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            onClick={() =>
+                              handleRenameClick(chat.id, chat.title)
+                            }
+                          >
+                            <PencilIcon className="size-4" />
+                            Rename
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onClick={() => setChatToDelete(chat.id)}
+                            variant="destructive"
+                          >
+                            <TrashIcon className="size-4" />
+                            Delete
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     </SidebarMenuItem>
                   ))}
                   {chats.length === 0 && (
@@ -216,6 +295,62 @@ export const AppSidebar = ({
         </SidebarFooter>
       ) : null}
       <SidebarRail />
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) {
+            setChatToRename(null);
+            setRenameInput("");
+          }
+        }}
+        open={chatToRename !== null}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this chat.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              autoFocus
+              onChange={(e) => setRenameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameConfirm();
+                }
+                if (e.key === "Escape") {
+                  setChatToRename(null);
+                  setRenameInput("");
+                }
+              }}
+              placeholder="Chat name"
+              value={renameInput}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setChatToRename(null);
+                setRenameInput("");
+              }}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                !renameInput.trim() ||
+                renameInput.trim() === chatToRename?.currentTitle ||
+                renameChatMutation.isPending
+              }
+              onClick={handleRenameConfirm}
+            >
+              {renameChatMutation.isPending ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         onOpenChange={(open) => !open && setChatToDelete(null)}
         open={chatToDelete !== null}
