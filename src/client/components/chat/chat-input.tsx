@@ -15,6 +15,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  PromptInputTranscribeButton,
   usePromptInputAttachments,
 } from "@/client/components/ai-elements/prompt-input";
 import { ModelSelectorCombobox } from "@/client/components/model-selector";
@@ -69,6 +70,7 @@ export const ChatInput = ({
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
+          <PromptInputTranscribeButton onTranscriptionChange={onInputChange} />
           <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
           <PromptInputAddFileButton />
           <PromptInputButton

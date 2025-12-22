@@ -14,6 +14,7 @@ import { lastModelHandler, messagesHandler } from "./routes/api/messages";
 import { modelsHandler } from "./routes/api/models";
 import { stopHandler } from "./routes/api/stop";
 import { streamResumeHandler } from "./routes/api/stream";
+import { transcribeHandler } from "./routes/api/transcribe";
 import { callbackHandler } from "./routes/auth/callback";
 import { magicLinkHandler } from "./routes/auth/magic-link";
 
@@ -98,6 +99,7 @@ const server = serve({
     "/api/chat/stop": stopHandler,
     "/api/chat/:id/stream": streamResumeHandler.GET,
     "/api/models": modelsHandler,
+    "/api/transcribe": transcribeHandler,
     "/api/auth/magic-link": magicLinkHandler,
 
     // Health check endpoint

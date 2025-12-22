@@ -1251,6 +1251,177 @@ export const PromptInputSpeechButton = ({
   );
 };
 
+export type PromptInputTranscribeButtonProps = ComponentProps<
+  typeof PromptInputButton
+> & {
+  onTranscriptionChange?: (text: string) => void;
+};
+
+/**
+ * Button that records audio and transcribes it using Groq Whisper API
+ * Records audio via MediaRecorder, sends to server, and populates input
+ */
+export const PromptInputTranscribeButton = ({
+  className,
+  onTranscriptionChange,
+  ...props
+}: PromptInputTranscribeButtonProps) => {
+  const controller = useOptionalPromptInputController();
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  /**
+   * Cleanup function to stop recording and release media stream
+   */
+  const cleanup = useCallback(() => {
+    if (mediaRecorderRef.current?.state !== "inactive") {
+      mediaRecorderRef.current?.stop();
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    audioChunksRef.current = [];
+  }, []);
+
+  /**
+   * Cleanup on unmount
+   */
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
+
+  /**
+   * Start recording audio
+   */
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      streamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "audio/ogg",
+      });
+
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsRecording(false);
+        setIsTranscribing(true);
+
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: mediaRecorder.mimeType,
+          });
+
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          const response = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error("Transcription failed");
+          }
+
+          const { text } = await response.json();
+
+          if (text && controller) {
+            const currentValue = controller.textInput.value;
+            const newValue = currentValue + (currentValue ? " " : "") + text;
+            controller.textInput.setInput(newValue);
+            onTranscriptionChange?.(newValue);
+          } else if (text) {
+            onTranscriptionChange?.(text);
+          }
+        } catch (error) {
+          console.error("Transcription error:", error);
+        } finally {
+          setIsTranscribing(false);
+          cleanup();
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        setIsRecording(false);
+        setIsTranscribing(false);
+        cleanup();
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+    }
+  }, [controller, onTranscriptionChange, cleanup]);
+
+  /**
+   * Stop recording
+   */
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  /**
+   * Toggle recording state
+   */
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  const isDisabled = isTranscribing || !navigator.mediaDevices?.getUserMedia;
+
+  return (
+    <PromptInputButton
+      aria-label={
+        isTranscribing
+          ? "Transcribing..."
+          : isRecording
+            ? "Stop recording"
+            : "Start recording"
+      }
+      className={cn(
+        "relative transition-all duration-200",
+        isRecording && "animate-pulse bg-accent text-accent-foreground",
+        isTranscribing && "opacity-50",
+        className
+      )}
+      disabled={isDisabled}
+      onClick={toggleRecording}
+      {...props}
+    >
+      {isTranscribing ? (
+        <Loader2Icon className="size-4 animate-spin" />
+      ) : (
+        <MicIcon className="size-4" />
+      )}
+    </PromptInputButton>
+  );
+};
+
 export type PromptInputSelectProps = ComponentProps<typeof Select>;
 
 export const PromptInputSelect = (props: PromptInputSelectProps) => (
