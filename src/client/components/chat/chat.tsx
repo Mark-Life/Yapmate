@@ -127,6 +127,8 @@ export const Chat = ({
       onFinish: ({ messages: finishedMessages }) => {
         // Manually update messages state to ensure UI reflects completed stream
         setMessages(finishedMessages);
+        // Invalidate cache so navigation back to this chat fetches fresh DB data
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
       },
       onError: (error) => {
         console.error("useChat error:", error);
