@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { YapIcon } from "@/client/assets/yap-icon";
+import { YapIconAnimated } from "@/client/assets/yap-icon-animated";
 import { useModels } from "@/client/hooks/use-models";
 import { cn } from "@/client/lib/utils";
 import type { ChatUIMessage } from "@/server/routes/api/chat/types";
@@ -274,9 +274,9 @@ export const Chat = ({
       >
         <DragDropZone containerRef={containerRef} setIsDragging={setIsDragging}>
           {messages.length === 0 ? (
-            <div className="flex size-full items-center justify-center">
-              <div className="flex items-center justify-center rounded-xl border-4 border-primary p-4 opacity-60">
-                <YapIcon className="size-72 text-primary" />
+            <div className="flex size-full items-center justify-center pb-32">
+              <div className="flex items-center justify-center opacity-60">
+                <YapIconAnimated className="size-72 text-primary" />
               </div>
             </div>
           ) : (
