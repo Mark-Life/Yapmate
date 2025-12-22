@@ -33,11 +33,11 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
             attributeName="stdDeviation"
             begin="1.5s"
             calcMode="spline"
-            dur="5s"
+            dur="6s"
             keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
             keyTimes="0; 0.5; 1"
             repeatCount="indefinite"
-            values="1;6;1"
+            values="0;6;0"
           />
         </feGaussianBlur>
         <feMerge>
