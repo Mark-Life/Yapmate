@@ -128,7 +128,7 @@ export const chatHandler = {
             chunkIndex,
           });
         } catch (err) {
-          await handleStreamError(streamId, err);
+          await handleStreamError(streamId, id, err);
         }
       },
       originalMessages: allMessages,

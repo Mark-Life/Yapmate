@@ -58,48 +58,36 @@ export const processStreamChunks = async (
 };
 
 /**
- * Completes stream processing and saves messages
- */
-export const completeStream = async (
-  streamId: string,
-  chatId: string
-): Promise<void> => {
-  console.log(
-    `[Stream ${streamId}] Stream completed, saving messages manually`
-  );
-  try {
-    // Reconstruct assistant message from Redis chunks
-    const chunks = await getBufferedChunks(streamId);
-    if (chunks.length > 0) {
-      // Use the same function we use for partial saves
-      await savePartialAssistantMessage(chatId, chunks);
-    } else {
-      console.warn(`[Stream ${streamId}] No chunks found in Redis to save`);
-    }
-    await updateActiveStreamId(chatId, null);
-    await setStreamStatus(streamId, "complete");
-    unregisterStream(streamId);
-  } catch (saveError) {
-    console.error(`[Stream ${streamId}] Error saving messages:`, saveError);
-    await setStreamStatus(streamId, "error");
-    // Don't throw - stream already completed, just log the error
-  }
-};
-
-/**
  * Handles stream errors
+ * Saves partial message for non-abort errors, cleans up stream state
  */
 export const handleStreamError = async (
   streamId: string,
+  chatId: string,
   err: unknown
 ): Promise<void> => {
   if (err instanceof Error && err.name === "AbortError") {
     // User stopped the stream - status already set to "aborted" by stop handler
     // Partial message will be saved by stop handler
     await setStreamStatus(streamId, "aborted");
+    await updateActiveStreamId(chatId, null);
+    unregisterStream(streamId);
   } else {
-    // Other error
+    // Other error - save partial content before marking error
+    try {
+      const chunks = await getBufferedChunks(streamId);
+      if (chunks.length > 0) {
+        await savePartialAssistantMessage(chatId, chunks);
+      }
+    } catch (saveError) {
+      console.error(
+        `[Stream ${streamId}] Error saving partial message:`,
+        saveError
+      );
+    }
     await setStreamStatus(streamId, "error");
+    await updateActiveStreamId(chatId, null);
+    unregisterStream(streamId);
     throw err;
   }
 };
@@ -221,9 +209,8 @@ export const executeStream = async (
   // Wait for title generation - keeps stream open until title is written
   await titlePromise;
 
-  // Stream completed successfully - manually save messages
-  // (onFinish may not fire if client disconnected)
-  await completeStream(streamId, chatId);
+  // Stream completed successfully - onFinish callback will save messages
+  // No need to save here to avoid duplicates
 };
 
 /**
@@ -235,7 +222,8 @@ export const handleStreamFinish = async (
   model: string,
   finalMessages: UIMessage[]
 ): Promise<void> => {
-  // This may not fire if client disconnected, so we also save manually in execute
+  // Save complete messages with proper IDs from AI SDK
+  // This is the single source of truth for successful stream completion
   try {
     // Save all messages (upsert handles both new and updated)
     const lastMessageId = finalMessages.at(-1)?.id;
