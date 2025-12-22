@@ -210,7 +210,6 @@ const TextPart = ({
             onChange={(e) => setEditedText(e.target.value)}
             onKeyDown={handleKeyDown}
             ref={textareaRef}
-            rows={1}
             value={editedText}
           />
         ) : (
