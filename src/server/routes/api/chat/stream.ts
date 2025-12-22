@@ -5,6 +5,7 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { updateActiveStreamId } from "@/server/lib/db/service/chats";
 import { savePartialAssistantMessage } from "@/server/lib/db/service/messages";
+import { saveUsageRecord } from "@/server/lib/db/service/usage";
 import { openrouter } from "@/server/lib/openrouter";
 import { unregisterStream } from "@/server/lib/redis/controller";
 import {
@@ -54,9 +55,6 @@ export const processStreamChunks = async (
       }
     }
   }
-  console.log(
-    `[Stream ${streamId}] Finished processing ${chunkIndex.current} chunks`
-  );
 };
 
 /**
@@ -75,16 +73,12 @@ export const completeStream = async (
     if (chunks.length > 0) {
       // Use the same function we use for partial saves
       await savePartialAssistantMessage(chatId, chunks);
-      console.log(
-        `[Stream ${streamId}] Messages saved to DB from Redis chunks`
-      );
     } else {
       console.warn(`[Stream ${streamId}] No chunks found in Redis to save`);
     }
     await updateActiveStreamId(chatId, null);
     await setStreamStatus(streamId, "complete");
     unregisterStream(streamId);
-    console.log(`[Stream ${streamId}] Stream marked as complete`);
   } catch (saveError) {
     console.error(`[Stream ${streamId}] Error saving messages:`, saveError);
     await setStreamStatus(streamId, "error");
@@ -119,6 +113,7 @@ type ExecuteStreamOptions = {
   abortSignal: AbortSignal;
   chatId: string;
   streamId: string;
+  userId: string;
   isFirstMessage: boolean;
   editMessageId: string | undefined;
   userMessage: string;
@@ -140,6 +135,7 @@ export const executeStream = async (
     abortSignal,
     chatId,
     streamId,
+    userId,
     isFirstMessage,
     editMessageId,
     userMessage,
@@ -160,7 +156,7 @@ export const executeStream = async (
       : Promise.resolve();
 
   const result = streamText({
-    model: openrouter.chat(modelWithSearch),
+    model: openrouter.chat(modelWithSearch, { usage: { include: true } }),
     messages: convertToModelMessages(allMessages),
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
@@ -178,6 +174,49 @@ export const executeStream = async (
   // Process chunks: publish to Redis and write to client
   // This MUST complete for onFinish to fire
   await processStreamChunks(uiStream, writer, streamId, chunkIndex);
+
+  // Log provider metadata (usage, pricing, etc.)
+  const [usage, finishReason, response, providerMetadata] = await Promise.all([
+    result.usage,
+    result.finishReason,
+    result.response,
+    result.providerMetadata,
+  ]);
+
+  // Save usage record for billing/analytics
+  try {
+    const openrouterUsage =
+      providerMetadata &&
+      typeof providerMetadata === "object" &&
+      "openrouter" in providerMetadata &&
+      providerMetadata.openrouter &&
+      typeof providerMetadata.openrouter === "object" &&
+      "usage" in providerMetadata.openrouter
+        ? (providerMetadata.openrouter.usage as { cost?: number })
+        : undefined;
+    await saveUsageRecord({
+      userId,
+      chatId,
+      messageId: undefined, // Set later if needed
+      type: "chat",
+      provider: "openrouter",
+      model: modelWithSearch.replace(":online", ""),
+      inputTokens: usage.inputTokens ?? null,
+      outputTokens: usage.outputTokens ?? null,
+      totalTokens: usage.totalTokens ?? null,
+      cachedTokens: usage.cachedInputTokens ?? 0,
+      reasoningTokens: usage.reasoningTokens ?? 0,
+      costUsd: openrouterUsage?.cost?.toString() ?? null,
+      generationId: response.id,
+      finishReason: finishReason ?? null,
+    });
+  } catch (usageError) {
+    // Log but don't fail the stream if usage saving fails
+    console.error(
+      `[Stream ${streamId}] Error saving usage record:`,
+      usageError
+    );
+  }
 
   // Wait for title generation - keeps stream open until title is written
   await titlePromise;
@@ -197,9 +236,6 @@ export const handleStreamFinish = async (
   finalMessages: UIMessage[]
 ): Promise<void> => {
   // This may not fire if client disconnected, so we also save manually in execute
-  console.log(
-    `[Stream ${streamId}] onFinish called with ${finalMessages.length} messages`
-  );
   try {
     // Save all messages (upsert handles both new and updated)
     const lastMessageId = finalMessages.at(-1)?.id;
@@ -207,7 +243,6 @@ export const handleStreamFinish = async (
       // Add model info to the last assistant message
       ...(lastMessageId ? { [lastMessageId]: { model } } : {}),
     });
-    console.log(`[Stream ${streamId}] Messages saved to DB via onFinish`);
     await updateActiveStreamId(chatId, null);
     await setStreamStatus(streamId, "complete");
     unregisterStream(streamId);

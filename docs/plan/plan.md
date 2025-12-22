@@ -22,13 +22,6 @@
   - [ ] Display combined system prompt (global + model-specific) in read-only view
   - [ ] Allow users to understand the context without ability to edit
 
-### Data Structures & Streaming
-
-- [ ] Design streaming data structure for real-time updates
-- [ ] Implement notification system for streaming events
-- [ ] Handle partial message updates during streaming
-- [ ] Manage connection state and reconnection logic
-
 ## Features
 
 ### Basic Chat Features

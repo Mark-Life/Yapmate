@@ -120,6 +120,7 @@ export const chatHandler = {
             abortSignal: abortController.signal,
             chatId: id,
             streamId,
+            userId,
             isFirstMessage,
             editMessageId,
             userMessage,

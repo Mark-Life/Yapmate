@@ -29,6 +29,13 @@
       "when": 1766234641823,
       "tag": "0003_cool_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1766418222452,
+      "tag": "0004_fearless_next_avengers",
+      "breakpoints": true
     }
   ]
 }
