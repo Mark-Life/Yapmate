@@ -1,39 +1,26 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
+import { rpcClient } from "../../lib/rpc-client";
 
 type Model = { value: string };
 
 /**
  * Creates a new chat via API
+ * Return type is inferred from the router
  */
-export const createChat = async (
-  id: string,
-  title: string
-): Promise<{ id: string }> => {
-  const res = await fetch("/api/chats", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, title }),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to create chat");
-  }
-  return res.json();
-};
+export const createChat = async (id: string, title: string) =>
+  await rpcClient.chats.create({ id, title });
 
 /**
  * Fetches the last message model for an existing chat
+ * Return type is inferred from the router
  */
-export const fetchLastMessageModel = async (
-  targetChatId: string
-): Promise<string | null> => {
+export const fetchLastMessageModel = async (targetChatId: string) => {
   try {
-    const res = await fetch(`/api/chats/${targetChatId}/last-model`);
-    if (!res.ok) {
-      return null;
-    }
-    const data = await res.json();
-    return data.model;
+    const { model } = await rpcClient.messages.getLastModel({
+      chatId: targetChatId,
+    });
+    return model;
   } catch {
     return null;
   }
@@ -41,17 +28,12 @@ export const fetchLastMessageModel = async (
 
 /**
  * Fetches the last assistant message model from the most recent chat
+ * Return type is inferred from the router
  */
-export const fetchLastAssistantMessageModel = async (): Promise<
-  string | null
-> => {
+export const fetchLastAssistantMessageModel = async () => {
   try {
-    const res = await fetch("/api/chats/last-model");
-    if (!res.ok) {
-      return null;
-    }
-    const data = await res.json();
-    return data.model;
+    const { model } = await rpcClient.chats.getLastAssistantModel();
+    return model;
   } catch {
     return null;
   }

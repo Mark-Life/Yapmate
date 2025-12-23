@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { parseModel } from "@yapmate/server/lib/models/models";
+import { rpcClient } from "../lib/rpc-client";
 
 /**
  * Fetches models from server API
  */
-const fetchModelsFromApi = async (): Promise<string[]> => {
-  const response = await fetch("/api/models");
-  if (!response.ok) {
-    throw new Error("Failed to fetch models");
-  }
-  const data = await response.json();
-  return data.models;
+const fetchModelsFromApi = async () => {
+  const { models } = await rpcClient.models.list();
+  return models;
 };
 
 type TransformedModel = {

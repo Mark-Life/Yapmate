@@ -1,0 +1,16 @@
+{
+  "name": "@yapmate/api",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./router": "./src/router.ts"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
+    "@yapmate/db": "workspace:*",
+    "@yapmate/server": "workspace:*",
+    "zod": "catalog:"
+  }
+}

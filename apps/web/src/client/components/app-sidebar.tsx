@@ -49,6 +49,7 @@ import { LogOutIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
 import { useUser } from "../contexts/user-context";
+import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 
 type Chat = {
@@ -125,15 +126,7 @@ export const AppSidebar = ({
       chatId: string;
       title: string;
     }) => {
-      const res = await fetch(`/api/chats?id=${chatId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error ?? "Failed to rename chat");
-      }
+      await rpcClient.chats.update({ id: chatId, title });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
@@ -147,13 +140,7 @@ export const AppSidebar = ({
    */
   const deleteChatMutation = useMutation({
     mutationFn: async (chatId: string) => {
-      const res = await fetch(`/api/chats?id=${chatId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error ?? "Failed to delete chat");
-      }
+      await rpcClient.chats.delete({ id: chatId });
     },
     onSuccess: (_, deletedChatId) => {
       // Invalidate chats query to refresh the list

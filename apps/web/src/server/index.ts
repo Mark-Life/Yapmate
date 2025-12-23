@@ -5,21 +5,12 @@
 
 import { readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
+import { RPCHandler } from "@orpc/server/fetch";
+import { router } from "@yapmate/api/router";
 import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
-import {
-  chatsHandler,
-  lastAssistantModelHandler,
-} from "@yapmate/server/routes/api/chats";
-import {
-  lastModelHandler,
-  messagesHandler,
-} from "@yapmate/server/routes/api/messages";
-import { modelsHandler } from "@yapmate/server/routes/api/models";
-import { stopHandler } from "@yapmate/server/routes/api/stop";
 import { streamResumeHandler } from "@yapmate/server/routes/api/stream";
 import { transcribeHandler } from "@yapmate/server/routes/api/transcribe";
 import { callbackHandler } from "@yapmate/server/routes/auth/callback";
-import { magicLinkHandler } from "@yapmate/server/routes/auth/magic-link";
 import type { BunFile } from "bun";
 import { serve } from "bun";
 import index from "../client/index.html";
@@ -85,6 +76,9 @@ if (publicAssetCount > 0) {
   console.log(`📦 Discovered ${publicAssetCount} public assets`);
 }
 
+/** oRPC handler for type-safe API */
+const rpcHandler = new RPCHandler(router);
+
 const server = serve({
   port,
 
@@ -96,20 +90,25 @@ const server = serve({
     // Auth routes
     "/auth/callback": callbackHandler.GET,
 
-    // API routes
-    "/api/chats": chatsHandler,
-    "/api/chats/last-model": lastAssistantModelHandler.GET,
-    "/api/chats/:id/messages": messagesHandler,
-    "/api/chats/:id/last-model": lastModelHandler.GET,
+    // API routes - streaming and file uploads (kept as HTTP)
     "/api/chat": chatHandler,
-    "/api/chat/stop": stopHandler,
     "/api/chat/:id/stream": streamResumeHandler.GET,
-    "/api/models": modelsHandler,
     "/api/transcribe": transcribeHandler,
-    "/api/auth/magic-link": magicLinkHandler,
 
     // Health check endpoint
     "/health": () => Response.json({ status: "ok" }),
+
+    // oRPC routes
+    "/rpc/*": async (req) => {
+      const { matched, response } = await rpcHandler.handle(req, {
+        prefix: "/rpc",
+        context: { req },
+      });
+      if (matched) {
+        return response;
+      }
+      return new Response("Not Found", { status: 404 });
+    },
 
     // Static assets - discovered at startup
     ...publicAssets,

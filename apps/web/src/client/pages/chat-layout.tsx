@@ -5,25 +5,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@yapmate/components/ui/sidebar";
-import type { UIMessage } from "ai";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
-
-type ChatApiResponse = {
-  id: string;
-  title: string | null;
-  updatedAt: string | null;
-};
-
-type ChatItem = {
-  id: string;
-  title: string | null;
-  updatedAt: Date | null;
-};
+import { rpcClient } from "../lib/rpc-client";
 
 /**
  * Header controls - sidebar trigger + new chat button when collapsed
@@ -46,14 +34,11 @@ const HeaderControls = () => {
 
 /**
  * Fetches user's chats from API and parses dates
+ * Return type is inferred from the router and transformation
  */
-const fetchChats = async (): Promise<ChatItem[]> => {
-  const res = await fetch("/api/chats");
-  if (!res.ok) {
-    throw new Error("Failed to fetch chats");
-  }
-  const data: ChatApiResponse[] = await res.json();
-  return data.map((chat) => ({
+const fetchChats = async () => {
+  const chats = await rpcClient.chats.list();
+  return chats.map((chat) => ({
     ...chat,
     updatedAt: chat.updatedAt ? new Date(chat.updatedAt) : null,
   }));
@@ -61,14 +46,10 @@ const fetchChats = async (): Promise<ChatItem[]> => {
 
 /**
  * Fetches messages for a chat
+ * Return type is inferred from the router
  */
-const fetchMessages = async (chatId: string): Promise<UIMessage[]> => {
-  const res = await fetch(`/api/chats/${chatId}/messages`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch messages");
-  }
-  return res.json();
-};
+const fetchMessages = async (chatId: string) =>
+  await rpcClient.messages.list({ chatId });
 
 /**
  * Container that renders Chat based on currentChatId from context

@@ -8,6 +8,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
+import { rpcClient } from "../../lib/rpc-client";
 import { DragDropZone } from "../drag-drop-zone";
 import {
   createChat,
@@ -143,15 +144,7 @@ export const Chat = ({
     }
 
     try {
-      const res = await fetch("/api/chat/stop", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to stop stream");
-      }
+      await rpcClient.chat.stop({ chatId });
     } catch (error) {
       console.error("Stop request failed:", error);
     }
