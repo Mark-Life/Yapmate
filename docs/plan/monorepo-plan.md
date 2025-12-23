@@ -66,7 +66,6 @@ yapmate/
     }
   }
   ```
-- [ ] Create `packages/db/src/index.ts` exporting all db utilities
 - [x] Move `drizzle.config.ts` to reference new paths
 - [x] Update all imports from `@/server/lib/db` → `@yapmate/db`
 
@@ -88,7 +87,7 @@ yapmate/
   }
   ```
 - [x] Move `src/client/lib/utils.ts` → `packages/ui/src/lib/utils.ts`
-- [ ] Update all imports from `@yapmate/components/ui` → `@yapmate/components/ui`
+- [x] Update all imports from `@yapmate/components/ui` → `@yapmate/components/ui`
 - [x] Move `components.json` to reference new paths
 
 ### 1.4 Move Server Package (`packages/server`)
@@ -108,7 +107,7 @@ yapmate/
     }
   }
   ```
-- [ ] Update all imports
+- [x] Update all imports
 
 ### 1.5 Create Core Package (`packages/core`)
 
@@ -150,7 +149,7 @@ yapmate/
   ```
 - [x] Move `build.ts` → `apps/web/build.ts`
 - [x] Move `public/` → `apps/web/public/` (static assets, PWA files)
-- [ ] Update all imports to use workspace packages
+- [x] Update all imports to use workspace packages
 
 ### 1.7 Update Root Configuration
 
