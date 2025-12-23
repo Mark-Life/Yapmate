@@ -1,0 +1,15 @@
+{
+  "name": "@yapmate/db",
+  "type": "module",
+  "exports": {
+    "./schema": "./src/schema.ts",
+    "./service": "./src/service/index.ts"
+  },
+  "dependencies": {
+    "postgres": "^3.4.7",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-kit": "^0.31.8",
+    "@yapmate/server": "workspace:*",
+    "ai": "catalog:"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@yapmate/server",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./routes/*": "./src/routes/*.ts",
+    "./middleware/*": "./src/middleware/*.ts",
+    "./lib/*": "./src/lib/*.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "@ai-sdk/groq": "^2.0.33",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "@yapmate/core": "workspace:*",
+    "@yapmate/db": "workspace:*",
+    "ai": "catalog:"
+  }
+}
