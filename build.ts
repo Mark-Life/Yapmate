@@ -96,7 +96,29 @@ const main = async () => {
   // Copy PWA files to dist
   console.log("📦 Copying PWA files...");
   try {
-    await Bun.write("./dist/sw.js", Bun.file("./public/sw.js"));
+    // Read service worker and inject build timestamp for cache versioning
+    let swContent = await Bun.file("./public/sw.js").text();
+    const buildTimestamp = Date.now();
+    const cacheVersion = `v1-${buildTimestamp}`;
+
+    // Add build timestamp comment at the top (ensures file changes on each build)
+    if (swContent.includes("// Build:")) {
+      swContent = swContent.replace(
+        /\/\/ Build: \d+/,
+        `// Build: ${buildTimestamp}`
+      );
+    } else {
+      swContent = `// Build: ${buildTimestamp}\n${swContent}`;
+    }
+
+    // Replace cache version with build-specific version
+    const updatedSwContent = swContent.replace(
+      /const CACHE_VERSION = "[^"]+";/,
+      `const CACHE_VERSION = "${cacheVersion}";`
+    );
+
+    await Bun.write("./dist/sw.js", updatedSwContent);
+
     // Copy manifest from client directory (where Bun processed it) or fallback to public
     const manifestSource =
       (await Bun.file("./src/client/site.webmanifest").exists()) &&

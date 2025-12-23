@@ -3,8 +3,11 @@
  * Implements cache-first strategy for static assets and network-first for HTML
  */
 
-const CACHE_NAME = "yapmate-v1";
-const RUNTIME_CACHE = "yapmate-runtime-v1";
+// Cache version - updated at build time to force cache invalidation
+// This will be replaced with a timestamp-based version during build
+const CACHE_VERSION = "v1";
+const CACHE_NAME = `yapmate-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `yapmate-runtime-${CACHE_VERSION}`;
 
 /**
  * List of static assets to pre-cache on install
@@ -14,6 +17,7 @@ const PRECACHE_URLS = ["/", "/index.html"];
 
 /**
  * Install event - pre-cache app shell
+ * Note: We don't call skipWaiting() immediately to allow update detection
  */
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -24,7 +28,18 @@ self.addEventListener("install", (event) => {
           console.warn("Precache failed:", err);
         })
       )
-      .then(() => self.skipWaiting())
+      .then(() => {
+        // Check if there are any active clients
+        // If no clients, this is first install - activate immediately
+        // Otherwise, wait for user to accept update
+        return self.clients.matchAll().then((clients) => {
+          if (clients.length === 0) {
+            // First install - activate immediately
+            self.skipWaiting();
+          }
+          // Otherwise, wait for SKIP_WAITING message from client
+        });
+      })
   );
 });
 
@@ -143,10 +158,25 @@ self.addEventListener("fetch", (event) => {
 });
 
 /**
- * Listen for skip waiting message from client
+ * Listen for messages from client
  */
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+
+  // Notify clients when a new service worker is waiting
+  if (event.data && event.data.type === "CHECK_UPDATE") {
+    // Check if there's a waiting service worker
+    self.registration.update().then(() => {
+      if (self.registration.waiting) {
+        // Notify all clients that an update is available
+        self.clients.matchAll().then((clients) => {
+          for (const client of clients) {
+            client.postMessage({ type: "UPDATE_AVAILABLE" });
+          }
+        });
+      }
+    });
   }
 });
