@@ -6,6 +6,10 @@
 
 const start = performance.now();
 
+// Regex patterns for service worker updates
+const BUILD_TIMESTAMP_REGEX = /\/\/ Build: \d+/;
+const CACHE_VERSION_REGEX = /const CACHE_VERSION = "[^"]+";/;
+
 /**
  * Load Tailwind plugin if available
  */
@@ -104,7 +108,7 @@ const main = async () => {
     // Add build timestamp comment at the top (ensures file changes on each build)
     if (swContent.includes("// Build:")) {
       swContent = swContent.replace(
-        /\/\/ Build: \d+/,
+        BUILD_TIMESTAMP_REGEX,
         `// Build: ${buildTimestamp}`
       );
     } else {
@@ -113,7 +117,7 @@ const main = async () => {
 
     // Replace cache version with build-specific version
     const updatedSwContent = swContent.replace(
-      /const CACHE_VERSION = "[^"]+";/,
+      CACHE_VERSION_REGEX,
       `const CACHE_VERSION = "${cacheVersion}";`
     );
 

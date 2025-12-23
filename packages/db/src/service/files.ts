@@ -28,11 +28,9 @@ export const getFileById = async (
 /**
  * Gets multiple files by their IDs
  */
-export const getFilesByIds = async (
-  fileIds: string[]
-): Promise<FileSelect[]> => {
+export const getFilesByIds = (fileIds: string[]): Promise<FileSelect[]> => {
   if (fileIds.length === 0) {
-    return [];
+    return Promise.resolve([]);
   }
   return db.select().from(files).where(inArray(files.id, fileIds));
 };
