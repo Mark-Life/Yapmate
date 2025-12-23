@@ -14,9 +14,15 @@ import {
   PromptInputTranscribeButton,
   usePromptInputAttachments,
 } from "@yapmate/components/ai-elements/prompt-input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@yapmate/components/ui/dropdown-menu";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
-import { GlobeIcon } from "lucide-react";
+import { EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
 import { ModelSelectorCombobox } from "../model-selector";
 import { TokenUsageIndicator } from "./token-usage-indicator";
 
@@ -78,17 +84,47 @@ export const ChatInput = ({
         <PromptInputTools>
           <PromptInputTranscribeButton onTranscriptionChange={onInputChange} />
           <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
-          <PromptInputAddFileButton />
-          <PromptInputButton
-            aria-label="Toggle search"
-            onClick={() => onSearchEnabledChange(!searchEnabled)}
-            variant={searchEnabled ? "default" : "ghost"}
-          >
-            <GlobeIcon className="size-4" />
-          </PromptInputButton>
-          {messages && messages.length > 0 && (
-            <TokenUsageIndicator messages={messages} model={model} />
-          )}
+          {/* Desktop: show all buttons */}
+          <div className="hidden items-center gap-1 md:flex">
+            <PromptInputAddFileButton />
+            <PromptInputButton
+              aria-label="Toggle search"
+              onClick={() => onSearchEnabledChange(!searchEnabled)}
+              variant={searchEnabled ? "default" : "ghost"}
+            >
+              <GlobeIcon className="size-4" />
+            </PromptInputButton>
+            {messages && messages.length > 0 && (
+              <TokenUsageIndicator messages={messages} model={model} />
+            )}
+          </div>
+          {/* Mobile: overflow menu for secondary actions */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <PromptInputButton aria-label="More options">
+                  <EllipsisIcon className="size-4" />
+                </PromptInputButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
+                  <ImageIcon className="mr-2 size-4" />
+                  Add file
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSearchEnabledChange(!searchEnabled)}
+                >
+                  <GlobeIcon className="mr-2 size-4" />
+                  {searchEnabled ? "Disable search" : "Enable search"}
+                </DropdownMenuItem>
+                {messages && messages.length > 0 && (
+                  <div className="px-2 py-1.5">
+                    <TokenUsageIndicator messages={messages} model={model} />
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </PromptInputTools>
         <PromptInputSubmit
           disabled={!(input || status)}

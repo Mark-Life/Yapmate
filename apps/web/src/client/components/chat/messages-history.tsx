@@ -412,7 +412,7 @@ export const MessagesHistory = ({
   return (
     <Conversation className="h-full">
       <ConversationContent>
-        <div className="mx-auto w-full max-w-4xl px-6 pb-34">
+        <div className="mx-auto w-full max-w-4xl px-4 pb-34">
           {messages.map((message, messageIndex) => (
             <div className="flex flex-col gap-2" key={message.id}>
               {message.parts.map((part, i) => {
