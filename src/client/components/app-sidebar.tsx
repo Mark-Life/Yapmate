@@ -221,15 +221,15 @@ export const AppSidebar = ({
                     <SidebarMenuItem key={chat.id}>
                       <ContextMenu>
                         <ContextMenuTrigger asChild>
-                          <div className="w-full">
+                          <div className="w-full select-none">
                             <SidebarMenuButton
-                              className="w-full"
+                              className="w-full select-none"
                               isActive={chat.id === currentChatId}
                               onClick={() => navigateToChat(chat.id)}
                               onMouseEnter={() => onPrefetch?.(chat.id)}
                               tooltip={chat.id}
                             >
-                              <span className="truncate text-sm">
+                              <span className="select-none truncate text-sm">
                                 {chat.title ?? "New chat"}
                               </span>
                             </SidebarMenuButton>

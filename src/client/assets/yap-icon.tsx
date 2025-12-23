@@ -19,6 +19,7 @@ export const YapIcon = (props: SVGProps<SVGSVGElement>) => (
         font-size: 7px;
         white-space: pre;
         dominant-baseline: middle;
+        user-select: none;
       }`}
     </style>
     {/* <g transform="translate(0, -8)"> */}

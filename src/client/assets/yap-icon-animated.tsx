@@ -58,6 +58,7 @@ export const YapIconAnimated = ({
           font-size: 6px;
           white-space: pre;
           dominant-baseline: middle;
+          user-select: none;
         }
         
         /* Eye blink with sleepy squint before closing */
