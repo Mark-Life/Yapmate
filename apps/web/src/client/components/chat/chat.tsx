@@ -295,6 +295,7 @@ export const Chat = ({
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-4xl px-2 pb-2">
             <div className="pointer-events-auto rounded-lg backdrop-blur-md supports-backdrop-filter:bg-background/80">
               <ChatInput
+                chatId={chatId}
                 input={input}
                 messages={messages}
                 model={model}

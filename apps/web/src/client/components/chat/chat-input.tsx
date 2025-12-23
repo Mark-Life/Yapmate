@@ -3,6 +3,7 @@ import {
   PromptInputAddFileButton,
   PromptInputAttachment,
   PromptInputAttachments,
+  PromptInputAutoFocus,
   PromptInputBody,
   PromptInputButton,
   PromptInputFooter,
@@ -38,6 +39,7 @@ type ChatInputProps = {
   onStop?: () => void;
   onFocusChange?: (focused: boolean) => void;
   messages?: ChatUIMessage[];
+  chatId?: string;
 };
 
 /**
@@ -55,6 +57,7 @@ export const ChatInput = ({
   onStop,
   onFocusChange,
   messages,
+  chatId,
 }: ChatInputProps) => {
   const attachments = usePromptInputAttachments();
   const hasAttachments = attachments.files.length > 0;
@@ -65,6 +68,7 @@ export const ChatInput = ({
       multiple
       onSubmit={onSubmit}
     >
+      <PromptInputAutoFocus focusKey={chatId} />
       {hasAttachments ? (
         <PromptInputHeader>
           <PromptInputAttachments>
@@ -74,6 +78,7 @@ export const ChatInput = ({
       ) : null}
       <PromptInputBody>
         <PromptInputTextarea
+          className="min-h-10 pb-0 md:min-h-10"
           onBlur={() => onFocusChange?.(false)}
           onChange={(e) => onInputChange(e.target.value)}
           onFocus={() => onFocusChange?.(true)}

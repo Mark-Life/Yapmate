@@ -264,6 +264,49 @@ export function PromptInputProvider({
 
 const LocalAttachmentsContext = createContext<AttachmentsContext | null>(null);
 
+const TextareaRefContext = createContext<RefObject<HTMLTextAreaElement | null> | null>(
+  null
+);
+
+/**
+ * Hook to access the textarea ref for focusing or other operations
+ * Returns null if used outside of PromptInput context
+ */
+export const usePromptInputTextareaRef = () => {
+  return useContext(TextareaRefContext);
+};
+
+export type PromptInputAutoFocusProps = {
+  /**
+   * Key that changes when focus should be triggered again
+   * Useful for refocusing when navigating between chats
+   */
+  focusKey?: string | number;
+};
+
+/**
+ * Component that auto-focuses the textarea when mounted or when focusKey changes
+ * Should be rendered inside PromptInput
+ */
+export const PromptInputAutoFocus = ({
+  focusKey,
+}: PromptInputAutoFocusProps) => {
+  const textareaRef = usePromptInputTextareaRef();
+
+  useEffect(() => {
+    // Small delay to ensure textarea is fully rendered
+    const timeoutId = setTimeout(() => {
+      if (textareaRef?.current) {
+        textareaRef.current.focus();
+      }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [textareaRef, focusKey]);
+
+  return null;
+};
+
 export const usePromptInputAttachments = () => {
   // Dual-mode: prefer provider if present, otherwise use local
   const provider = useOptionalProviderAttachments();
@@ -824,11 +867,20 @@ export const PromptInput = ({
     </>
   );
 
+  // Create textarea ref context for focusing
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const innerWithContext = (
+    <TextareaRefContext.Provider value={textareaRef}>
+      {inner}
+    </TextareaRefContext.Provider>
+  );
+
   return usingProvider ? (
-    inner
+    innerWithContext
   ) : (
     <LocalAttachmentsContext.Provider value={ctx}>
-      {inner}
+      {innerWithContext}
     </LocalAttachmentsContext.Provider>
   );
 };
@@ -837,10 +889,43 @@ export type PromptInputBodyProps = HTMLAttributes<HTMLDivElement>;
 
 export const PromptInputBody = ({
   className,
+  onClick,
   ...props
-}: PromptInputBodyProps) => (
-  <div className={cn("contents", className)} {...props} />
-);
+}: PromptInputBodyProps) => {
+  const textareaRef = useContext(TextareaRefContext);
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't focus if clicking on an interactive element
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("textarea") ||
+      target.closest("select") ||
+      target.closest("[role='button']") ||
+      target.closest("[role='menuitem']") ||
+      target.closest("a")
+    ) {
+      onClick?.(e);
+      return;
+    }
+
+    // Focus the textarea
+    if (textareaRef?.current) {
+      textareaRef.current.focus();
+    }
+
+    onClick?.(e);
+  };
+
+  return (
+    <div
+      className={cn("contents cursor-text", className)}
+      onClick={handleClick}
+      {...props}
+    />
+  );
+};
 
 export type PromptInputTextareaProps = ComponentProps<
   typeof InputGroupTextarea
@@ -855,6 +940,17 @@ export const PromptInputTextarea = ({
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
   const [isComposing, setIsComposing] = useState(false);
+  const textareaRef = useContext(TextareaRefContext);
+
+  // Sync ref to context ref
+  const setRef = useCallback(
+    (element: HTMLTextAreaElement | null) => {
+      if (textareaRef) {
+        textareaRef.current = element;
+      }
+    },
+    [textareaRef]
+  );
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
@@ -930,6 +1026,7 @@ export const PromptInputTextarea = ({
 
   return (
     <InputGroupTextarea
+      ref={setRef}
       className={cn(
         "field-sizing-content max-h-48 min-h-10 md:min-h-12",
         className
@@ -969,14 +1066,44 @@ export type PromptInputFooterProps = Omit<
 
 export const PromptInputFooter = ({
   className,
+  onClick,
   ...props
-}: PromptInputFooterProps) => (
-  <InputGroupAddon
-    align="block-end"
-    className={cn("justify-between gap-1", className)}
-    {...props}
-  />
-);
+}: PromptInputFooterProps) => {
+  const textareaRef = useContext(TextareaRefContext);
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't focus if clicking on an interactive element
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("textarea") ||
+      target.closest("select") ||
+      target.closest("[role='button']") ||
+      target.closest("[role='menuitem']") ||
+      target.closest("a")
+    ) {
+      onClick?.(e);
+      return;
+    }
+
+    // Focus the textarea
+    if (textareaRef?.current) {
+      textareaRef.current.focus();
+    }
+
+    onClick?.(e);
+  };
+
+  return (
+    <InputGroupAddon
+      align="block-end"
+      className={cn("justify-between gap-1 cursor-text", className)}
+      onClick={handleClick}
+      {...props}
+    />
+  );
+};
 
 export type PromptInputToolsProps = HTMLAttributes<HTMLDivElement>;
 
