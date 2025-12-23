@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ServiceWorkerState = {
   updateAvailable: boolean;
@@ -168,7 +168,7 @@ export const useServiceWorker = () => {
   /**
    * Apply update by telling waiting service worker to skip waiting
    */
-  const applyUpdate = () => {
+  const applyUpdate = useCallback(() => {
     if (state.registration?.waiting) {
       state.registration.waiting.postMessage({ type: "SKIP_WAITING" });
       // The controllerchange event will trigger a reload
@@ -176,12 +176,12 @@ export const useServiceWorker = () => {
       // If no waiting worker, force a reload to check for updates
       window.location.reload();
     }
-  };
+  }, [state.registration]);
 
   /**
    * Force check for updates manually
    */
-  const checkForUpdate = async () => {
+  const checkForUpdate = useCallback(async () => {
     if (state.registration) {
       try {
         await state.registration.update();
@@ -192,7 +192,7 @@ export const useServiceWorker = () => {
         console.error("Manual update check failed:", error);
       }
     }
-  };
+  }, [state.registration]);
 
   return {
     updateAvailable: state.updateAvailable,

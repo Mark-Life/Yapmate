@@ -14,6 +14,9 @@ type TransformedModel = {
   name: string;
   value: string;
   provider: string;
+  contextLimit?: number;
+  inputLimit?: number;
+  outputLimit?: number;
 };
 
 /**
@@ -26,11 +29,14 @@ export const useModels = () => {
     queryFn: fetchModelsFromApi,
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 60 * 60 * 1000, // 1 hour
-    select: (modelIds): TransformedModel[] =>
-      modelIds.map((value) => ({
-        name: parseModel(value).modelName,
-        value,
-        provider: parseModel(value).provider,
+    select: (modelsData): TransformedModel[] =>
+      modelsData.map((model) => ({
+        name: parseModel(model.id).modelName,
+        value: model.id,
+        provider: parseModel(model.id).provider,
+        contextLimit: model.contextLimit,
+        inputLimit: model.inputLimit,
+        outputLimit: model.outputLimit,
       })),
   });
 

@@ -305,11 +305,21 @@ export const mapDbMessageToUI = (dbMessage: DbMessageWithParts): UIMessage => {
   // Filter role to valid UIMessage roles (no "tool" in UIMessage)
   const role = dbMessage.role === "tool" ? "assistant" : dbMessage.role;
 
+  // Build metadata object with model and usage data
+  const metadata: Record<string, unknown> = {};
+  if (dbMessage.model) {
+    metadata.model = dbMessage.model;
+  }
+  if (dbMessage.metadata) {
+    // Preserve all metadata fields (usage, cost, etc.)
+    Object.assign(metadata, dbMessage.metadata);
+  }
+
   return {
     id: dbMessage.id,
     role,
     parts: sortedParts.map(mapDbPartToUI),
-    ...(dbMessage.model ? { metadata: { model: dbMessage.model } } : {}),
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
   };
 };
 

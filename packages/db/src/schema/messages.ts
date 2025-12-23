@@ -29,6 +29,10 @@ export type MessageMetadata = {
   completionTokens?: number;
   /** Total tokens used */
   totalTokens?: number;
+  /** Cached tokens (if applicable) */
+  cachedTokens?: number;
+  /** Reasoning tokens (if applicable) */
+  reasoningTokens?: number;
   /** Cost in USD (if available from provider) */
   cost?: number;
   /** Why the generation stopped */

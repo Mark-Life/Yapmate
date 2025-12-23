@@ -1,4 +1,4 @@
-import { getModels } from "@yapmate/server/lib/models/service";
+import { getAllModelsMetadata } from "@yapmate/server/lib/models/service";
 import { publicProcedure } from "../middleware";
 
 /**
@@ -6,10 +6,19 @@ import { publicProcedure } from "../middleware";
  */
 export const models = {
   /**
-   * List all available models
+   * List all available models with metadata (including context limits)
    */
   list: publicProcedure.handler(async () => {
-    const modelList = await getModels();
-    return { models: modelList };
+    const modelsMetadata = await getAllModelsMetadata();
+    // Return model IDs with their metadata (including limit.context)
+    return {
+      models: Object.entries(modelsMetadata).map(([id, metadata]) => ({
+        id,
+        name: metadata.name,
+        contextLimit: metadata.limit.context,
+        inputLimit: metadata.limit.input,
+        outputLimit: metadata.limit.output,
+      })),
+    };
   }),
 };

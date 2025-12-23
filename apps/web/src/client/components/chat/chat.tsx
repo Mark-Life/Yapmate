@@ -296,6 +296,7 @@ export const Chat = ({
             <div className="pointer-events-auto rounded-lg backdrop-blur-md supports-backdrop-filter:bg-background/80">
               <ChatInput
                 input={input}
+                messages={messages}
                 model={model}
                 onFocusChange={setIsInputFocused}
                 onInputChange={setInput}

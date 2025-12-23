@@ -114,10 +114,13 @@ export const chatHandler = {
     const userMessage =
       message.parts.find((p) => p.type === "text")?.text || "";
 
+    // Store usage data to pass to onFinish
+    let streamUsage: Awaited<ReturnType<typeof executeStream>> = null;
+
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
         try {
-          await executeStream({
+          streamUsage = await executeStream({
             modelWithSearch,
             allMessages,
             abortSignal: abortController.signal,
@@ -137,7 +140,13 @@ export const chatHandler = {
       originalMessages: allMessages,
       generateId: () => Bun.randomUUIDv7(),
       onFinish: async ({ messages: finalMessages }) => {
-        await handleStreamFinish(streamId, id, model, finalMessages);
+        await handleStreamFinish({
+          streamId,
+          chatId: id,
+          model,
+          finalMessages,
+          usage: streamUsage,
+        });
       },
     });
 

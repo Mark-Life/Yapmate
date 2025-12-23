@@ -18,13 +18,38 @@ const ICON_VIEWBOX = 24;
 const ICON_CENTER = 12;
 const ICON_STROKE_WIDTH = 2;
 
+// Usage thresholds for color coding
+const USAGE_GREEN_MAX = 0.3; // 0-30%: green (desired)
+const USAGE_YELLOW_MAX = 0.6; // 30-60%: yellow (unwanted but acceptable)
+// 60-100%: red (red zone, should start new chat)
+
 type ModelId = string;
+
+/**
+ * Returns the color for usage indicator based on percentage
+ * - 0-30%: green (desired usage)
+ * - 30-60%: yellow (unwanted but acceptable)
+ * - 60-100%: red (red zone)
+ */
+const getUsageColor = (percent: number): string => {
+  if (percent <= USAGE_GREEN_MAX) {
+    // Green: visible in dark theme, not too bright
+    return "oklch(65% 0.18 150)";
+  }
+  if (percent <= USAGE_YELLOW_MAX) {
+    // Yellow: visible in dark theme
+    return "oklch(70% 0.18 90)";
+  }
+  // Red: use destructive color from theme
+  return "var(--destructive)";
+};
 
 type ContextSchema = {
   usedTokens: number;
   maxTokens: number;
   usage?: LanguageModelUsage;
   modelId?: ModelId;
+  showCost?: boolean;
 };
 
 const ContextContext = createContext<ContextSchema | null>(null);
@@ -39,13 +64,18 @@ const useContextValue = () => {
   return context;
 };
 
-export type ContextProps = ComponentProps<typeof HoverCard> & ContextSchema;
+export type ContextProps = ComponentProps<typeof HoverCard> &
+  ContextSchema & {
+    /** Whether to show cost information (default: true) */
+    showCost?: boolean;
+  };
 
 export const Context = ({
   usedTokens,
   maxTokens,
   usage,
   modelId,
+  showCost = true,
   ...props
 }: ContextProps) => (
   <ContextContext.Provider
@@ -54,6 +84,7 @@ export const Context = ({
       maxTokens,
       usage,
       modelId,
+      showCost,
     }}
   >
     <HoverCard closeDelay={0} openDelay={0} {...props} />
@@ -65,6 +96,7 @@ const ContextIcon = () => {
   const circumference = 2 * Math.PI * ICON_RADIUS;
   const usedPercent = usedTokens / maxTokens;
   const dashOffset = circumference * (1 - usedPercent);
+  const usageColor = getUsageColor(usedPercent);
 
   return (
     <svg
@@ -90,7 +122,7 @@ const ContextIcon = () => {
         fill="none"
         opacity="0.7"
         r={ICON_RADIUS}
-        stroke="currentColor"
+        stroke={usageColor}
         strokeDasharray={`${circumference} ${circumference}`}
         strokeDashoffset={dashOffset}
         strokeLinecap="round"
@@ -156,6 +188,7 @@ export const ContextContentHeader = ({
   const total = new Intl.NumberFormat("en-US", {
     notation: "compact",
   }).format(maxTokens);
+  const usageColor = getUsageColor(usedPercent);
 
   return (
     <div className={cn("w-full space-y-2 p-3", className)} {...props}>
@@ -168,7 +201,15 @@ export const ContextContentHeader = ({
             </p>
           </div>
           <div className="space-y-2">
-            <Progress className="bg-muted" value={usedPercent * PERCENT_MAX} />
+            <Progress
+              className="bg-muted"
+              value={usedPercent * PERCENT_MAX}
+              style={
+                {
+                  "--progress-color": usageColor,
+                } as React.CSSProperties
+              }
+            />
           </div>
         </>
       )}
@@ -195,8 +236,10 @@ export const ContextContentFooter = ({
   className,
   ...props
 }: ContextContentFooterProps) => {
-  const { modelId, usage } = useContextValue();
-  const costUSD = modelId
+  const { modelId, usage, showCost = true } = useContextValue();
+  
+  // Calculate cost but only show if showCost is true
+  const costUSD = showCost && modelId
     ? getUsage({
         modelId,
         usage: {
@@ -205,24 +248,33 @@ export const ContextContentFooter = ({
         },
       }).costUSD?.totalUSD
     : undefined;
-  const totalCost = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(costUSD ?? 0);
+  const totalCost = costUSD
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(costUSD)
+    : undefined;
+
+  // Don't render footer if cost is hidden and no custom children
+  if (!showCost && !children && !totalCost) {
+    return null;
+  }
 
   return (
     <div
       className={cn(
-        "flex w-full items-center justify-between gap-3 bg-secondary p-3 text-xs",
+        "flex w-full items-center justify-between gap-3 bg-primary/30 p-3 text-xs",
         className
       )}
       {...props}
     >
       {children ?? (
-        <>
-          <span className="text-muted-foreground">Total cost</span>
-          <span>{totalCost}</span>
-        </>
+        totalCost ? (
+          <>
+            <span className="text-muted-foreground">Total cost</span>
+            <span>{totalCost}</span>
+          </>
+        ) : null
       )}
     </div>
   );
@@ -235,7 +287,7 @@ export const ContextInputUsage = ({
   children,
   ...props
 }: ContextInputUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage, modelId, showCost = true } = useContextValue();
   const inputTokens = usage?.inputTokens ?? 0;
 
   if (children) {
@@ -246,16 +298,20 @@ export const ContextInputUsage = ({
     return null;
   }
 
-  const inputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: inputTokens, output: 0 },
-      }).costUSD?.totalUSD
+  // Calculate cost but only use if showCost is true
+  const inputCost =
+    showCost && modelId
+      ? getUsage({
+          modelId,
+          usage: { input: inputTokens, output: 0 },
+        }).costUSD?.totalUSD
+      : undefined;
+  const inputCostText = inputCost
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(inputCost)
     : undefined;
-  const inputCostText = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(inputCost ?? 0);
 
   return (
     <div
@@ -275,7 +331,7 @@ export const ContextOutputUsage = ({
   children,
   ...props
 }: ContextOutputUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage, modelId, showCost = true } = useContextValue();
   const outputTokens = usage?.outputTokens ?? 0;
 
   if (children) {
@@ -286,16 +342,20 @@ export const ContextOutputUsage = ({
     return null;
   }
 
-  const outputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: 0, output: outputTokens },
-      }).costUSD?.totalUSD
+  // Calculate cost but only use if showCost is true
+  const outputCost =
+    showCost && modelId
+      ? getUsage({
+          modelId,
+          usage: { input: 0, output: outputTokens },
+        }).costUSD?.totalUSD
+      : undefined;
+  const outputCostText = outputCost
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(outputCost)
     : undefined;
-  const outputCostText = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(outputCost ?? 0);
 
   return (
     <div
@@ -315,7 +375,7 @@ export const ContextReasoningUsage = ({
   children,
   ...props
 }: ContextReasoningUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage, modelId, showCost = true } = useContextValue();
   const reasoningTokens = usage?.reasoningTokens ?? 0;
 
   if (children) {
@@ -326,16 +386,20 @@ export const ContextReasoningUsage = ({
     return null;
   }
 
-  const reasoningCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { reasoningTokens },
-      }).costUSD?.totalUSD
+  // Calculate cost but only use if showCost is true
+  const reasoningCost =
+    showCost && modelId
+      ? getUsage({
+          modelId,
+          usage: { reasoningTokens },
+        }).costUSD?.totalUSD
+      : undefined;
+  const reasoningCostText = reasoningCost
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(reasoningCost)
     : undefined;
-  const reasoningCostText = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(reasoningCost ?? 0);
 
   return (
     <div
@@ -355,7 +419,7 @@ export const ContextCacheUsage = ({
   children,
   ...props
 }: ContextCacheUsageProps) => {
-  const { usage, modelId } = useContextValue();
+  const { usage, modelId, showCost = true } = useContextValue();
   const cacheTokens = usage?.cachedInputTokens ?? 0;
 
   if (children) {
@@ -366,16 +430,20 @@ export const ContextCacheUsage = ({
     return null;
   }
 
-  const cacheCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).costUSD?.totalUSD
+  // Calculate cost but only use if showCost is true
+  const cacheCost =
+    showCost && modelId
+      ? getUsage({
+          modelId,
+          usage: { cacheReads: cacheTokens, input: 0, output: 0 },
+        }).costUSD?.totalUSD
+      : undefined;
+  const cacheCostText = cacheCost
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(cacheCost)
     : undefined;
-  const cacheCostText = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cacheCost ?? 0);
 
   return (
     <div

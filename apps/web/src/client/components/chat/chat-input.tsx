@@ -14,9 +14,11 @@ import {
   PromptInputTranscribeButton,
   usePromptInputAttachments,
 } from "@yapmate/components/ai-elements/prompt-input";
+import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
 import { GlobeIcon } from "lucide-react";
 import { ModelSelectorCombobox } from "../model-selector";
+import { TokenUsageIndicator } from "./token-usage-indicator";
 
 type ChatInputProps = {
   input: string;
@@ -29,6 +31,7 @@ type ChatInputProps = {
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
   onFocusChange?: (focused: boolean) => void;
+  messages?: ChatUIMessage[];
 };
 
 /**
@@ -45,6 +48,7 @@ export const ChatInput = ({
   onSubmit,
   onStop,
   onFocusChange,
+  messages,
 }: ChatInputProps) => {
   const attachments = usePromptInputAttachments();
   const hasAttachments = attachments.files.length > 0;
@@ -82,6 +86,9 @@ export const ChatInput = ({
           >
             <GlobeIcon className="size-4" />
           </PromptInputButton>
+          {messages && messages.length > 0 && (
+            <TokenUsageIndicator messages={messages} model={model} />
+          )}
         </PromptInputTools>
         <PromptInputSubmit
           disabled={!(input || status)}

@@ -114,11 +114,25 @@ type ExecuteStreamOptions = {
 };
 
 /**
+ * Usage data from stream execution (matches MessageMetadata format)
+ * Note: cost is excluded from this type as it's only stored in usage_records table,
+ * not sent to client for privacy/security reasons
+ */
+type StreamUsage = {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  cachedTokens?: number;
+  reasoningTokens?: number;
+};
+
+/**
  * Creates and executes the LLM stream
+ * @returns Usage data for the stream
  */
 export const executeStream = async (
   options: ExecuteStreamOptions
-): Promise<void> => {
+): Promise<StreamUsage | null> => {
   const {
     modelWithSearch,
     allMessages,
@@ -173,17 +187,19 @@ export const executeStream = async (
     result.providerMetadata,
   ]);
 
+  // Extract cost from provider metadata
+  const openrouterUsage =
+    providerMetadata &&
+    typeof providerMetadata === "object" &&
+    "openrouter" in providerMetadata &&
+    providerMetadata.openrouter &&
+    typeof providerMetadata.openrouter === "object" &&
+    "usage" in providerMetadata.openrouter
+      ? (providerMetadata.openrouter.usage as { cost?: number })
+      : undefined;
+
   // Save usage record for billing/analytics
   try {
-    const openrouterUsage =
-      providerMetadata &&
-      typeof providerMetadata === "object" &&
-      "openrouter" in providerMetadata &&
-      providerMetadata.openrouter &&
-      typeof providerMetadata.openrouter === "object" &&
-      "usage" in providerMetadata.openrouter
-        ? (providerMetadata.openrouter.usage as { cost?: number })
-        : undefined;
     await saveUsageRecord({
       userId,
       chatId,
@@ -211,28 +227,61 @@ export const executeStream = async (
   // Wait for title generation - keeps stream open until title is written
   await titlePromise;
 
-  // Stream completed successfully - onFinish callback will save messages
-  // No need to save here to avoid duplicates
+  // Return usage data for message metadata (excluding cost - only sent to client)
+  // Cost is still saved to usage_records table for billing/analytics
+  return {
+    promptTokens: usage.inputTokens,
+    completionTokens: usage.outputTokens,
+    totalTokens: usage.totalTokens,
+    cachedTokens: usage.cachedInputTokens,
+    reasoningTokens: usage.reasoningTokens,
+    // cost is intentionally excluded - only stored in usage_records, not sent to client
+  };
+};
+
+/**
+ * Options for handling stream finish
+ */
+type HandleStreamFinishOptions = {
+  streamId: string;
+  chatId: string;
+  model: string;
+  finalMessages: UIMessage[];
+  usage: StreamUsage | null;
 };
 
 /**
  * Handles onFinish callback for stream
  */
 export const handleStreamFinish = async (
-  streamId: string,
-  chatId: string,
-  model: string,
-  finalMessages: UIMessage[]
+  options: HandleStreamFinishOptions
 ): Promise<void> => {
+  const { streamId, chatId, model, finalMessages, usage } = options;
   // Save complete messages with proper IDs from AI SDK
   // This is the single source of truth for successful stream completion
   try {
     // Save all messages (upsert handles both new and updated)
     const lastMessageId = finalMessages.at(-1)?.id;
-    await saveChatMessages(chatId, finalMessages, {
-      // Add model info to the last assistant message
-      ...(lastMessageId ? { [lastMessageId]: { model } } : {}),
-    });
+    const lastMessage = finalMessages.at(-1);
+    const isAssistant = lastMessage?.role === "assistant";
+
+    // Build metadata with usage if available
+    const metadata: StreamUsage | undefined =
+      usage && isAssistant ? usage : undefined;
+
+    const messageOptions: Record<
+      string,
+      { model: string; metadata?: StreamUsage }
+    > = {};
+    if (lastMessageId) {
+      if (isAssistant && metadata) {
+        messageOptions[lastMessageId] = { model, metadata };
+      } else {
+        messageOptions[lastMessageId] = { model };
+      }
+    }
+
+    await saveChatMessages(chatId, finalMessages, messageOptions);
     await updateActiveStreamId(chatId, null);
     await setStreamStatus(streamId, "complete");
     unregisterStream(streamId);

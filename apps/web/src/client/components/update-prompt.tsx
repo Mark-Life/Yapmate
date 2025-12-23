@@ -21,7 +21,7 @@ export const UpdatePrompt = () => {
       return;
     }
 
-    // Only show one toast at a time
+    // Only show one toast at a time - don't re-trigger if already showing
     if (toastIdRef.current !== null) {
       return;
     }
@@ -52,18 +52,6 @@ export const UpdatePrompt = () => {
       }
     };
   }, [updateAvailable, applyUpdate]);
-
-  // Also check for updates when component mounts (useful for iOS)
-  useEffect(() => {
-    // Small delay to ensure service worker is registered
-    const timeoutId = setTimeout(() => {
-      checkForUpdate();
-    }, 1000);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [checkForUpdate]);
 
   return null;
 };
