@@ -8,3 +8,7 @@ if (!container) {
 
 const root = createRoot(container);
 root.render(<App />);
+
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
