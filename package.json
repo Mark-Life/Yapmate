@@ -16,11 +16,11 @@
     "typecheck": "tsc -b",
     "format": "biome format --write",
 
-    "db:generate": "bun run drizzle-kit generate",
-    "db:generate:custom": "bun run drizzle-kit generate --custom",
-    "db:migrate": "bun run drizzle-kit migrate",
-    "db:studio": "bun run drizzle-kit studio",
-    "db:pull": "bun run drizzle-kit pull"
+    "db:generate": "bun --filter '@yapmate/db' generate",
+    "db:generate:custom": "bun --filter '@yapmate/db' generate:custom",
+    "db:migrate": "bun --filter '@yapmate/db' migrate",
+    "db:studio": "bun --filter '@yapmate/db' studio",
+    "db:pull": "bun --filter '@yapmate/db' pull"
   },
   "dependencies": {},
   "devDependencies": {
