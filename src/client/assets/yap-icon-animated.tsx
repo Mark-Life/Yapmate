@@ -5,9 +5,13 @@ import type { SVGProps } from "react";
  * - Glow pulse effect (native SVG filter with SMIL animation)
  * - Blinking eyes with sleepy squint state
  * - Eye tracking (looks left/right occasionally)
+ * - Eyes look down when input is focused
  * All animations are CSS/SMIL and GPU-accelerated.
  */
-export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
+export const YapIconAnimated = ({
+  isInputFocused = false,
+  ...props
+}: SVGProps<SVGSVGElement> & { isInputFocused?: boolean }) => (
   <svg
     aria-labelledby="yap-icon-animated-title"
     fill="currentColor"
@@ -80,6 +84,14 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
           95%, 100% { transform: translateX(0); }
         }
         
+        /* Eyes look down when input is focused */
+        .yap-eye-wrapper {
+          transition: transform 0.3s ease-out;
+        }
+        .yap-eye-wrapper.focused {
+          transform: translateY(2px);
+        }
+        
       `}
     </style>
 
@@ -117,15 +129,21 @@ export const YapIconAnimated = (props: SVGProps<SVGSVGElement>) => (
       />
 
       {/* Eyes with tracking animation */}
-      <g className="yap-eye-group">
-        {/* Eye frames (static) */}
-        <text textAnchor="middle" x="49" y="63">
-          {" ▀▀▀▀         ▀▀▀▀"}
-        </text>
-        {/* Pupils (blink + sleepy) */}
-        <text className="yap-eyes" textAnchor="middle" x="49" y="67">
-          {" ████         ████"}
-        </text>
+      <g
+        className={
+          isInputFocused ? "yap-eye-wrapper focused" : "yap-eye-wrapper"
+        }
+      >
+        <g className="yap-eye-group">
+          {/* Eye frames (static) */}
+          <text textAnchor="middle" x="49" y="63">
+            {" ▀▀▀▀         ▀▀▀▀"}
+          </text>
+          {/* Pupils (blink + sleepy) */}
+          <text className="yap-eyes" textAnchor="middle" x="49" y="67">
+            {" ████         ████"}
+          </text>
+        </g>
       </g>
 
       {/* Body/arm */}

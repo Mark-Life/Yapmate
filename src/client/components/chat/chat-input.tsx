@@ -30,6 +30,7 @@ type ChatInputProps = {
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
+  onFocusChange?: (focused: boolean) => void;
 };
 
 /**
@@ -45,6 +46,7 @@ export const ChatInput = ({
   status,
   onSubmit,
   onStop,
+  onFocusChange,
 }: ChatInputProps) => {
   const attachments = usePromptInputAttachments();
   const hasAttachments = attachments.files.length > 0;
@@ -64,7 +66,9 @@ export const ChatInput = ({
       ) : null}
       <PromptInputBody>
         <PromptInputTextarea
+          onBlur={() => onFocusChange?.(false)}
           onChange={(e) => onInputChange(e.target.value)}
+          onFocus={() => onFocusChange?.(true)}
           value={input}
         />
       </PromptInputBody>

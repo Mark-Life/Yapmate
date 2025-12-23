@@ -37,6 +37,7 @@ export const Chat = ({
   const [model, setModel] = useState<string>("");
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
@@ -276,7 +277,12 @@ export const Chat = ({
           {messages.length === 0 ? (
             <div className="flex size-full items-center justify-center pb-32">
               <div className="flex items-center justify-center opacity-60">
-                <YapIconAnimated className="size-72 text-primary" />
+                <YapIconAnimated
+                  className="text-primary"
+                  height={200}
+                  isInputFocused={isInputFocused}
+                  width={200}
+                />
               </div>
             </div>
           ) : (
@@ -293,6 +299,7 @@ export const Chat = ({
               <ChatInput
                 input={input}
                 model={model}
+                onFocusChange={setIsInputFocused}
                 onInputChange={setInput}
                 onModelChange={setModel}
                 onSearchEnabledChange={setSearchEnabled}
