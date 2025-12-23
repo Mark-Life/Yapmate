@@ -309,6 +309,7 @@ export const mapDbMessageToUI = (dbMessage: DbMessageWithParts): UIMessage => {
     id: dbMessage.id,
     role,
     parts: sortedParts.map(mapDbPartToUI),
+    ...(dbMessage.model ? { metadata: { model: dbMessage.model } } : {}),
   };
 };
 

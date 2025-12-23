@@ -85,9 +85,10 @@ export const chatHandler = {
       isFirstMessage = previousMessages.length === 0;
       const messageOrder = previousMessages.length;
 
-      // Save message with file IDs
+      // Save message with file IDs and model (model selected when user sent the message)
       await saveMessageService(id, message, messageOrder, {
         fileIdMap: fileIdByPartIndex,
+        model,
       });
 
       // Trigger background upload (non-blocking)

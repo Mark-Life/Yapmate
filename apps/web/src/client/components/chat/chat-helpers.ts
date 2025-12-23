@@ -12,38 +12,10 @@ export const createChat = async (id: string, title: string) =>
   await rpcClient.chats.create({ id, title });
 
 /**
- * Fetches the last message model for an existing chat
- * Return type is inferred from the router
- */
-export const fetchLastMessageModel = async (targetChatId: string) => {
-  try {
-    const { model } = await rpcClient.messages.getLastModel({
-      chatId: targetChatId,
-    });
-    return model;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Fetches the last assistant message model from the most recent chat
- * Return type is inferred from the router
- */
-export const fetchLastAssistantMessageModel = async () => {
-  try {
-    const { model } = await rpcClient.chats.getLastAssistantModel();
-    return model;
-  } catch {
-    return null;
-  }
-};
-
-/**
  * Checks if a model exists in the available models list
  */
 export const isModelAvailable = (
-  modelValue: string | null,
+  modelValue: string | null | undefined,
   models: Model[]
 ): boolean => {
   if (!modelValue) {
@@ -53,52 +25,87 @@ export const isModelAvailable = (
 };
 
 /**
- * Gets the default model for existing chats
+ * Extracts model from a message's metadata
  */
-export const getDefaultModelForExistingChat = async (
-  targetChatId: string,
-  models: Model[]
-): Promise<string | null> => {
-  const lastModelId = await fetchLastMessageModel(targetChatId);
-  if (lastModelId && isModelAvailable(lastModelId, models)) {
-    return lastModelId;
+const getModelFromMessage = (message: ChatUIMessage): string | null =>
+  message.metadata?.model ?? null;
+
+/**
+ * Gets the model from the last assistant message in messages array
+ */
+const getLastAssistantModel = (messages: ChatUIMessage[]): string | null => {
+  // Find last assistant message with model
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === "assistant") {
+      const model = getModelFromMessage(msg);
+      if (model) {
+        return model;
+      }
+    }
   }
   return null;
 };
 
 /**
- * Gets the default model for new chats
+ * Gets the model from the last chat's messages in React Query cache
  */
-export const getDefaultModelForNewChat = async (
+const getLastChatModelFromCache = (
+  queryClient: QueryClient,
   models: Model[]
-): Promise<string | null> => {
-  const lastAssistantModelId = await fetchLastAssistantMessageModel();
-  if (lastAssistantModelId && isModelAvailable(lastAssistantModelId, models)) {
-    return lastAssistantModelId;
+): string | null => {
+  // Get all chat queries from cache
+  const cache = queryClient.getQueryCache();
+  const chatQueries = cache.findAll({ queryKey: ["chat-messages"] });
+
+  // Find the most recent chat with messages
+  for (const query of chatQueries) {
+    const messages = query.state.data as ChatUIMessage[] | undefined;
+    if (messages && messages.length > 0) {
+      const model = getLastAssistantModel(messages);
+      if (model && isModelAvailable(model, models)) {
+        return model;
+      }
+    }
   }
+
   return null;
+};
+
+type DetermineDefaultModelOptions = {
+  initialId?: string;
+  initialMessages?: ChatUIMessage[];
+  models: Model[];
+  fallbackModel: string;
+  queryClient?: QueryClient;
 };
 
 /**
  * Determines the default model based on chat context
+ * Uses messages array instead of making API calls
  */
-export const determineDefaultModel = async (
-  initialId: string | undefined,
-  models: Model[],
-  fallbackModel: string
-): Promise<string> => {
+export const determineDefaultModel = (
+  options: DetermineDefaultModelOptions
+): string => {
+  const { initialId, initialMessages, models, fallbackModel, queryClient } =
+    options;
+
   let defaultModelId: string | null = null;
 
-  if (initialId) {
-    defaultModelId = await getDefaultModelForExistingChat(initialId, models);
-  } else {
-    defaultModelId = await getDefaultModelForNewChat(models);
+  if (initialId && initialMessages) {
+    // Existing chat: find last assistant message model
+    defaultModelId = getLastAssistantModel(initialMessages);
+  } else if (!initialId && queryClient) {
+    // New chat: look at last chat's messages from cache
+    defaultModelId = getLastChatModelFromCache(queryClient, models);
   }
 
-  if (defaultModelId) {
+  // Validate model is available
+  if (defaultModelId && isModelAvailable(defaultModelId, models)) {
     return defaultModelId;
   }
 
+  // Fallback to provided fallback model or first available model
   if (isModelAvailable(fallbackModel, models)) {
     return fallbackModel;
   }

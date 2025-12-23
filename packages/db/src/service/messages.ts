@@ -3,6 +3,7 @@
  */
 
 import type { StreamChunk } from "@yapmate/server/lib/redis/stream";
+import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { UIMessage } from "ai";
 import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../client";
@@ -18,14 +19,14 @@ import {
 // ─── Read Operations ─────────────────────────────────────────────────────────
 
 /**
- * Loads all messages for a chat with their parts, returns as UIMessage[]
+ * Loads all messages for a chat with their parts, returns as ChatUIMessage[]
  * @param req - Request object for Bun cookie access
  * @param chatId - ID of the chat to load messages for
  */
 export const getMessagesByChatId = async (
   req: Request,
   chatId: string
-): Promise<UIMessage[]> => {
+): Promise<ChatUIMessage[]> => {
   // Fetch messages ordered by position
   const dbMessages = await db
     .select()
@@ -130,7 +131,7 @@ export const getMessagesByChatId = async (
       return {
         ...uiMessage,
         parts: partsWithUrls,
-      };
+      } as ChatUIMessage;
     })
   );
 

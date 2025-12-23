@@ -3,7 +3,6 @@ import {
   createChat,
   deleteChat,
   getChat,
-  getLastAssistantMessageModel,
   getUserChats,
   updateChatTitle,
 } from "@yapmate/server/routes/api/chat/store";
@@ -84,12 +83,4 @@ export const chats = {
       await deleteChat(input.id);
       return { success: true };
     }),
-
-  /**
-   * Get the model from the last assistant message in the most recent chat
-   */
-  getLastAssistantModel: protectedProcedure.handler(async ({ context }) => {
-    const model = await getLastAssistantMessageModel(context.userId);
-    return { model };
-  }),
 };

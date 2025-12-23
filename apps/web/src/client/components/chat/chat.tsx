@@ -4,7 +4,7 @@ import type { PromptInputMessage } from "@yapmate/components/ai-elements/prompt-
 import { PromptInputProvider } from "@yapmate/components/ai-elements/prompt-input";
 import { cn } from "@yapmate/components/lib/utils";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
@@ -22,7 +22,7 @@ import { MessagesHistory } from "./messages-history";
 
 type ChatProps = {
   id?: string;
-  initialMessages?: UIMessage[];
+  initialMessages?: ChatUIMessage[];
   onChatCreated?: (id: string) => void;
 };
 
@@ -47,8 +47,15 @@ export const Chat = ({
       return;
     }
 
-    determineDefaultModel(initialId, models, FALLBACK_MODEL).then(setModel);
-  }, [models, model, initialId]);
+    const defaultModel = determineDefaultModel({
+      initialId,
+      initialMessages,
+      models,
+      fallbackModel: FALLBACK_MODEL,
+      queryClient,
+    });
+    setModel(defaultModel);
+  }, [models, model, initialId, initialMessages, queryClient]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? crypto.randomUUID());
@@ -114,7 +121,7 @@ export const Chat = ({
   const { messages, sendMessage, status, regenerate, setMessages } =
     useChat<ChatUIMessage>({
       id: chatId,
-      messages: initialMessages as ChatUIMessage[],
+      messages: initialMessages,
       transport,
       generateId: () => crypto.randomUUID(),
       onData: (dataPart) => {

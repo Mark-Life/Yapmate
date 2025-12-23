@@ -14,13 +14,5 @@ export const listMessagesInputSchema = z.object({
   chatId: z.uuid(),
 });
 
-/**
- * Get last model input schema
- */
-export const getLastModelInputSchema = z.object({
-  chatId: z.uuid(),
-});
-
 export type Message = z.infer<typeof messageSchema>;
 export type ListMessagesInput = z.infer<typeof listMessagesInputSchema>;
-export type GetLastModelInput = z.infer<typeof getLastModelInputSchema>;
