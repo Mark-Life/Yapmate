@@ -5,6 +5,13 @@
     "./schema": "./src/schema.ts",
     "./service": "./src/service/index.ts"
   },
+  "scripts": {
+    "generate": "bun --env-file ../../.env drizzle-kit generate",
+    "generate:custom": "bun --env-file ../../.env drizzle-kit generate --custom",
+    "migrate": "bun --env-file ../../.env drizzle-kit migrate",
+    "studio": "bun --env-file ../../.env drizzle-kit studio",
+    "pull": "bun --env-file ../../.env drizzle-kit pull"
+  },
   "dependencies": {
     "postgres": "^3.4.7",
     "drizzle-orm": "^0.45.1",

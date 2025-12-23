@@ -178,8 +178,8 @@ yapmate/
 - [x] Run `bun run dev` and verify app starts
 - [x] Run `bun run build` and verify build succeeds
 - [x] Run `bun run typecheck` and fix any type errors
-- [ ] Run `bun run lint` and fix any lint errors
-- [ ] Manual test: login, create chat, send message, view history
+- [x] Run `bun run lint` and fix any lint errors
+- [x] Manual test: login, create chat, send message, view history
 
 ---
 
@@ -195,9 +195,9 @@ yapmate/
 
 ### 2.2 Update Drizzle Config
 
-- [ ] Update `drizzle.config.ts` paths for new db package location
-- [ ] Test `bun run db:generate`
-- [ ] Test `bun run db:migrate`
+- [x] Update `drizzle.config.ts` paths for new db package location
+- [x] Test `bun run db:generate`
+- [x] Test `bun run db:migrate`
 
 ### 2.3 Deploy and Verify
 
