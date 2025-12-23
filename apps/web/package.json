@@ -7,6 +7,7 @@
     "start": "cd dist && bun --bun --env-file ../../../.env ./index.js"
   },
   "dependencies": {
+    "@yapmate/api": "workspace:*",
     "@yapmate/db": "workspace:*",
     "@yapmate/components": "workspace:*",
     "@yapmate/server": "workspace:*",
@@ -27,7 +28,9 @@
     "@supabase/supabase-js": "catalog:",
     "@supabase/ssr": "catalog:",
     "tailwindcss": "catalog:",
-    "tw-animate-css": "catalog:"
+    "tw-animate-css": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:"
   },
   "devDependencies": {
     "typescript": "catalog:",

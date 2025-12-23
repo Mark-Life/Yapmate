@@ -188,9 +188,9 @@ yapmate/
 
 ### 2.1 Update Railway Configuration
 
-- [ ] Update `railway.toml` build command to point to `apps/web`
-- [ ] Update start command for new paths
-- [ ] Verify environment variables still work
+- [x] Update `railway.toml` build command to point to `apps/web`
+- [x] Update start command for new paths
+- [x] Verify environment variables still work
 
 ### 2.2 Update Drizzle Config
 
@@ -200,14 +200,14 @@ yapmate/
 
 ### 2.3 Deploy and Verify
 
-- [ ] Push to Railway
-- [ ] Verify deployment succeeds
-- [ ] Test all functionality in production:
-  - [ ] Authentication (magic link)
-  - [ ] Chat creation
-  - [ ] Message streaming
-  - [ ] Model switching
-  - [ ] Chat history
+- [x] Push to Railway
+- [x] Verify deployment succeeds
+- [x] Test all functionality in production:
+  - [x] Authentication (magic link)
+  - [x] Chat creation
+  - [x] Message streaming
+  - [x] Model switching
+  - [x] Chat history
 
 ---
 
@@ -217,12 +217,12 @@ yapmate/
 
 ### 3.1 Create API Package (`packages/api`)
 
-- [ ] Create `packages/api/` directory
-- [ ] Install oRPC dependencies:
+- [x] Create `packages/api/` directory
+- [x] Install oRPC dependencies:
   ```bash
-  bun add @orpc/server @orpc/client @orpc/openapi zod
+  bun add @orpc/server @orpc/client zod
   ```
-- [ ] Create `packages/api/package.json`:
+- [x] Create `packages/api/package.json`:
   ```json
   {
     "name": "@yapmate/api",
@@ -237,46 +237,33 @@ yapmate/
 
 ### 3.2 Define oRPC Router
 
-- [ ] Create `packages/api/src/router.ts` with all procedures
-- [ ] Define Zod schemas for all request/response types:
-  - [ ] `chats.list` - get user chats
-  - [ ] `chats.create` - create new chat
-  - [ ] `chats.update` - update chat title
-  - [ ] `chats.delete` - delete chat
-  - [ ] `messages.list` - get chat messages
-  - [ ] `models.list` - get available models
-  - [ ] `auth.magicLink` - send magic link
+- [x] Create `packages/api/src/router.ts` with all procedures
+- [x] Define Zod schemas for all request/response types
 
 ### 3.3 Create oRPC Server Handler
 
-- [ ] Create server-side handler that mounts router
-- [ ] Integrate with existing Bun.serve routes
-- [ ] Add context (user session, db) to procedures
+- [x] Create server-side handler that mounts router
+- [x] Integrate with existing Bun.serve routes
+- [x] Add context (user session, db) to procedures
 
 ### 3.4 Create oRPC Client
 
-- [ ] Create `packages/api/src/client.ts` with typed client
-- [ ] Export client factory for different platforms
+- [x] Create `packages/api/src/client.ts` with typed client
+- [x] Export client factory for different platforms
 
 ### 3.5 Migrate Client Fetch Calls
 
-- [ ] Replace `fetch("/api/chats")` → `client.chats.list()`
-- [ ] Replace `fetch("/api/chats/${id}/messages")` → `client.messages.list({ chatId })`
-- [ ] Replace all other fetch calls
-- [ ] Remove manual type assertions
+- [x] Replace `fetch("/api/chats")` → `client.chats.list()`
+- [x] Replace `fetch("/api/chats/${id}/messages")` → `client.messages.list({ chatId })`
+- [x] Replace all other fetch calls
+- [x] Remove manual type assertions
 
-### 3.6 Generate OpenAPI Spec (Optional)
+### 3.6 Verify Phase 3
 
-- [ ] Configure oRPC OpenAPI plugin
-- [ ] Generate `/openapi.json` endpoint
-- [ ] Add Swagger UI for API docs
-
-### 3.7 Verify Phase 3
-
-- [ ] All type errors resolved
-- [ ] All fetch calls replaced
-- [ ] Manual test all functionality
-- [ ] Deploy and verify production
+- [x] All type errors resolved
+- [x] All fetch calls replaced
+- [x] Manual test all functionality
+- [x] Deploy and verify production
 
 ---
 

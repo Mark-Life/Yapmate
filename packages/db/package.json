@@ -13,10 +13,12 @@
     "pull": "bun --env-file ../../.env drizzle-kit pull"
   },
   "dependencies": {
-    "postgres": "^3.4.7",
-    "drizzle-orm": "^0.45.1",
-    "drizzle-kit": "^0.31.8",
     "@yapmate/server": "workspace:*",
-    "ai": "catalog:"
+    "ai": "catalog:",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
+    "postgres": "^3.4.7",
+    "zod": "catalog:"
   }
 }
