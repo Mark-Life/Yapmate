@@ -86,6 +86,8 @@ const server = serve({
     // Frontend SPA routes - HTML import bundles React app
     "/": index,
     "/login": index,
+    "/chat": index,
+    "/chat/*": index,
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,
@@ -121,26 +123,26 @@ const server = serve({
       const file = Bun.file(filePath);
       return new Response(file);
     },
+
+    // SPA catch-all fallback - must be last in routes
+    // Serves bundled HTML for client-side routing (React router handles 404)
+    "/*": index,
   },
 
   /**
-   * SPA fallback handler - runs for routes not matched above.
-   * Returns HTML for client-side routing, 404 for missing static files.
+   * Fallback for unmatched static files (e.g., missing .js, .css, .png)
+   * The catch-all "/*" route above handles SPA routing
    */
   fetch(req) {
     const url = new URL(req.url);
     const hasFileExtension = FILE_EXTENSION_PATTERN.test(url.pathname);
 
-    // Static file not found - return 404
     if (hasFileExtension) {
       return new Response("Not Found", { status: 404 });
     }
 
-    // SPA fallback for client-side routing
-    const htmlPath = isProduction ? "./index.html" : "./src/client/index.html";
-    return new Response(Bun.file(htmlPath), {
-      headers: { "Content-Type": "text/html" },
-    });
+    // This shouldn't be reached since "/*" catches all non-file routes
+    return new Response("Not Found", { status: 404 });
   },
 
   // Development mode configuration

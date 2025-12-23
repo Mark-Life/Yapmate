@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "./contexts/user-context";
 import { ChatLayout } from "./pages/chat-layout";
 import { LoginPage } from "./pages/login";
+import { NotFoundPage } from "./pages/not-found";
 
 /**
  * Loading component shown during auth check
@@ -70,7 +71,7 @@ export const Router = () => {
     return <ChatLayout />;
   }
 
-  return <div>404 Not Found</div>;
+  return <NotFoundPage />;
 };
 
 /**
