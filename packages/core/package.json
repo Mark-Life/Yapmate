@@ -1,0 +1,8 @@
+{
+  "name": "@yapmate/core",
+  "type": "module",
+  "exports": {
+    "./ai/*": "./src/ai/index.ts",
+    "./types": "./src/types/index.ts"
+  }
+}

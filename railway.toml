@@ -3,10 +3,10 @@
 
 [build]
 builder = "railpack"
-buildCommand = "bun install && bun --bun build.ts"
+buildCommand = "bun install && bun run build"
 
 [deploy]
-startCommand = "cd dist && bun --bun index.js"
+startCommand = "bun run start"
 healthcheckPath = "/health"
 healthcheckTimeout = 15
 restartPolicyType = "NEVER"

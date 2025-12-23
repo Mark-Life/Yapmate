@@ -1,0 +1,37 @@
+{
+  "name": "@yapmate/web",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun --hot --env-file ../../.env src/server/index.ts",
+    "build": "bun --bun --env-file ../../.env  build.ts",
+    "start": "cd dist && bun --bun --env-file ../../../.env ./index.js"
+  },
+  "dependencies": {
+    "@yapmate/db": "workspace:*",
+    "@yapmate/components": "workspace:*",
+    "@yapmate/server": "workspace:*",
+    "@yapmate/core": "workspace:*",
+    "@ai-sdk/react": "^2.0.117",
+    "ai": "catalog:",
+    "sonner": "catalog:",
+    "bun-plugin-tailwind": "^0.1.2",
+    "next-themes": "catalog:",
+    "@tanstack/query-sync-storage-persister": "^5.90.14",
+    "@tanstack/react-query": "^5.90.12",
+    "@tanstack/react-query-persist-client": "^5.90.14",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "lucide-react": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "@supabase/ssr": "catalog:",
+    "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@tailwindcss/postcss": "^4",
+    "babel-plugin-react-compiler": "1.0.0"
+  }
+}

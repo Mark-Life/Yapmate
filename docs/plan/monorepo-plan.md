@@ -17,6 +17,9 @@ This document outlines the step-by-step plan to migrate the current Yapmate code
 yapmate/
 ├── apps/
 │   ├── web/                    # Bun fullstack entry point
+│   │   ├── public/             # Static assets, PWA files
+│   │   ├── src/
+│   │   └── build.ts
 │   ├── desktop/                # Tauri shell (wraps web frontend)
 │   └── mobile/                 # Expo React Native app
 ├── packages/
@@ -41,18 +44,18 @@ yapmate/
 
 ### 1.1 Create Directory Structure
 
-- [ ] Create `apps/` directory
-- [ ] Create `apps/web/` directory
-- [ ] Create `packages/` directory
-- [ ] Create `packages/db/` directory
-- [ ] Create `packages/ui/` directory
-- [ ] Create `packages/server/` directory
-- [ ] Create `packages/core/` directory
+- [x] Create `apps/` directory
+- [x] Create `apps/web/` directory
+- [x] Create `packages/` directory
+- [x] Create `packages/db/` directory
+- [x] Create `packages/ui/` directory
+- [x] Create `packages/server/` directory
+- [x] Create `packages/core/` directory
 
 ### 1.2 Move Database Package (`packages/db`)
 
-- [ ] Move `src/server/lib/db/` → `packages/db/src/`
-- [ ] Create `packages/db/package.json`:
+- [x] Move `src/server/lib/db/` → `packages/db/src/`
+- [x] Create `packages/db/package.json`:
   ```json
   {
     "name": "@yapmate/db",
@@ -64,16 +67,16 @@ yapmate/
   }
   ```
 - [ ] Create `packages/db/src/index.ts` exporting all db utilities
-- [ ] Move `drizzle.config.ts` to reference new paths
-- [ ] Update all imports from `@/server/lib/db` → `@yapmate/db`
+- [x] Move `drizzle.config.ts` to reference new paths
+- [x] Update all imports from `@/server/lib/db` → `@yapmate/db`
 
 ### 1.3 Move UI Package (`packages/ui`)
 
-- [ ] Move `src/client/components/ui/` → `packages/ui/src/`
-- [ ] Create `packages/ui/package.json`:
+- [x] Move `src/client/components/ui/` → `packages/ui/src/`
+- [x] Create `packages/ui/package.json`:
   ```json
   {
-    "name": "@yapmate/ui",
+    "name": "@yapmate/components",
     "type": "module",
     "exports": {
       "./*": "./src/*.tsx"
@@ -84,16 +87,16 @@ yapmate/
     }
   }
   ```
-- [ ] Move `src/client/lib/utils.ts` → `packages/ui/src/lib/utils.ts`
-- [ ] Update all imports from `@/client/components/ui` → `@yapmate/ui`
-- [ ] Move `components.json` to reference new paths
+- [x] Move `src/client/lib/utils.ts` → `packages/ui/src/lib/utils.ts`
+- [ ] Update all imports from `@yapmate/components/ui` → `@yapmate/components/ui`
+- [x] Move `components.json` to reference new paths
 
 ### 1.4 Move Server Package (`packages/server`)
 
-- [ ] Move `src/server/lib/` (except db) → `packages/server/src/lib/`
-- [ ] Move `src/server/middleware/` → `packages/server/src/middleware/`
-- [ ] Move `src/server/routes/` → `packages/server/src/routes/`
-- [ ] Create `packages/server/package.json`:
+- [x] Move `src/server/lib/` (except db) → `packages/server/src/lib/`
+- [x] Move `src/server/middleware/` → `packages/server/src/middleware/`
+- [x] Move `src/server/routes/` → `packages/server/src/routes/`
+- [x] Create `packages/server/package.json`:
   ```json
   {
     "name": "@yapmate/server",
@@ -109,9 +112,9 @@ yapmate/
 
 ### 1.5 Create Core Package (`packages/core`)
 
-- [ ] Create `packages/core/src/types/` for shared types
-- [ ] Move shared types from server/client to core
-- [ ] Create `packages/core/package.json`:
+- [x] Create `packages/core/src/types/` for shared types
+- [x] Move shared types from server/client to core
+- [x] Create `packages/core/package.json`:
   ```json
   {
     "name": "@yapmate/core",
@@ -125,9 +128,9 @@ yapmate/
 
 ### 1.6 Create Web App (`apps/web`)
 
-- [ ] Move `src/client/` → `apps/web/src/client/`
-- [ ] Move `src/server/index.ts` → `apps/web/src/server/index.ts`
-- [ ] Create `apps/web/package.json`:
+- [x] Move `src/client/` → `apps/web/src/client/`
+- [x] Move `src/server/index.ts` → `apps/web/src/server/index.ts`
+- [x] Create `apps/web/package.json`:
   ```json
   {
     "name": "@yapmate/web",
@@ -139,18 +142,19 @@ yapmate/
     },
     "dependencies": {
       "@yapmate/db": "workspace:*",
-      "@yapmate/ui": "workspace:*",
+      "@yapmate/components": "workspace:*",
       "@yapmate/server": "workspace:*",
       "@yapmate/core": "workspace:*"
     }
   }
   ```
-- [ ] Move `build.ts` → `apps/web/build.ts`
+- [x] Move `build.ts` → `apps/web/build.ts`
+- [x] Move `public/` → `apps/web/public/` (static assets, PWA files)
 - [ ] Update all imports to use workspace packages
 
 ### 1.7 Update Root Configuration
 
-- [ ] Update root `package.json` with workspaces:
+- [x] Update root `package.json` with workspaces:
   ```json
   {
     "name": "yapmate",
@@ -165,15 +169,15 @@ yapmate/
   }
   ```
 - [ ] Update `tsconfig.json` with path aliases for all packages
-- [ ] Update `biome.json` if needed for new structure
-- [ ] Update `.gitignore` for new paths
+- [x] Update `biome.json` if needed for new structure
+- [x] Update `.gitignore` for new paths
 
 ### 1.8 Verify Phase 1
 
-- [ ] Run `bun install` from root
-- [ ] Run `bun run dev` and verify app starts
-- [ ] Run `bun run build` and verify build succeeds
-- [ ] Run `bun run typecheck` and fix any type errors
+- [x] Run `bun install` from root
+- [x] Run `bun run dev` and verify app starts
+- [x] Run `bun run build` and verify build succeeds
+- [x] Run `bun run typecheck` and fix any type errors
 - [ ] Run `bun run lint` and fix any lint errors
 - [ ] Manual test: login, create chat, send message, view history
 
@@ -464,7 +468,7 @@ When working on this migration:
 2. **Update status** after completing tasks (change 🔴 to 🟡 in progress, 🟢 done)
 3. **Don't skip phases** - each phase depends on the previous
 4. **Test thoroughly** before marking complete
-5. **Keep imports clean** - use workspace package names (`@yapmate/ui`) not relative paths
+5. **Keep imports clean** - use workspace package names (`@yapmate/components`) not relative paths
 6. **Follow existing patterns** - look at current code style before making changes
 
 ---
@@ -476,9 +480,9 @@ When working on this migration:
 import { db, schema } from "@yapmate/db";
 import { chats, messages } from "@yapmate/db/schema";
 
-// @yapmate/ui
-import { Button } from "@yapmate/ui/button";
-import { Card } from "@yapmate/ui/card";
+// @yapmate/components
+import { Button } from "@yapmate/components/button";
+import { Card } from "@yapmate/components/card";
 
 // @yapmate/server
 import { chatHandler } from "@yapmate/server/routes/chat";

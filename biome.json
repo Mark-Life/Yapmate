@@ -9,11 +9,11 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "!node_modules",
-      "!dist",
-      "!build",
-      "!**/components/ui",
-      "!**/components/ai-elements"
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!packages/components/src/ui",
+      "!packages/components/src/ai-elements"
     ]
   },
   "formatter": {
