@@ -14,7 +14,26 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@yapmate/db": ["./packages/db/src/client.ts"],
+      "@yapmate/db/schema": ["./packages/db/src/schema.ts"],
+      "@yapmate/db/service": ["./packages/db/src/service/index.ts"],
+      "@yapmate/db/service/*": ["./packages/db/src/service/*"],
+
+      "@yapmate/components/ui/*": ["./packages/components/src/ui/*"],
+      "@yapmate/components/ai-elements/*": [
+        "./packages/components/src/ai-elements/*"
+      ],
+      "@yapmate/components/lib/utils": [
+        "./packages/components/src/lib/utils.ts"
+      ],
+
+      "@yapmate/server": ["./packages/server/src/index.ts"],
+      "@yapmate/server/routes/*": ["./packages/server/src/routes/*"],
+      "@yapmate/server/middleware/*": ["./packages/server/src/middleware/*"],
+      "@yapmate/server/lib/*": ["./packages/server/src/lib/*"],
+
+      "@yapmate/core/types": ["./packages/core/src/types/index.ts"],
+      "@yapmate/core/ai": ["./packages/core/src/ai/index.ts"]
     },
     "strictNullChecks": true
   },

@@ -168,7 +168,7 @@ yapmate/
     }
   }
   ```
-- [ ] Update `tsconfig.json` with path aliases for all packages
+- [x] Update `tsconfig.json` with path aliases for all packages
 - [x] Update `biome.json` if needed for new structure
 - [x] Update `.gitignore` for new paths
 
