@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@yapmate/components/lib/utils";
+import { Button } from "@yapmate/components/ui/button";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import {
   type ComponentProps,
@@ -11,12 +12,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { type BundledLanguage, codeToHtml, type ShikiTransformer } from "shiki";
-import { Button } from "@yapmate/components/ui/button";
+
+/** Re-export BundledLanguage type for consumers */
+export type { BundledLanguage } from "shiki";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
-  language: BundledLanguage;
+  language: string;
   showLineNumbers?: boolean;
 };
 
@@ -28,35 +30,43 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-const lineNumberTransformer: ShikiTransformer = {
-  name: "line-numbers",
-  line(node, line) {
-    node.children.unshift({
-      type: "element",
-      tagName: "span",
-      properties: {
-        className: [
-          "inline-block",
-          "min-w-10",
-          "mr-4",
-          "text-right",
-          "select-none",
-          "text-muted-foreground",
-        ],
-      },
-      children: [{ type: "text", value: String(line) }],
-    });
-  },
-};
-
-export async function highlightCode(
+/**
+ * Dynamically imports shiki and highlights code
+ * Shiki is loaded only when this function is called
+ */
+export const highlightCode = async (
   code: string,
-  language: BundledLanguage,
+  language: string,
   showLineNumbers = false
-) {
-  const transformers: ShikiTransformer[] = showLineNumbers
-    ? [lineNumberTransformer]
-    : [];
+) => {
+  // Dynamic import - shiki is only loaded when highlighting is needed
+  const { codeToHtml } = await import("shiki");
+
+  const lineNumberTransformer = {
+    name: "line-numbers",
+    line(
+      node: { children: Array<unknown> },
+      line: number
+    ) {
+      node.children.unshift({
+        type: "element",
+        tagName: "span",
+        properties: {
+          className: [
+            "inline-block",
+            "min-w-10",
+            "mr-4",
+            "text-right",
+            "select-none",
+            "text-muted-foreground",
+          ],
+        },
+        children: [{ type: "text", value: String(line) }],
+      });
+    },
+  };
+
+  const transformers = showLineNumbers ? [lineNumberTransformer] : [];
 
   return await Promise.all([
     codeToHtml(code, {
@@ -70,7 +80,7 @@ export async function highlightCode(
       transformers,
     }),
   ]);
-}
+};
 
 export const CodeBlock = ({
   code,

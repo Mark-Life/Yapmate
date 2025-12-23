@@ -8,7 +8,7 @@ import { useServiceWorker } from "../hooks/use-service-worker";
  * Designed to work well on iOS PWAs which have stricter update mechanisms
  */
 export const UpdatePrompt = () => {
-  const { updateAvailable, applyUpdate, checkForUpdate } = useServiceWorker();
+  const { updateAvailable, applyUpdate } = useServiceWorker();
   const toastIdRef = useRef<string | number | null>(null);
 
   useEffect(() => {

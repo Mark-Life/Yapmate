@@ -78,14 +78,14 @@ export const ChatInput = ({
       ) : null}
       <PromptInputBody>
         <PromptInputTextarea
-          className="min-h-10 pb-0 md:min-h-10"
+          className="min-h-8 pb-0 md:min-h-8"
           onBlur={() => onFocusChange?.(false)}
           onChange={(e) => onInputChange(e.target.value)}
           onFocus={() => onFocusChange?.(true)}
           value={input}
         />
       </PromptInputBody>
-      <PromptInputFooter>
+      <PromptInputFooter className="px-2 pb-2">
         <PromptInputTools>
           <PromptInputTranscribeButton onTranscriptionChange={onInputChange} />
           <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
