@@ -1,0 +1,1 @@
+fix use latest model coz no we fire db select on each chat. should be data part and stored on client
