@@ -11,12 +11,27 @@ import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
 import { streamResumeHandler } from "@yapmate/server/routes/api/stream";
 import { transcribeHandler } from "@yapmate/server/routes/api/transcribe";
 import { callbackHandler } from "@yapmate/server/routes/auth/callback";
-import type { BunFile } from "bun";
+import type { BunFile, HTMLBundle } from "bun";
 import { serve } from "bun";
-import index from "../client/index.html";
+
+/**
+ * HTML import for development (HMR support)
+ * In production builds, this is replaced with `null` by the build plugin
+ * See: build.ts excludeHtmlPlugin
+ */
+import devIndexHtml from "../client/index.html";
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * Get the HTML bundle for SPA routes
+ * - Production: Serve pre-built HTML from dist/client/index.html
+ * - Development: Use HTML import for HMR and on-demand bundling
+ */
+const index: BunFile | HTMLBundle = isProduction
+  ? Bun.file("./client/index.html")
+  : devIndexHtml;
 
 /** Files that should never be served (server bundles) */
 const BLOCKED_FILES = new Set(["index.js", "index.js.map"]);
@@ -66,10 +81,10 @@ const discoverPublicAssets = async (
 
 /**
  * Discover public assets at startup
- * In production: scan current directory (dist/)
+ * In production: scan client build output (dist/client/)
  * In development: scan public/ directory
  */
-const publicAssetsDir = isProduction ? "." : "./public";
+const publicAssetsDir = isProduction ? "./client" : "./public";
 const publicAssets = await discoverPublicAssets(publicAssetsDir);
 const publicAssetCount = Object.keys(publicAssets).length;
 if (publicAssetCount > 0) {

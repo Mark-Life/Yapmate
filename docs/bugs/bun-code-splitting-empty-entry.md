@@ -269,6 +269,14 @@ The Bun bundler is written in Zig. Key areas:
 - Bun fullstack docs: https://bun.sh/docs/bundler/fullstack
 - Bun GitHub: https://github.com/oven-sh/bun
 
+## Current Codebase State
+
+The codebase is set up to reproduce and investigate this bug:
+
+- `apps/web/build.ts` - Two-phase build with code splitting ENABLED
+- `apps/web/src/server/index.ts` - Server configured for two-phase build
+- `docs/bugs/bun-code-splitting-empty-entry.md` - This file
+
 ## Test Commands
 
 ```bash
@@ -276,13 +284,25 @@ The Bun bundler is written in Zig. Key areas:
 cd apps/web
 bun --bun --env-file ../../.env build.ts
 
-# Check entry file (should be empty)
+# Check entry file (should be empty - THE BUG)
 cat dist/client/index-*.js | head -5
 
-# Check for React in chunks (should exist)
+# Check for React in chunks (should exist - code IS split)
 grep -l "createRoot" dist/client/*.js
 
-# Start server (should fail with TypeError)
+# Start server (will serve HTML but app won't load due to empty entry)
 bun run start
+
+# Verify HTML references the empty entry file
+cat dist/client/index.html | grep script
 ```
+
+## Bun Source Code Investigation
+
+The Bun source code is in the workspace at `/Users/andrey/Code/public/bun/`.
+
+Key files to investigate:
+- `src/bundler/bundle_v2.zig` - Main bundler logic
+- `src/bundler/linker.zig` - Module linking and code splitting
+- `src/js_printer.zig` - JavaScript output generation
 
