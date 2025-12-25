@@ -1,7 +1,10 @@
 #!/usr/bin/env bun
 /**
  * Production build script for Bun fullstack app
- * Uses Bun's default HTML bundling behavior
+ * Two-phase build: Client (with code splitting) → Server
+ *
+ * BUG: Code splitting with HTML entry creates empty JS entry file
+ * See: docs/bugs/bun-code-splitting-empty-entry.md
  */
 
 const start = performance.now();
@@ -50,10 +53,14 @@ const formatFileSize = (bytes: number): string => {
 };
 
 /**
- * Main build process
+ * Phase 1: Build client assets with code splitting
+ *
+ * BUG: This produces an empty entry JS file when splitting is enabled.
+ * The chunks contain the actual code, but the entry file that HTML
+ * references is empty (only sourcemap comments).
  */
-const main = async () => {
-  console.log("🚀 Starting production build...\n");
+const buildClient = async () => {
+  console.log("📦 Phase 1: Building client assets (with code splitting)...\n");
 
   // Copy manifest to client directory so Bun can resolve it during HTML processing
   console.log("📋 Preparing PWA files...");
@@ -68,10 +75,14 @@ const main = async () => {
 
   const plugins = await loadPlugins();
 
-  const result = await Bun.build({
-    entrypoints: ["./src/server/index.ts"],
-    outdir: "./dist",
-    target: "bun",
+  // BUG: With splitting: true, the entry JS file is empty
+  // The code IS split into chunks, but the entry file has no imports
+  const clientResult = await Bun.build({
+    entrypoints: ["./src/client/index.html"],
+    outdir: "./dist/client",
+    target: "browser",
+    format: "esm",
+    splitting: true, // <-- THIS CAUSES THE BUG: empty entry file
     minify: true,
     sourcemap: "linked",
     plugins,
@@ -79,9 +90,98 @@ const main = async () => {
     define: {
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
-    // Use absolute paths so SPA routing works correctly
-    publicPath: "/",
-    // Ensure all output goes to dist/ root so paths resolve correctly
+    naming: {
+      entry: "[name]-[hash].[ext]",
+      chunk: "[name]-[hash].[ext]",
+      asset: "[name]-[hash].[ext]",
+    },
+  });
+
+  if (!clientResult.success) {
+    console.error("❌ Client build failed:");
+    for (const log of clientResult.logs) {
+      console.error(log);
+    }
+    process.exit(1);
+  }
+
+  console.log("✅ Client build completed");
+
+  // Copy hashed HTML to index.html for server to serve
+  const htmlOutput = clientResult.outputs.find(
+    (o) => o.kind === "entry-point" && o.path.endsWith(".html")
+  );
+  if (htmlOutput) {
+    const targetPath = "./dist/client/index.html";
+    await Bun.write(targetPath, Bun.file(htmlOutput.path));
+    console.log(`📄 Copied ${htmlOutput.path.split("/").pop()} → index.html`);
+  }
+
+  // Debug: Check if entry JS file is empty (the bug)
+  const jsEntry = clientResult.outputs.find(
+    (o) => o.kind === "entry-point" && o.path.endsWith(".js")
+  );
+  if (jsEntry && jsEntry.size < 200) {
+    console.warn(
+      `⚠️  BUG DETECTED: Entry file ${jsEntry.path.split("/").pop()} is only ${jsEntry.size} bytes!`
+    );
+    console.warn(
+      "    This is the Bun code splitting bug - entry file is empty."
+    );
+    console.warn("    See: docs/bugs/bun-code-splitting-empty-entry.md");
+  }
+
+  console.log("📊 Client build outputs:");
+  const clientOutputs: Array<{ File: string; Type: string; Size: string }> = [];
+  for (const output of clientResult.outputs) {
+    const relativePath = output.path.replace(`${process.cwd()}/`, "");
+    clientOutputs.push({
+      File: relativePath,
+      Type: output.kind,
+      Size: formatFileSize(output.size),
+    });
+  }
+  console.table(clientOutputs);
+  console.log();
+
+  return clientResult;
+};
+
+/**
+ * Phase 2: Build server bundle
+ */
+const buildServer = async () => {
+  console.log("🖥️  Phase 2: Building server bundle...\n");
+
+  // Plugin to replace HTML imports with null in server bundle
+  // In production, we use Bun.file() to serve pre-built HTML instead
+  const excludeHtmlPlugin = {
+    name: "exclude-html",
+    setup(build: any) {
+      build.onResolve({ filter: /\.html$/ }, (args: any) => ({
+        path: args.path,
+        namespace: "html-stub",
+      }));
+      build.onLoad({ filter: /.*/, namespace: "html-stub" }, () => ({
+        contents: "export default null;",
+        loader: "js",
+      }));
+    },
+  };
+
+  const serverResult = await Bun.build({
+    entrypoints: ["./src/server/index.ts"],
+    outdir: "./dist",
+    target: "bun",
+    format: "esm",
+    splitting: false,
+    minify: true,
+    sourcemap: "linked",
+    plugins: [excludeHtmlPlugin],
+    env: "PUBLIC_*",
+    define: {
+      "process.env.NODE_ENV": JSON.stringify("production"),
+    },
     naming: {
       entry: "[name].[ext]",
       chunk: "[name]-[hash].[ext]",
@@ -89,23 +189,42 @@ const main = async () => {
     },
   });
 
-  if (!result.success) {
-    console.error("❌ Build failed:");
-    for (const log of result.logs) {
+  if (!serverResult.success) {
+    console.error("❌ Server build failed:");
+    for (const log of serverResult.logs) {
       console.error(log);
     }
     process.exit(1);
   }
 
-  // Copy PWA files to dist
+  console.log("✅ Server build completed");
+  console.log("📊 Server build outputs:");
+  const serverOutputs: Array<{ File: string; Type: string; Size: string }> = [];
+  for (const output of serverResult.outputs) {
+    const relativePath = output.path.replace(`${process.cwd()}/`, "");
+    serverOutputs.push({
+      File: relativePath,
+      Type: output.kind,
+      Size: formatFileSize(output.size),
+    });
+  }
+  console.table(serverOutputs);
+  console.log();
+
+  return serverResult;
+};
+
+/**
+ * Copy PWA and static assets to dist
+ */
+const copyAssets = async () => {
+  // Copy PWA files
   console.log("📦 Copying PWA files...");
   try {
-    // Read service worker and inject build timestamp for cache versioning
     let swContent = await Bun.file("./public/sw.js").text();
     const buildTimestamp = Date.now();
     const cacheVersion = `v1-${buildTimestamp}`;
 
-    // Add build timestamp comment at the top (ensures file changes on each build)
     if (swContent.includes("// Build:")) {
       swContent = swContent.replace(
         BUILD_TIMESTAMP_REGEX,
@@ -115,7 +234,6 @@ const main = async () => {
       swContent = `// Build: ${buildTimestamp}\n${swContent}`;
     }
 
-    // Replace cache version with build-specific version
     const updatedSwContent = swContent.replace(
       CACHE_VERSION_REGEX,
       `const CACHE_VERSION = "${cacheVersion}";`
@@ -123,20 +241,22 @@ const main = async () => {
 
     await Bun.write("./dist/sw.js", updatedSwContent);
 
-    // Copy manifest from client directory (where Bun processed it) or fallback to public
-    const manifestSource =
-      (await Bun.file("./src/client/site.webmanifest").exists()) &&
-      Bun.file("./src/client/site.webmanifest");
-    await Bun.write(
-      "./dist/site.webmanifest",
-      manifestSource || Bun.file("./public/site.webmanifest")
-    );
+    // Copy manifest from client build output
+    const clientManifest = Bun.file("./dist/client/site.webmanifest");
+    if (await clientManifest.exists()) {
+      await Bun.write("./dist/site.webmanifest", clientManifest);
+    } else {
+      await Bun.write(
+        "./dist/site.webmanifest",
+        Bun.file("./public/site.webmanifest")
+      );
+    }
     console.log("✅ PWA files copied");
   } catch (error) {
     console.warn("⚠️  Failed to copy PWA files:", error);
   }
 
-  // Copy static assets (icons and favicons) to dist
+  // Copy static assets
   console.log("🖼️  Copying static assets...");
   const staticAssets = [
     "android-chrome-192x192.png",
@@ -149,7 +269,11 @@ const main = async () => {
   ];
   try {
     for (const asset of staticAssets) {
-      const sourceFile = Bun.file(`./public/${asset}`);
+      // Try from client build first, then public
+      let sourceFile = Bun.file(`./dist/client/${asset}`);
+      if (!(await sourceFile.exists())) {
+        sourceFile = Bun.file(`./public/${asset}`);
+      }
       if (await sourceFile.exists()) {
         await Bun.write(`./dist/${asset}`, sourceFile);
       }
@@ -158,19 +282,21 @@ const main = async () => {
   } catch (error) {
     console.warn("⚠️  Failed to copy static assets:", error);
   }
+};
 
-  // Display build outputs
-  console.log("📊 Build outputs:");
-  const outputs: Array<{ File: string; Type: string; Size: string }> = [];
-  for (const output of result.outputs) {
-    const relativePath = output.path.replace(`${process.cwd()}/`, "");
-    outputs.push({
-      File: relativePath,
-      Type: output.kind,
-      Size: formatFileSize(output.size),
-    });
-  }
-  console.table(outputs);
+/**
+ * Main build process
+ */
+const main = async () => {
+  console.log("🚀 Starting two-phase production build...\n");
+  console.log("⚠️  NOTE: Code splitting is ENABLED but has a bug.");
+  console.log(
+    "   The entry JS file will be empty. See docs/bugs/bun-code-splitting-empty-entry.md\n"
+  );
+
+  await buildClient();
+  await buildServer();
+  await copyAssets();
 
   const end = performance.now();
   const buildTime = ((end - start) / 1000).toFixed(2);
