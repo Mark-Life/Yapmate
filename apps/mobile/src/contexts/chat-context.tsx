@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import { router, usePathname } from "expo-router";
 import {
   createContext,
@@ -58,9 +59,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
   /**
    * Navigates to new chat
+   * Generates a new UUID and navigates to that chat route
    */
-  const navigateToNew = useCallback(() => {
-    router.push("/chats");
+  const navigateToNew = useCallback(async () => {
+    const newChatId = await Crypto.randomUUID();
+    router.push(`/chat/${newChatId}`);
     setNewChatKey((prev) => prev + 1);
   }, []);
 
