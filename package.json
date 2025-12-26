@@ -12,6 +12,10 @@
     "build": "bun --filter '@yapmate/web' build",
     "start": "bun --filter '@yapmate/web' start",
 
+    "dev:local": "bun scripts/use-local-bun.ts --filter '@yapmate/web' dev",
+    "build:local": "bun scripts/use-local-bun.ts --filter '@yapmate/web' build",
+    "start:local": "bun scripts/use-local-bun.ts --filter '@yapmate/web' start",
+
     "lint": "biome check",
     "typecheck": "tsc -b",
     "format": "biome format --write",
