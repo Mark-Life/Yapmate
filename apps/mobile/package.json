@@ -1,0 +1,22 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "bun --bun --env-file ../../.env -- expo start",
+    "android": "bun --bun --env-file ../../.env -- expo start --android",
+    "ios": "bun --bun --env-file ../../.env -- expo start --ios",
+    "web": "bun --bun --env-file ../../.env -- expo start --web"
+  },
+  "dependencies": {
+    "expo": "~54.0.30",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
