@@ -2,12 +2,14 @@ import { useColorScheme } from "nativewind";
 import { ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { useSession } from "@/contexts/auth";
 
 /**
  * Home page component
  */
 export default function Index() {
   const { colorScheme } = useColorScheme();
+  const { session, signOut } = useSession();
 
   return (
     <ScrollView
@@ -19,6 +21,16 @@ export default function Index() {
           <Text className="text-center text-muted-foreground" variant="p">
             This app demonstrates the UI components
           </Text>
+          {session ? (
+            <View className="mt-4 items-center gap-2">
+              <Text className="text-muted-foreground" variant="small">
+                Signed in as: {session.user.email}
+              </Text>
+              <Button onPress={() => signOut()} size="sm" variant="outline">
+                <Text>Sign Out</Text>
+              </Button>
+            </View>
+          ) : null}
         </View>
 
         <View className="w-full gap-6">
