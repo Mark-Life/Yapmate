@@ -1,62 +1,126 @@
+import type { Session } from "@supabase/supabase-js";
+// biome-ignore lint: expo-auth-session only provides namespace export
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { supabase } from "./supabase";
 
+type QueryParamsResult = {
+  params: Record<string, string | undefined>;
+};
+
+type AuthUrlResult = {
+  session: Session | null;
+  error: Error | null;
+};
+
 /**
- * Creates a session from a magic link URL
- * Handles both token_hash (for magic links) and regular OTP tokens
+ * Checks if a URL is an auth callback URL
+ * Returns true if URL contains auth-related parameters
  */
-export const createSessionFromUrl = async (
-  url: string
-): Promise<{ session: any; error: Error | null }> => {
+export const isAuthCallbackUrl = (url: string): boolean => {
   try {
-    console.log("Processing auth URL:", url);
+    // Quick check: look for auth-related query parameters in the URL string
+    const authParams = [
+      "token_hash",
+      "type=magiclink",
+      "access_token",
+      "refresh_token",
+    ];
+    return authParams.some((param) => url.includes(param));
+  } catch {
+    return false;
+  }
+};
 
-    // Safely call getQueryParams with proper error handling
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let queryResult: any;
-    try {
-      queryResult = QueryParams.getQueryParams(url);
-    } catch (parseError) {
-      console.log("Error parsing URL:", parseError);
-      return { session: null, error: parseError as Error };
-    }
+/**
+ * Parses query parameters from URL
+ */
+const parseQueryParams = (url: string): QueryParamsResult | null => {
+  try {
+    const queryResult = QueryParams.getQueryParams(url);
 
-    // Type guard for the query result
     if (
       !queryResult ||
       typeof queryResult !== "object" ||
       !("params" in queryResult)
     ) {
-      console.log("Invalid query result from URL");
+      return null;
+    }
+
+    const { params } = queryResult;
+    if (!params || typeof params !== "object") {
+      return null;
+    }
+
+    return { params: params as Record<string, string | undefined> };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Extracts auth parameters from parsed query params
+ */
+const extractAuthParams = (params: Record<string, string | undefined>) => {
+  const token_hash =
+    typeof params.token_hash === "string" ? params.token_hash : null;
+  const type = typeof params.type === "string" ? params.type : null;
+  const error = params.error;
+  const error_description = params.error_description;
+
+  return { token_hash, type, error, error_description };
+};
+
+/**
+ * Verifies magic link token and creates session
+ */
+const verifyMagicLink = async (token_hash: string): Promise<AuthUrlResult> => {
+  console.log("Processing magic link with token_hash");
+
+  const { data, error: verifyError } = await supabase.auth.verifyOtp({
+    token_hash,
+    type: "magiclink",
+  });
+
+  if (verifyError) {
+    console.error("Error verifying magic link:", verifyError);
+    return {
+      session: null,
+      error: verifyError,
+    };
+  }
+
+  console.log("Magic link verified successfully");
+  return { session: data.session, error: null };
+};
+
+/**
+ * Creates a session from a magic link URL
+ * Handles both token_hash (for magic links) and regular OTP tokens
+ * Returns null session and null error if URL is not an auth callback
+ */
+export const createSessionFromUrl = async (
+  url: string
+): Promise<AuthUrlResult> => {
+  try {
+    // First check if this is an auth callback URL
+    if (!isAuthCallbackUrl(url)) {
+      // Not an auth callback, silently skip
+      return { session: null, error: null };
+    }
+
+    console.log("Processing auth URL:", url);
+
+    const queryResult = parseQueryParams(url);
+    if (!queryResult) {
       return {
         session: null,
         error: new Error("Invalid query result from URL"),
       };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { params } = queryResult;
-
-    if (!params || typeof params !== "object") {
-      console.log("No parameters found in URL");
-      return {
-        session: null,
-        error: new Error("No parameters found in URL"),
-      };
-    }
-
-    // Use type assertions for safer access
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const paramsObj = params as Record<string, any>;
-
-    // Safely extract parameters with type checking
-    const token_hash =
-      typeof paramsObj.token_hash === "string" ? paramsObj.token_hash : null;
-    const type = typeof paramsObj.type === "string" ? paramsObj.type : null;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const error = paramsObj.error;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const error_description = paramsObj.error_description;
+    const { token_hash, type, error, error_description } = extractAuthParams(
+      queryResult.params
+    );
 
     if (error) {
       throw new Error(String(error_description ?? error));
@@ -64,22 +128,10 @@ export const createSessionFromUrl = async (
 
     // For magic links, we need to verify the token_hash
     if (type === "magiclink" && token_hash) {
-      console.log("Processing magic link with token_hash");
-
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        token_hash,
-        type: "magiclink",
-      });
-
-      if (verifyError) {
-        console.error("Error verifying magic link:", verifyError);
-        throw verifyError;
-      }
-
-      console.log("Magic link verified successfully");
-      return { session: data.session, error: null };
+      return await verifyMagicLink(token_hash);
     }
 
+    // If we got here, URL had auth params but they weren't valid
     console.log("No valid auth parameters found");
     return {
       session: null,

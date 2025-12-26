@@ -27,6 +27,7 @@ export default function SignIn() {
             : "Already have an account?"}
         </Text>
         <Button
+          className="h-auto p-0"
           onPress={() => setMode(mode === "login" ? "signup" : "login")}
           variant="link"
         >
