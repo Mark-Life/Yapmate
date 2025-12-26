@@ -25,6 +25,91 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
+ * Get allowed CORS origins based on environment
+ * In development: allows localhost origins for React Native Web and web app
+ * In production: uses CORS_ORIGIN env var or defaults to same-origin
+ */
+const getAllowedOrigins = (): string[] => {
+  if (isProduction) {
+    const corsOrigin = process.env.CORS_ORIGIN;
+    return corsOrigin ? [corsOrigin] : [];
+  }
+  // Development: allow common localhost ports
+  return [
+    "http://localhost:3000",
+    "http://localhost:8081", // React Native Web default
+  ];
+};
+
+/**
+ * Check if origin is allowed
+ */
+const isOriginAllowed = (origin: string | null): boolean => {
+  if (!origin) {
+    return false;
+  }
+  const allowed = getAllowedOrigins();
+  return allowed.includes(origin);
+};
+
+/**
+ * Add CORS headers to response
+ */
+const addCorsHeaders = (req: Request, response: Response): Response => {
+  const origin = req.headers.get("origin");
+  const headers = new Headers(response.headers);
+
+  if (origin && isOriginAllowed(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+  }
+
+  headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  );
+  headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  headers.set("Access-Control-Max-Age", "86400");
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+};
+
+/**
+ * Handle CORS preflight requests
+ */
+const handleCorsPreflight = (req: Request): Response | null => {
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.get("origin");
+    const headers = new Headers();
+
+    if (origin && isOriginAllowed(origin)) {
+      headers.set("Access-Control-Allow-Origin", origin);
+      headers.set("Access-Control-Allow-Credentials", "true");
+    }
+
+    headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    );
+    headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Requested-With"
+    );
+    headers.set("Access-Control-Max-Age", "86400");
+
+    return new Response(null, { status: 204, headers });
+  }
+  return null;
+};
+
+/**
  * Get the HTML bundle for SPA routes
  * - Production: Serve pre-built HTML from dist/client/index.html
  * - Development: Use HTML import for HMR and on-demand bundling
@@ -108,23 +193,50 @@ const server = serve({
     "/auth/callback": callbackHandler.GET,
 
     // API routes - streaming and file uploads (kept as HTTP)
-    "/api/chat": chatHandler,
-    "/api/chat/:id/stream": streamResumeHandler.GET,
-    "/api/transcribe": transcribeHandler,
+    "/api/chat": async (req) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+      const response = await chatHandler.POST(req);
+      return addCorsHeaders(req, response);
+    },
+    "/api/chat/:id/stream": async (req) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+      const response = await streamResumeHandler.GET(req);
+      return addCorsHeaders(req, response);
+    },
+    "/api/transcribe": async (req) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+      const response = await transcribeHandler.POST(req);
+      return addCorsHeaders(req, response);
+    },
 
     // Health check endpoint
     "/health": () => Response.json({ status: "ok" }),
 
     // oRPC routes
     "/rpc/*": async (req) => {
+      // Handle CORS preflight
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+
       const { matched, response } = await rpcHandler.handle(req, {
         prefix: "/rpc",
         context: { req },
       });
       if (matched) {
-        return response;
+        return addCorsHeaders(req, response);
       }
-      return new Response("Not Found", { status: 404 });
+      return addCorsHeaders(req, new Response("Not Found", { status: 404 }));
     },
 
     // Static assets - discovered at startup
