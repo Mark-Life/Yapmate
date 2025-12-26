@@ -26,7 +26,7 @@ export const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <UserProvider>
           <Router />
           <UpdatePrompt />
