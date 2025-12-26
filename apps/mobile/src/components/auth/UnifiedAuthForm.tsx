@@ -97,9 +97,9 @@ function OtpInput({
       </Label>
       <Input
         keyboardType="number-pad"
-        maxLength={6}
+        maxLength={8}
         onChangeText={onChange}
-        placeholder="Enter 6-digit code"
+        placeholder="Enter 8-digit code"
         value={otp}
       />
       {error ? (
@@ -164,8 +164,8 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
 
     if (!otp.trim()) {
       errors.otp = "OTP code is required";
-    } else if (otp.length !== 6) {
-      errors.otp = "OTP code must be 6 digits";
+    } else if (otp.length !== 8) {
+      errors.otp = "OTP code must be 8 digits";
     }
 
     setFieldErrors((prev) => ({ ...prev, ...errors }));
@@ -210,12 +210,12 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
       const redirectTo =
         process.env.NODE_ENV === "development"
           ? "http://localhost:3000/auth/mobile"
-          : "https://your-domain.com/auth/mobile";
+          : "https://yapmate.com/auth/mobile";
 
       await sendMagicLink(email.trim(), redirectTo);
       Alert.alert(
         "Check your email",
-        "We've sent you a magic link. You can also enter the 6-digit code from the email."
+        "We've sent you a magic link. You can also enter the 8-digit code from the email."
       );
       setShowOtpInput(true);
     } catch (error) {
