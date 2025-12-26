@@ -1,8 +1,8 @@
-import { Icon } from 'src/components/ui/icon';
-import { cn } from 'src/lib/utils';
-import * as CheckboxPrimitive from '@rn-primitives/checkbox';
-import { Check } from 'lucide-react-native';
-import { Platform } from 'react-native';
+import * as CheckboxPrimitive from "@rn-primitives/checkbox";
+import { Check } from "lucide-react-native";
+import { Platform } from "react-native";
+import { Icon } from "src/components/ui/icon";
+import { cn } from "src/lib/utils";
 
 const DEFAULT_HIT_SLOP = 24;
 
@@ -21,24 +21,29 @@ function Checkbox({
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        'border-input dark:bg-input/30 size-4 shrink-0 rounded-[4px] border shadow-sm shadow-black/5',
+        "size-4 shrink-0 rounded-[4px] border border-input shadow-black/5 shadow-sm dark:bg-input/30",
         Platform.select({
-          web: 'focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive peer cursor-default outline-none transition-shadow focus-visible:ring-[3px] disabled:cursor-not-allowed',
-          native: 'overflow-hidden',
+          web: "peer cursor-default outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+          native: "overflow-hidden",
         }),
-        props.checked && cn('border-primary', checkedClassName),
-        props.disabled && 'opacity-50',
+        props.checked && cn("border-primary", checkedClassName),
+        props.disabled && "opacity-50",
         className
       )}
       hitSlop={DEFAULT_HIT_SLOP}
-      {...props}>
+      {...props}
+    >
       <CheckboxPrimitive.Indicator
-        className={cn('bg-primary h-full w-full items-center justify-center', indicatorClassName)}>
+        className={cn(
+          "h-full w-full items-center justify-center bg-primary",
+          indicatorClassName
+        )}
+      >
         <Icon
           as={Check}
+          className={cn("text-primary-foreground", iconClassName)}
           size={12}
-          strokeWidth={Platform.OS === 'web' ? 2.5 : 3.5}
-          className={cn('text-primary-foreground', iconClassName)}
+          strokeWidth={Platform.OS === "web" ? 2.5 : 3.5}
         />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
