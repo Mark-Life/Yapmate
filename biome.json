@@ -43,6 +43,9 @@
             "checkTypes": true
           }
         }
+      },
+      "performance": {
+        "noNamespaceImport": "off"
       }
     }
   }
