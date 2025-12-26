@@ -217,3 +217,14 @@ html {
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 }
+
+/* Streamdown/Shiki dark mode code highlighting */
+.dark [data-streamdown="code-block-body"],
+.dark [data-streamdown="code-block-body"] pre {
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+.dark [data-streamdown="code-block-body"] span[style] {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
