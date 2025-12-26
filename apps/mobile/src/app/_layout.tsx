@@ -4,6 +4,7 @@ import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider } from "@/contexts/auth";
 import { useAuthLinking } from "@/hooks/useAuthLinking";
 import { SplashScreenController } from "./splash";
@@ -17,19 +18,21 @@ export default function RootLayout() {
 
   return (
     <SessionProvider>
-      <SplashScreenController />
-      <AuthLinkingHandler />
-      <SafeAreaProvider
-        className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
-      >
-        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-        <SafeAreaView
+      <QueryProvider>
+        <SplashScreenController />
+        <AuthLinkingHandler />
+        <SafeAreaProvider
           className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
         >
-          <RootNavigator />
-        </SafeAreaView>
-        <PortalHost />
-      </SafeAreaProvider>
+          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+          <SafeAreaView
+            className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+          >
+            <RootNavigator />
+          </SafeAreaView>
+          <PortalHost />
+        </SafeAreaProvider>
+      </QueryProvider>
     </SessionProvider>
   );
 }

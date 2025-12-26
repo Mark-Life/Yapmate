@@ -3,6 +3,7 @@
  * Provides server-side Supabase client with Bun cookie support
  */
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 if (typeof process.env.PUBLIC_SUPABASE_URL !== "string") {
   throw new Error("PUBLIC_SUPABASE_URL is not set");
@@ -106,23 +107,48 @@ export const createClient = (req: Request) => {
 
 /**
  * Gets current user ID from Supabase auth
+ * Supports both Bearer token (for mobile apps) and cookies (for web apps)
  */
 export const getCurrentUserId = async (
   req: Request
 ): Promise<string | null> => {
   try {
+    // Check for Bearer token in Authorization header (mobile apps)
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7) // Remove 'Bearer ' prefix
+      : authHeader;
+
+    if (token) {
+      // Use Bearer token authentication
+      const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+      const { data: claims, error: claimsError } =
+        await supabase.auth.getClaims(token);
+
+      if (claimsError) {
+        return null;
+      }
+
+      if (claims?.claims?.sub && typeof claims.claims.sub === "string") {
+        return claims.claims.sub;
+      }
+
+      return null;
+    }
+
+    // Fall back to cookie-based authentication (web apps)
     const supabase = createClient(req);
-    const { data, error } = await supabase.auth.getClaims();
+    const { data, error } = await supabase.auth.getUser();
 
     if (error) {
       return null;
     }
 
-    if (!data?.claims?.sub || typeof data.claims.sub !== "string") {
+    if (!data?.user?.id || typeof data.user.id !== "string") {
       return null;
     }
 
-    return data.claims.sub;
+    return data.user.id;
   } catch {
     return null;
   }

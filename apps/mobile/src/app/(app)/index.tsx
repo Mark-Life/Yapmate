@@ -1,89 +1,128 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColorScheme } from "nativewind";
-import { ScrollView, View } from "react-native";
+import { FlatList, ScrollView, View } from "react-native";
+import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
-import { useSession } from "@/contexts/auth";
+import { useChatContext } from "@/contexts/chat-context";
+import { rpcClient } from "@/lib/rpc-client";
 
 /**
- * Home page component
+ * Fetches user's chats from API and parses dates
+ * Return type is inferred from the router and transformation
+ */
+const fetchChats = async () => {
+  const chats = await rpcClient.chats.list();
+  return chats.map((chat) => ({
+    ...chat,
+    updatedAt: chat.updatedAt ? new Date(chat.updatedAt) : null,
+  }));
+};
+
+/**
+ * Skeleton loader for chat list items
+ */
+const ChatListSkeleton = () => (
+  <View className="gap-2 p-4">
+    {[1, 2, 3, 4].map((i) => (
+      <Skeleton className="h-16 w-full rounded-lg" key={i} />
+    ))}
+  </View>
+);
+
+/**
+ * Chats list screen
+ * Displays all user's chats with loading and empty states
  */
 export default function Index() {
   const { colorScheme } = useColorScheme();
-  const { session, signOut } = useSession();
+  const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
+  const queryClient = useQueryClient();
+  const {
+    data: chats = [],
+    isPending,
+    error,
+  } = useQuery({
+    queryKey: ["chats"],
+    queryFn: fetchChats,
+  });
+
+  /**
+   * Prefetch messages when pressing a chat
+   */
+  const handleChatPress = (chatId: string) => {
+    navigateToChat(chatId);
+    // Prefetch messages for better UX
+    queryClient.prefetchQuery({
+      queryKey: ["chat-messages", chatId],
+      queryFn: () => rpcClient.messages.list({ chatId }),
+      staleTime: 60 * 1000,
+    });
+  };
+
+  if (isPending) {
+    return (
+      <ScrollView
+        className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+      >
+        <ChatListSkeleton />
+      </ScrollView>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        className={`flex-1 items-center justify-center bg-background p-8 ${colorScheme === "dark" ? "dark" : ""}`}
+      >
+        <Text className="mb-4" variant="h3">
+          Error loading chats
+        </Text>
+        <Text className="text-center" variant="muted">
+          {error instanceof Error ? error.message : "Unknown error occurred"}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView
+    <View
       className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
     >
-      <View className="flex-1 items-center justify-center gap-8 p-8">
-        <View className="items-center gap-4">
-          <Text variant="h1">Welcome to Nativewind!</Text>
-          <Text className="text-center text-muted-foreground" variant="p">
-            This app demonstrates the UI components
-          </Text>
-          {session ? (
-            <View className="mt-4 items-center gap-2">
-              <Text className="text-muted-foreground" variant="small">
-                Signed in as: {session.user.email}
-              </Text>
-              <Button onPress={() => signOut()} size="sm" variant="outline">
-                <Text>Sign Out</Text>
-              </Button>
-            </View>
-          ) : null}
-        </View>
-
-        <View className="w-full gap-6">
-          <View className="gap-3">
-            <Text variant="h3">Text Variants</Text>
-            <Text variant="h1">Heading 1</Text>
-            <Text variant="h2">Heading 2</Text>
-            <Text variant="h3">Heading 3</Text>
-            <Text variant="h4">Heading 4</Text>
-            <Text variant="p">This is a paragraph text with some content.</Text>
-            <Text variant="lead">This is a lead text variant.</Text>
-            <Text variant="large">Large text</Text>
-            <Text variant="small">Small text</Text>
-            <Text variant="muted">Muted text</Text>
-            <Text variant="code">code text</Text>
-          </View>
-
-          <View className="gap-3">
-            <Text variant="h3">Button Variants</Text>
-            <Button variant="default">
-              <Text>Default Button</Text>
-            </Button>
-            <Button variant="secondary">
-              <Text>Secondary Button</Text>
-            </Button>
-            <Button variant="destructive">
-              <Text>Destructive Button</Text>
-            </Button>
-            <Button variant="outline">
-              <Text>Outline Button</Text>
-            </Button>
-            <Button variant="ghost">
-              <Text>Ghost Button</Text>
-            </Button>
-            <Button variant="link">
-              <Text>Link Button</Text>
-            </Button>
-          </View>
-
-          <View className="gap-3">
-            <Text variant="h3">Button Sizes</Text>
-            <Button size="sm">
-              <Text>Small Button</Text>
-            </Button>
-            <Button size="default">
-              <Text>Default Button</Text>
-            </Button>
-            <Button size="lg">
-              <Text>Large Button</Text>
-            </Button>
-          </View>
-        </View>
+      <View className="border-border border-b p-4">
+        <Button className="w-full" onPress={navigateToNew} variant="default">
+          <Text>New Chat</Text>
+        </Button>
       </View>
-    </ScrollView>
+      {chats.length === 0 ? (
+        <View className="flex-1 items-center justify-center p-8">
+          <Text className="mb-2" variant="h3">
+            No chats yet
+          </Text>
+          <Text className="mb-4 text-center" variant="muted">
+            Start a new conversation to get started
+          </Text>
+          <Button onPress={navigateToNew} variant="outline">
+            <Text>Create Chat</Text>
+          </Button>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={{ padding: 8 }}
+          data={chats}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ChatListItem
+              id={item.id}
+              isActive={item.id === currentChatId}
+              onPress={() => handleChatPress(item.id)}
+              title={item.title}
+              updatedAt={item.updatedAt}
+            />
+          )}
+        />
+      )}
+    </View>
   );
 }

@@ -2,6 +2,7 @@ import { Redirect, Slot } from "expo-router";
 import { Text } from "react-native";
 
 import { useSession } from "@/contexts/auth";
+import { ChatProvider } from "@/contexts/chat-context";
 
 /**
  * Layout for authenticated app routes
@@ -18,5 +19,9 @@ export default function AppLayout() {
     return <Redirect href="/sign-in" />;
   }
 
-  return <Slot />;
+  return (
+    <ChatProvider>
+      <Slot />
+    </ChatProvider>
+  );
 }
