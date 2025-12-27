@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "dotenv -e ../../.env -- bunx expo start",
-    "android": "dotenv -e ../../.env -- bunx expo start --android",
-    "ios": "dotenv -e ../../.env -- bunx expo start --ios",
+    "dev": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start",
+    "android": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start --android",
+    "ios": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start --ios",
     "web": "dotenv -e ../../.env -- bunx expo start --web"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "expo": "~54.0.30",
     "expo-auth-session": "^7.0.10",
     "expo-crypto": "^15.0.8",
+    "expo-dev-client": "~6.0.20",
     "expo-linking": "^8.0.11",
     "expo-router": "^6.0.21",
     "expo-secure-store": "^15.0.8",

@@ -5,10 +5,10 @@
 export const generateAPIUrl = (relativePath: string): string => {
   const path = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
 
-  if (process.env.NODE_ENV === "development") {
-    // In development, use localhost
-    return `http://localhost:3000${path}`;
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   // In development, use localhost
+  //   return `http://localhost:3000${path}`;
+  // }
 
   // In production, use EXPO_PUBLIC_API_URL
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;

@@ -13,9 +13,9 @@ import { supabase } from "./supabase";
  * Uses EXPO_PUBLIC_API_URL environment variable
  */
 const getBaseUrl = (): string => {
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000";
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   return "http://localhost:3000";
+  // }
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!apiUrl) {
     throw new Error(
