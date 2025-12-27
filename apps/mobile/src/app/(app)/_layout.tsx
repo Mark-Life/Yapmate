@@ -1,6 +1,10 @@
 import { Redirect, Slot } from "expo-router";
+import { View } from "react-native";
+import { Drawer } from "@/components/drawer/drawer";
+import { HeaderControls } from "@/components/header-controls";
 import { useSession } from "@/contexts/auth";
 import { ChatProvider } from "@/contexts/chat-context";
+import { DrawerProvider } from "@/contexts/drawer-context";
 
 /**
  * Layout for authenticated app routes
@@ -21,7 +25,13 @@ export default function AppLayout() {
 
   return (
     <ChatProvider>
-      <Slot />
+      <DrawerProvider>
+        <View className="flex-1">
+          <HeaderControls />
+          <Slot />
+          <Drawer />
+        </View>
+      </DrawerProvider>
     </ChatProvider>
   );
 }
