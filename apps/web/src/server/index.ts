@@ -4,6 +4,7 @@
  */
 
 import { readdir } from "node:fs/promises";
+import { networkInterfaces } from "node:os";
 import { join, relative, sep } from "node:path";
 import { RPCHandler } from "@orpc/server/fetch";
 import { router } from "@yapmate/api/router";
@@ -24,9 +25,51 @@ import devIndexHtml from "../client/index.html";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
 
+/** Pattern to match private IP addresses and localhost */
+const PRIVATE_IP_PATTERN =
+  /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.0\.0\.1|localhost)/;
+
+/**
+ * Get local network IP addresses
+ * Returns array of IPs like ["192.168.1.100", "10.0.0.5"]
+ */
+const getLocalNetworkIPs = (): string[] => {
+  const interfaces = networkInterfaces();
+  const ips: string[] = [];
+
+  for (const name of Object.keys(interfaces)) {
+    const nets = interfaces[name];
+    if (!nets) {
+      continue;
+    }
+
+    for (const net of nets) {
+      // Skip internal (loopback) and non-IPv4 addresses
+      if (net.family === "IPv4" && !net.internal) {
+        ips.push(net.address);
+      }
+    }
+  }
+
+  return ips;
+};
+
+/**
+ * Check if origin is from local network (private IP ranges)
+ */
+const isLocalNetworkOrigin = (origin: string): boolean => {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+    return PRIVATE_IP_PATTERN.test(hostname);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Get allowed CORS origins based on environment
- * In development: allows localhost origins for React Native Web and web app
+ * In development: allows localhost and local network origins
  * In production: uses CORS_ORIGIN env var or defaults to same-origin
  */
 const getAllowedOrigins = (): string[] => {
@@ -43,13 +86,21 @@ const getAllowedOrigins = (): string[] => {
 
 /**
  * Check if origin is allowed
+ * In development, also allows any origin from local network
  */
 const isOriginAllowed = (origin: string | null): boolean => {
   if (!origin) {
     return false;
   }
   const allowed = getAllowedOrigins();
-  return allowed.includes(origin);
+  if (allowed.includes(origin)) {
+    return true;
+  }
+  // In development, allow any origin from local network
+  if (!isProduction && isLocalNetworkOrigin(origin)) {
+    return true;
+  }
+  return false;
 };
 
 /**
@@ -181,6 +232,7 @@ const rpcHandler = new RPCHandler(router);
 
 const server = serve({
   port,
+  hostname: "0.0.0.0", // Bind to all network interfaces
 
   routes: {
     // Frontend SPA routes - HTML import bundles React app
@@ -283,4 +335,21 @@ const server = serve({
       }),
 });
 
-console.log(`🚀 Server running at ${server.url}`);
+/**
+ * Log server URLs for easy access
+ */
+const logServerUrls = () => {
+  console.log(`🚀 Server running at ${server.url}`);
+
+  if (!isProduction) {
+    const localIPs = getLocalNetworkIPs();
+    if (localIPs.length > 0) {
+      console.log("\n📱 Access from other devices on your network:");
+      for (const ip of localIPs) {
+        console.log(`   http://${ip}:${port}`);
+      }
+    }
+  }
+};
+
+logServerUrls();
