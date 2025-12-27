@@ -1,13 +1,13 @@
 import "../globals.css";
 import "@/polyfills";
 import { PortalHost } from "@rn-primitives/portal";
-import { Stack } from "expo-router";
+import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
-import { SessionProvider, useSession } from "@/contexts/auth";
+import { SessionProvider } from "@/contexts/auth";
 import { useAuthLinking } from "@/hooks/useAuthLinking";
 import { SplashScreenController } from "./splash";
 
@@ -49,18 +49,10 @@ function AuthLinkingHandler() {
 }
 
 /**
- * Root navigator using Protected Routes
- * Protects (app) route group - only accessible when authenticated
- * Sign-in route remains accessible to unauthenticated users
+ * Root navigator using Slot primitive
+ * Slot renders child routes automatically based on file structure
+ * Route protection is handled at the layout level using Redirect components
  */
 function RootNavigator() {
-  const { session } = useSession();
-
-  return (
-    <Stack>
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-    </Stack>
-  );
+  return <Slot />;
 }
