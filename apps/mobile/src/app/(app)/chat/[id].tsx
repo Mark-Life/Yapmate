@@ -15,7 +15,7 @@ type ChatUIMessage = UIMessage;
  * Return type is inferred from the router
  */
 const fetchMessages = async (chatId: string): Promise<ChatUIMessage[]> =>
-  await rpcClient.messages.list({ chatId });
+  rpcClient.messages.list({ chatId });
 
 /**
  * Skeleton loader for chat messages

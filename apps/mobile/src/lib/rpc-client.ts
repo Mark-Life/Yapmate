@@ -30,21 +30,34 @@ const getBaseUrl = (): string => {
  * React Native doesn't send cookies automatically, so we need to add the token manually
  */
 const createAuthenticatedFetch = () => {
-  return async (url: string | URL | Request, init?: RequestInit) => {
+  return async (input: string | URL | Request, init?: RequestInit) => {
     // Get current session token
     const {
       data: { session },
     } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    // Add Authorization header if token exists
+    // Handle Request object case (body is on Request, not init)
+    if (input instanceof Request) {
+      const headers = new Headers(input.headers);
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      // Clone the request with updated headers
+      return fetch(
+        new Request(input, {
+          headers,
+        })
+      );
+    }
+
+    // Handle string/URL case
     const headers = new Headers(init?.headers);
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
 
-    // Call native fetch with updated headers
-    return fetch(url, {
+    return fetch(input, {
       ...init,
       headers,
     });

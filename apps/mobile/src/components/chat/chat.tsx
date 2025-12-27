@@ -36,7 +36,7 @@ export const Chat = ({
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
   const [model] = useState(() => determineDefaultModel());
-  const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+  // const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? Crypto.randomUUID());
@@ -60,7 +60,7 @@ export const Chat = ({
   const [transport] = useState(
     () =>
       new DefaultChatTransport({
-        fetch: async (url: string | URL | Request, init?: RequestInit) => {
+        fetch: (async (url: string | URL | Request, init?: RequestInit) => {
           // Get current session token
           const {
             data: { session },
@@ -74,12 +74,17 @@ export const Chat = ({
           }
           headers.set("Content-Type", "application/json");
 
+          // Convert URL/Request to string for expo/fetch compatibility
+          const urlString = url instanceof Request ? url.url : url.toString();
+
           // Use expo/fetch for streaming support
-          return expoFetch(url, {
+          return expoFetch(urlString, {
             ...init,
+            body: init?.body ?? undefined,
+            signal: init?.signal ?? undefined,
             headers,
-          }) as unknown as Response;
-        },
+          });
+        }) as unknown as typeof fetch,
         api: generateAPIUrl("/api/chat"),
         prepareSendMessagesRequest({
           messages: allMessages,
