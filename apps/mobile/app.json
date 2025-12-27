@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "yapmate-mobile",
+    "name": "Yapmate",
     "slug": "yapmate",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mark-life.yapmate.dev",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,11 +26,18 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mark-life.yapmate"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d495901c-3363-4686-a32e-fb09c86e4789"
+      }
+    },
+    "owner": "mark-life-ltd"
   }
 }

@@ -1,5 +1,4 @@
 import type { Session } from "@supabase/supabase-js";
-// biome-ignore lint: expo-auth-session only provides namespace export
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { supabase } from "./supabase";
 

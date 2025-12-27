@@ -34,33 +34,35 @@ export function AuthContainer({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <TouchableWithoutFeedback onPress={handlePress}>
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View className="flex-1 items-center justify-center px-4">
-              <View className="w-full max-w-md">
-                <View className="mb-8 items-center">
-                  <Text className="text-center font-bold text-3xl text-foreground">
-                    {title}
-                  </Text>
-                  <Text className="mt-2 text-center text-muted-foreground">
-                    {subtitle}
-                  </Text>
+    <SafeAreaView className="flex-1">
+      <View className="flex-1 bg-background">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={handlePress}>
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View className="flex-1 items-center justify-center px-4">
+                <View className="w-full max-w-md">
+                  <View className="mb-8 items-center">
+                    <Text className="text-center font-bold text-3xl text-foreground">
+                      {title}
+                    </Text>
+                    <Text className="mt-2 text-center text-muted-foreground">
+                      {subtitle}
+                    </Text>
+                  </View>
+                  {children}
                 </View>
-                {children}
               </View>
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+            </ScrollView>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

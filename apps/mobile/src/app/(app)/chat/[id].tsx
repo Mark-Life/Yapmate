@@ -42,7 +42,7 @@ export default function ChatScreen() {
     error,
   } = useQuery({
     queryKey: ["chat-messages", id],
-    queryFn: () => fetchMessages(id!),
+    queryFn: () => fetchMessages(id),
     enabled: Boolean(id),
   });
 
