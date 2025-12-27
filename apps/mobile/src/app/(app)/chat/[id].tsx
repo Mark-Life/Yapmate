@@ -59,22 +59,28 @@ export default function ChatScreen() {
   if (error) {
     return (
       <View
-        className={`flex-1 items-center justify-center bg-background p-8 ${colorScheme === "dark" ? "dark" : ""}`}
+        className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
       >
-        <Text className="mb-4" variant="h3">
-          Error loading chat
-        </Text>
-        <Text className="text-center" variant="muted">
-          {error instanceof Error ? error.message : "Unknown error occurred"}
-        </Text>
+        <View className="flex-1 items-center justify-center p-8">
+          <Text className="mb-4" variant="h3">
+            Error loading chat
+          </Text>
+          <Text className="text-center" variant="muted">
+            {error instanceof Error ? error.message : "Unknown error occurred"}
+          </Text>
+        </View>
       </View>
     );
   }
 
   // Handle new chat (no id) or existing chat
-  if (!id) {
-    return <Chat initialMessages={[]} />;
-  }
-
-  return <Chat id={id} initialMessages={messages} />;
+  return (
+    <View className="flex-1">
+      {id ? (
+        <Chat id={id} initialMessages={messages} />
+      ) : (
+        <Chat initialMessages={[]} />
+      )}
+    </View>
+  );
 }

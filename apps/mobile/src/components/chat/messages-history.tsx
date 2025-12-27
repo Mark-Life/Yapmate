@@ -30,8 +30,8 @@ const MessageItem = ({ message }: MessageItemProps) => {
     >
       <View
         className={cn(
-          "max-w-[80%] rounded-lg px-4 py-2",
-          isUser ? "bg-primary" : "bg-muted"
+          "py-2",
+          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : ""
         )}
       >
         {message.parts.map(
