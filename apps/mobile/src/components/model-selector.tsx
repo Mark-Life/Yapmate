@@ -1,4 +1,6 @@
+import { BlurView } from "expo-blur";
 import { Check, ChevronDown } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 import { useMemo, useRef, useState } from "react";
 import {
   type LayoutChangeEvent,
@@ -89,6 +91,7 @@ export const ModelSelector = ({
   triggerClassName,
 }: ModelSelectorProps) => {
   const { models, loading } = useModels();
+  const { colorScheme } = useColorScheme();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
@@ -197,22 +200,28 @@ export const ModelSelector = ({
         </Pressable>
       </PopoverTrigger>
       <PopoverContent
-        className="max-h-120 rounded-xl p-0"
+        className="max-h-80 overflow-hidden rounded-xl border-0 bg-transparent p-0"
         portalHost={portalHost}
         side="top"
-        sideOffset={80}
+        sideOffset={10}
         style={{ width: triggerWidth > 0 ? triggerWidth : undefined }}
       >
-        <View className="border-border border-b p-2">
-          <Input
-            className="h-8 border-0 bg-transparent shadow-none"
-            onChangeText={setSearch}
-            placeholder="Search models..."
-            // ref={inputRef}
-            value={search}
-          />
-        </View>
-        <ScrollView className="max-h-80">{renderContent()}</ScrollView>
+        <BlurView
+          className="overflow-hidden rounded-2xl border border-border"
+          intensity={50}
+          tint={colorScheme === "dark" ? "dark" : "light"}
+        >
+          <View className="border-border border-b p-2">
+            <Input
+              className="h-8 border-0 bg-transparent shadow-none"
+              onChangeText={setSearch}
+              placeholder="Search models..."
+              // ref={inputRef}
+              value={search}
+            />
+          </View>
+          <ScrollView className="max-h-64">{renderContent()}</ScrollView>
+        </BlurView>
       </PopoverContent>
     </Popover>
   );
