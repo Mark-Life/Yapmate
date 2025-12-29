@@ -1,6 +1,8 @@
+import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { CameraIcon, FileIcon, ImageIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,6 +24,8 @@ type AttachmentPickerProps = {
  * Component for picking attachments from camera, photo library, or documents
  */
 export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
+  const { colorScheme } = useColorScheme();
+
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
       lightTap();
@@ -141,19 +145,30 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
           />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" sideOffset={16}>
-        <DropdownMenuItem onPress={handleTakePhoto}>
-          <Icon as={CameraIcon} className="mr-2 size-4" />
-          <Text>Take Photo</Text>
-        </DropdownMenuItem>
-        <DropdownMenuItem onPress={handleChooseFromLibrary}>
-          <Icon as={ImageIcon} className="mr-2 size-4" />
-          <Text>Choose from Library</Text>
-        </DropdownMenuItem>
-        <DropdownMenuItem onPress={handleChooseDocument}>
-          <Icon as={FileIcon} className="mr-2 size-4" />
-          <Text>Choose Document</Text>
-        </DropdownMenuItem>
+      <DropdownMenuContent
+        align="start"
+        className="overflow-hidden rounded-2xl border-0 bg-transparent p-0"
+        side="top"
+        sideOffset={10}
+      >
+        <BlurView
+          className="overflow-hidden rounded-2xl border border-border"
+          intensity={50}
+          tint={colorScheme === "dark" ? "dark" : "light"}
+        >
+          <DropdownMenuItem onPress={handleTakePhoto}>
+            <Icon as={CameraIcon} className="mr-2 size-4" />
+            <Text>Take Photo</Text>
+          </DropdownMenuItem>
+          <DropdownMenuItem onPress={handleChooseFromLibrary}>
+            <Icon as={ImageIcon} className="mr-2 size-4" />
+            <Text>Choose from Library</Text>
+          </DropdownMenuItem>
+          <DropdownMenuItem onPress={handleChooseDocument}>
+            <Icon as={FileIcon} className="mr-2 size-4" />
+            <Text>Choose Document</Text>
+          </DropdownMenuItem>
+        </BlurView>
       </DropdownMenuContent>
     </DropdownMenu>
   );

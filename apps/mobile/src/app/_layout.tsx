@@ -14,7 +14,6 @@ import { SplashScreenController } from "./splash";
 /**
  * Root layout component for Expo Router
  * Provides SafeAreaProvider, PortalHost, StatusBar, and navigation structure
- * SafeAreaView is applied at lower levels where needed, allowing drawer to be full-screen
  */
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
