@@ -1,4 +1,5 @@
 import { useChat } from "@ai-sdk/react";
+import { PortalHost } from "@rn-primitives/portal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
@@ -6,7 +7,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
 import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -15,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { Text } from "@/components/ui/text";
+import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
@@ -42,8 +44,36 @@ export const Chat = ({
   const queryClient = useQueryClient();
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
-  const [model] = useState(() => determineDefaultModel());
-  // const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+  const { models } = useModels();
+  const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+
+  // Determine default model based on context
+  const [model, setModel] = useState(() => {
+    if (models.length > 0) {
+      return determineDefaultModel({
+        initialId,
+        initialMessages,
+        models,
+        fallbackModel: FALLBACK_MODEL,
+        queryClient,
+      });
+    }
+    return FALLBACK_MODEL;
+  });
+
+  // Update model when models load or context changes
+  useEffect(() => {
+    if (models.length > 0) {
+      const defaultModel = determineDefaultModel({
+        initialId,
+        initialMessages,
+        models,
+        fallbackModel: FALLBACK_MODEL,
+        queryClient,
+      });
+      setModel(defaultModel);
+    }
+  }, [models, initialId, initialMessages, queryClient]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? Crypto.randomUUID());
@@ -61,7 +91,9 @@ export const Chat = ({
 
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
-  modelRef.current = model;
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -208,12 +240,16 @@ export const Chat = ({
       <View className="p-1">
         <ChatInput
           input={input}
+          model={model}
           onInputChange={setInput}
+          onModelChange={setModel}
           onStop={handleStop}
           onSubmit={handleSubmit}
+          portalHost="chat"
           status={status}
         />
       </View>
+      <PortalHost name="chat" />
     </KeyboardAvoidingView>
   );
 };
