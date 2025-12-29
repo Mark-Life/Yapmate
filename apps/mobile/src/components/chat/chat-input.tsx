@@ -1,8 +1,8 @@
 import type { ChatStatus } from "ai";
+import { ArrowUpIcon, SquareIcon } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -34,46 +34,54 @@ export const ChatInput = ({
     onSubmit(input.trim());
   };
 
+  // Check if input is multiline by checking for newlines
+  const isMultiline = input.includes("\n");
+
   const isStreaming = status === "streaming" || status === "submitted";
   const canSubmit = input.trim().length > 0 && !isStreaming;
 
   return (
     <View
       className={cn(
-        "rounded-lg border border-border bg-background p-2",
+        "rounded-lg bg-background p-2",
         isFocused && "border-primary"
       )}
     >
       <View className="flex-row items-end gap-2">
         <View className="flex-1">
           <Textarea
-            className="max-h-32 min-h-10"
+            className={cn(
+              "max-h-32 min-h-10 text-sm",
+              isMultiline ? "rounded-3xl" : "rounded-full"
+            )}
             multiline
-            numberOfLines={4}
+            numberOfLines={5}
             onBlur={() => setIsFocused(false)}
             onChangeText={onInputChange}
             onFocus={() => setIsFocused(true)}
-            placeholder="Type a message..."
+            placeholder="Message..."
             value={input}
           />
         </View>
         {isStreaming ? (
           <Button
+            className="rounded-full"
             disabled={!onStop}
             onPress={onStop}
             size="icon"
             variant="outline"
           >
-            <Text>Stop</Text>
+            <SquareIcon className="size-4" />
           </Button>
         ) : (
           <Button
+            className="rounded-full"
             disabled={!canSubmit}
             onPress={handleSubmit}
             size="icon"
             variant="default"
           >
-            <Text>Send</Text>
+            <ArrowUpIcon className="size-4" />
           </Button>
         )}
       </View>

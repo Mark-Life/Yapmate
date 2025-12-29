@@ -7,7 +7,13 @@ import * as Crypto from "expo-crypto";
 import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useCallback, useRef, useState } from "react";
-import { View } from "react-native";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
 import { Text } from "@/components/ui/text";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
@@ -177,19 +183,29 @@ export const Chat = ({
     setInput("");
   };
 
+  const handleDismissKeyboard = useCallback(() => {
+    if (Platform.OS !== "web") {
+      Keyboard.dismiss();
+    }
+  }, []);
+
   return (
-    <View
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
       {messages.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <Text className="font-bold text-4xl text-primary">Yapmate</Text>
-        </View>
+        <Pressable className="flex-1" onPress={handleDismissKeyboard}>
+          <View className="flex-1 items-center justify-center">
+            <Text className="font-bold text-4xl text-primary">Yapmate</Text>
+          </View>
+        </Pressable>
       ) : (
         <MessagesHistory messages={messages} status={status} />
       )}
 
-      <View className="border-border border-t p-2">
+      <View className="p-1">
         <ChatInput
           input={input}
           onInputChange={setInput}
@@ -198,6 +214,6 @@ export const Chat = ({
           status={status}
         />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
