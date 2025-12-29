@@ -3,20 +3,18 @@ import { Check, ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useMemo, useRef, useState } from "react";
 import {
-  type LayoutChangeEvent,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   type TextInput,
   View,
 } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { useModels } from "../hooks/use-models";
@@ -75,26 +73,23 @@ const filterModels = (
 type ModelSelectorProps = {
   model: string;
   onModelChange: (model: string) => void;
-  /** Portal host name for rendering popover inside KeyboardAvoidingView */
-  portalHost?: string;
   /** Optional className to override trigger styles (e.g., when inside GlassView) */
   triggerClassName?: string;
 };
 
 /**
  * Model selector combobox with search functionality
+ * Uses a bottom sheet modal with keyboard avoidance
  */
 export const ModelSelector = ({
   model,
   onModelChange,
-  portalHost,
   triggerClassName,
 }: ModelSelectorProps) => {
   const { models, loading } = useModels();
   const { colorScheme } = useColorScheme();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [triggerWidth, setTriggerWidth] = useState<number>(0);
   const inputRef = useRef<TextInput>(null);
 
   const filteredModels = useMemo(
@@ -110,27 +105,21 @@ export const ModelSelector = ({
     [model, models]
   );
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    setTriggerWidth(event.nativeEvent.layout.width);
+  const handleOpen = () => {
+    lightTap();
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 300);
   };
 
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      lightTap();
-    }
-    setOpen(isOpen);
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      setSearch("");
-    }
+  const handleClose = () => {
+    setOpen(false);
+    setSearch("");
   };
 
   const handleSelect = (value: string) => {
     lightTap();
     onModelChange(value);
-    setOpen(false);
-    setSearch("");
+    handleClose();
   };
 
   const renderContent = () => {
@@ -174,55 +163,87 @@ export const ModelSelector = ({
   };
 
   return (
-    <Popover onOpenChange={handleOpenChange} open={open}>
-      <PopoverTrigger asChild>
-        <Pressable
-          className={cn(
-            "flex h-9 flex-row items-center gap-2 rounded-full px-3 py-2",
-            triggerClassName ?? "bg-transparent"
-          )}
-          onLayout={handleLayout}
-        >
-          <Text
-            className={cn(
-              "flex-1 text-sm",
-              currentModel ? "text-foreground" : "text-muted-foreground"
-            )}
-            ellipsizeMode="tail"
-            numberOfLines={1}
-          >
-            {loading ? "Loading..." : (currentModel?.name ?? "Select model")}
-          </Text>
-          <Icon
-            as={ChevronDown}
-            className="size-4 shrink-0 text-muted-foreground"
-          />
-        </Pressable>
-      </PopoverTrigger>
-      <PopoverContent
-        className="max-h-80 overflow-hidden rounded-xl border-0 bg-transparent p-0"
-        portalHost={portalHost}
-        side="top"
-        sideOffset={10}
-        style={{ width: triggerWidth > 0 ? triggerWidth : undefined }}
+    <>
+      <Pressable
+        className={cn(
+          "flex h-9 flex-row items-center gap-2 rounded-full px-3 py-2",
+          triggerClassName ?? "bg-transparent"
+        )}
+        onPress={handleOpen}
       >
-        <BlurView
-          className="overflow-hidden rounded-2xl border border-border"
-          intensity={50}
-          tint={colorScheme === "dark" ? "dark" : "light"}
+        <Text
+          className={cn(
+            "flex-1 text-sm",
+            currentModel ? "text-foreground" : "text-muted-foreground"
+          )}
+          ellipsizeMode="tail"
+          numberOfLines={1}
         >
-          <View className="border-border border-b p-2">
-            <Input
-              className="h-8 border-0 bg-transparent shadow-none"
-              onChangeText={setSearch}
-              placeholder="Search models..."
-              // ref={inputRef}
-              value={search}
-            />
+          {loading ? "Loading..." : (currentModel?.name ?? "Select model")}
+        </Text>
+        <Icon
+          as={ChevronDown}
+          className="size-4 shrink-0 text-muted-foreground"
+        />
+      </Pressable>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={handleClose}
+        transparent
+        visible={open}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          {/* Backdrop */}
+          <Pressable onPress={handleClose} style={StyleSheet.absoluteFill}>
+            <View className="flex-1 bg-black/50" />
+          </Pressable>
+
+          {/* Sheet content */}
+          <View className="w-full px-2 pb-2">
+            <BlurView
+              className="w-full overflow-hidden rounded-3xl border border-border"
+              intensity={80}
+              tint={colorScheme === "dark" ? "dark" : "light"}
+            >
+              {/* Drag handle */}
+              <View className="items-center py-3">
+                <View className="h-1 w-14 rounded-full bg-muted-foreground" />
+              </View>
+
+              {/* Search input */}
+              <View className="pb-2">
+                <Input
+                  className="h-10 rounded-2xl border-0 bg-transparent"
+                  onChangeText={setSearch}
+                  placeholder="Search models..."
+                  ref={inputRef}
+                  value={search}
+                />
+              </View>
+
+              {/* Model list */}
+              <ScrollView
+                className="max-h-72"
+                keyboardShouldPersistTaps="handled"
+              >
+                <View className="px-1 pb-2">{renderContent()}</View>
+              </ScrollView>
+            </BlurView>
           </View>
-          <ScrollView className="max-h-64">{renderContent()}</ScrollView>
-        </BlurView>
-      </PopoverContent>
-    </Popover>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 };
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    alignItems: "stretch",
+  },
+});

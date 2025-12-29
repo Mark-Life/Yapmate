@@ -1,5 +1,4 @@
 import { useChat } from "@ai-sdk/react";
-import { PortalHost } from "@rn-primitives/portal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { FileUIPart, UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
@@ -266,7 +265,7 @@ export const Chat = ({
       {messages.length === 0 ? (
         <Pressable className="flex-1" onPress={handleDismissKeyboard}>
           <View
-            className="flex-1 items-center justify-center pb-32"
+            className="flex-1 items-center justify-center pb-36"
             style={{ paddingTop: insets.top }}
           >
             <Text className="font-bold text-4xl text-primary">Yapmate</Text>
@@ -321,12 +320,10 @@ export const Chat = ({
           onSearchEnabledChange={setSearchEnabled}
           onStop={handleStop}
           onSubmit={handleSubmit}
-          portalHost="chat"
           searchEnabled={searchEnabled}
           status={status}
         />
       </View>
-      <PortalHost name="chat" />
     </View>
   );
 };
