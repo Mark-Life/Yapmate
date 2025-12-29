@@ -166,18 +166,23 @@ export const ModelSelector = ({
     <Popover onOpenChange={handleOpenChange} open={open}>
       <PopoverTrigger asChild>
         <Pressable
-          className="flex h-9 flex-row items-center justify-between gap-2 rounded-full border border-input bg-background px-3 py-2"
+          className="flex h-9 flex-row items-center gap-2 rounded-full border border-input bg-background px-3 py-2"
           onLayout={handleLayout}
         >
           <Text
             className={cn(
-              "text-sm",
+              "flex-1 text-sm",
               currentModel ? "text-foreground" : "text-muted-foreground"
             )}
+            ellipsizeMode="tail"
+            numberOfLines={1}
           >
             {loading ? "Loading..." : (currentModel?.name ?? "Select model")}
           </Text>
-          <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
+          <Icon
+            as={ChevronDown}
+            className="size-4 shrink-0 text-muted-foreground"
+          />
         </Pressable>
       </PopoverTrigger>
       <PopoverContent
