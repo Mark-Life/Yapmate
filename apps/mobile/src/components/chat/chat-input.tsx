@@ -6,6 +6,7 @@ import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { TranscribeButton } from "./transcribe-button";
 
 type ChatInputProps = {
   input: string;
@@ -55,11 +56,20 @@ export const ChatInput = ({
         isFocused && "border-primary"
       )}
     >
-      <View className="mb-2">
-        <ModelSelector
-          model={model}
-          onModelChange={onModelChange}
-          portalHost={portalHost}
+      <View className="mb-2 flex-row items-center gap-2">
+        <View className="flex-1">
+          <ModelSelector
+            model={model}
+            onModelChange={onModelChange}
+            portalHost={portalHost}
+          />
+        </View>
+        <TranscribeButton
+          onTranscriptionChange={(text) => {
+            const currentValue = input.trim();
+            const newValue = currentValue ? `${currentValue} ${text}` : text;
+            onInputChange(newValue);
+          }}
         />
       </View>
       <View className="flex-row items-end gap-2">
