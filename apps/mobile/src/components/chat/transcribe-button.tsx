@@ -16,6 +16,7 @@ import Animated, {
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { generateAPIUrl } from "@/lib/api-url";
+import { lightTap } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,7 @@ export const TranscribeButton = ({
    */
   const startRecording = useCallback(async () => {
     try {
+      lightTap();
       // Request permissions
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
@@ -135,6 +137,7 @@ export const TranscribeButton = ({
     }
 
     try {
+      lightTap();
       setIsRecording(false);
       setIsTranscribing(true);
 

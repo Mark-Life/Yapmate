@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { useModels } from "../hooks/use-models";
 
@@ -111,6 +112,9 @@ export const ModelSelector = ({
   };
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      lightTap();
+    }
     setOpen(isOpen);
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -120,6 +124,7 @@ export const ModelSelector = ({
   };
 
   const handleSelect = (value: string) => {
+    lightTap();
     onModelChange(value);
     setOpen(false);
     setSearch("");
