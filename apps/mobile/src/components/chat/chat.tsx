@@ -273,8 +273,12 @@ export const Chat = ({
           <LinearGradient
             colors={
               colorScheme === "dark"
-                ? ["transparent", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
-                : ["transparent", "rgba(245, 245, 245, 0.8)", "#f5f5f5"]
+                ? ["rgba(10, 10, 10, 0)", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
+                : [
+                    "rgba(245, 245, 245, 0)",
+                    "rgba(245, 245, 245, 0.8)",
+                    "#f5f5f5",
+                  ]
             }
             locations={[0, 0.5, 1]}
             pointerEvents="none"
@@ -312,6 +316,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 120,
+    height: 140,
   },
 });

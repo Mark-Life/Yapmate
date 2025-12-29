@@ -8,7 +8,6 @@ import { View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider } from "@/contexts/auth";
-import { ChatProvider } from "@/contexts/chat-context";
 import { useAuthLinking } from "@/hooks/useAuthLinking";
 import { SplashScreenController } from "./splash";
 
@@ -22,21 +21,19 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <QueryProvider>
-        <ChatProvider>
-          <SplashScreenController />
-          <AuthLinkingHandler />
-          <SafeAreaProvider>
-            <View
-              className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
-            >
-              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-              <SafeAreaView className="flex-1">
-                <RootNavigator />
-              </SafeAreaView>
-              <PortalHost />
-            </View>
-          </SafeAreaProvider>
-        </ChatProvider>
+        <SplashScreenController />
+        <AuthLinkingHandler />
+        <SafeAreaProvider>
+          <View
+            className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+          >
+            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+            <SafeAreaView className="flex-1">
+              <RootNavigator />
+            </SafeAreaView>
+            <PortalHost />
+          </View>
+        </SafeAreaProvider>
       </QueryProvider>
     </SessionProvider>
   );
