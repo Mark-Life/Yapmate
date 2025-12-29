@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mark-life.yapmate.dev",
+      "icon": "./assets/yapmate-apple-2-dark.icon",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
