@@ -1,6 +1,6 @@
 import type { ChatStatus, UIMessage } from "ai";
 import { useRef } from "react";
-import { FlatList, View } from "react-native";
+import { FlatList, Keyboard, Platform, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,8 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
       className="flex-1"
       contentContainerStyle={{ paddingVertical: 8 }}
       data={messages}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.id}
       ListFooterComponent={
         status === "submitted" ? (
@@ -81,6 +83,12 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
         // Auto-scroll to bottom when content changes
         if (messages.length > 0) {
           listRef.current?.scrollToEnd({ animated: true });
+        }
+      }}
+      onScrollBeginDrag={() => {
+        // Dismiss keyboard when user starts scrolling
+        if (Platform.OS !== "web") {
+          Keyboard.dismiss();
         }
       }}
       ref={listRef}
