@@ -239,7 +239,7 @@ export const TranscribeButton = ({
             as={Loader2Icon}
             className={cn(
               "size-4",
-              isRecording ? "text-accent-foreground" : "text-primary"
+              isRecording ? "text-destructive" : "text-primary"
             )}
           />
         </Animated.View>
@@ -248,7 +248,7 @@ export const TranscribeButton = ({
           as={MicIcon}
           className={cn(
             "size-4",
-            isRecording ? "text-accent-foreground" : "text-primary"
+            isRecording ? "text-destructive" : "text-primary"
           )}
         />
       )}
