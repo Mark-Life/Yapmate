@@ -48,6 +48,7 @@
     "ai": "^6.0.3",
     "expo": "~54.0.30",
     "expo-auth-session": "^7.0.10",
+    "expo-av": "^16.0.8",
     "expo-crypto": "^15.0.8",
     "expo-dev-client": "~6.0.20",
     "expo-linking": "^8.0.11",
