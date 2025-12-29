@@ -146,7 +146,11 @@ export const ChatInput = ({
             size="icon"
             variant="default"
           >
-            <ArrowUpIcon className="size-4" />
+            <Icon
+              as={ArrowUpIcon}
+              className="text-primary-foreground"
+              size={20}
+            />
           </Button>
         )}
       </View>

@@ -53,6 +53,7 @@
     "expo-dev-client": "~6.0.20",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.21",
+    "expo-glass-effect": "^0.1.8",
     "expo-image-picker": "~17.0.10",
     "expo-linking": "^8.0.11",
     "expo-router": "^6.0.21",

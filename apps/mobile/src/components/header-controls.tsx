@@ -1,32 +1,68 @@
-import { Menu } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
-import { View } from "react-native";
+import { GlassContainer, GlassView } from "expo-glass-effect";
+import { Menu, Plus } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
 
 /**
- * Fixed header controls - menu button in top-left corner
+ * Fixed header controls - menu and plus buttons grouped on top-left
  * Similar to desktop version, positioned absolutely
  * Hides when drawer is open
  */
 export const HeaderControls = () => {
   const { isOpen, toggleDrawer } = useDrawer();
-  const { colorScheme } = useColorScheme();
+  const { navigateToNew } = useChatContext();
 
   if (isOpen) {
     return null;
   }
 
   return (
-    <View
-      className={`absolute top-2 left-2 z-[60] rounded-lg ${
-        colorScheme === "dark" ? "bg-black/80" : "bg-white/80"
-      }`}
+    <GlassContainer
+      spacing={8}
+      style={{
+        position: "absolute",
+        top: 4,
+        left: 4,
+        zIndex: 60,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+      }}
     >
-      <Button onPress={toggleDrawer} size="icon" variant="ghost">
-        <Icon as={Menu} size={20} />
-      </Button>
-    </View>
+      <GlassView
+        isInteractive={true}
+        style={{
+          borderRadius: 16,
+          padding: 0,
+        }}
+      >
+        <Button
+          className="p-0"
+          onPress={toggleDrawer}
+          size="icon"
+          variant="ghost"
+        >
+          <Icon as={Menu} className="text-primary" size={20} />
+        </Button>
+      </GlassView>
+      <GlassView
+        isInteractive={true}
+        style={{
+          borderRadius: 16,
+          padding: 0,
+        }}
+      >
+        <Button
+          className="p-0"
+          onPress={navigateToNew}
+          size="icon"
+          variant="ghost"
+        >
+          <Icon as={Plus} className="text-primary" size={20} />
+        </Button>
+      </GlassView>
+    </GlassContainer>
   );
 };
