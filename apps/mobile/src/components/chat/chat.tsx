@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import { PortalHost } from "@rn-primitives/portal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { UIMessage } from "ai";
+import type { FileUIPart, UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
@@ -9,6 +9,7 @@ import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
+import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
@@ -41,6 +42,7 @@ export const Chat = ({
   const [input, setInput] = useState("");
   const [searchEnabled, setSearchEnabled] = useState(false);
   const { models } = useModels();
+  const attachments = useAttachments();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
   // Determine default model based on context
@@ -197,20 +199,28 @@ export const Chat = ({
     onChatCreated?.(chatId);
   }, [isNewChat, chatId, createChatMutation, onChatCreated]);
 
-  const handleSubmit = async (text: string) => {
-    if (!text.trim()) {
+  const handleSubmit = async (message: {
+    text: string;
+    files: FileUIPart[];
+  }) => {
+    const hasText = Boolean(message.text.trim());
+    const hasAttachments = message.files.length > 0;
+    if (!(hasText || hasAttachments)) {
       return;
     }
 
     // Create chat in DB on first message
     await ensureChatExists();
 
-    // Send message via transport
+    // Send message via transport with files
     sendMessage({
-      text: text.trim(),
+      text: message.text.trim() || "Sent with attachments",
+      files: message.files,
     });
 
+    // Clear input and attachments after sending
     setInput("");
+    attachments.clear();
   };
 
   const handleDismissKeyboard = useCallback(() => {
@@ -265,6 +275,7 @@ export const Chat = ({
         style={{ bottom: Math.max(0, keyboardHeight - 32) }}
       >
         <ChatInput
+          attachments={attachments}
           input={input}
           model={model}
           onInputChange={setInput}
