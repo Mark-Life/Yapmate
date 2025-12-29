@@ -1,9 +1,10 @@
 import type { ChatStatus } from "ai";
-import { ArrowUpIcon, SquareIcon } from "lucide-react-native";
+import { ArrowUpIcon, GlobeIcon, SquareIcon } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { TranscribeButton } from "./transcribe-button";
@@ -13,6 +14,8 @@ type ChatInputProps = {
   onInputChange: (value: string) => void;
   model: string;
   onModelChange: (model: string) => void;
+  searchEnabled: boolean;
+  onSearchEnabledChange: (enabled: boolean) => void;
   status: ChatStatus;
   onSubmit: (text: string) => void;
   onStop?: () => void;
@@ -29,6 +32,8 @@ export const ChatInput = ({
   onInputChange,
   model,
   onModelChange,
+  searchEnabled,
+  onSearchEnabledChange,
   status,
   onSubmit,
   onStop,
@@ -59,6 +64,24 @@ export const ChatInput = ({
             portalHost={portalHost}
           />
         </View>
+        <Button
+          aria-label="Toggle search"
+          className={cn(
+            "rounded-full transition-all duration-200",
+            searchEnabled && "bg-primary text-primary-foreground"
+          )}
+          onPress={() => onSearchEnabledChange(!searchEnabled)}
+          size="icon"
+          variant="outline"
+        >
+          <Icon
+            as={GlobeIcon}
+            className={cn(
+              "size-4",
+              searchEnabled ? "text-primary-foreground" : "text-primary"
+            )}
+          />
+        </Button>
         <TranscribeButton
           onTranscriptionChange={(text) => {
             const currentValue = input.trim();
@@ -85,11 +108,10 @@ export const ChatInput = ({
         </View>
         {isStreaming ? (
           <Button
-            className="rounded-full"
+            className="rounded-full bg-secondary"
             disabled={!onStop}
             onPress={onStop}
             size="icon"
-            variant="outline"
           >
             <SquareIcon className="size-4" />
           </Button>

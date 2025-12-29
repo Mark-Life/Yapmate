@@ -96,6 +96,7 @@ export default function ChatScreen() {
       <Chat
         id={id}
         initialMessages={isOwnChat ? [] : messages}
+        isNew={isNew === "true"}
         onChatCreated={handleChatCreated}
       />
     </View>
