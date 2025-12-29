@@ -24,7 +24,7 @@ export const HeaderControls = () => {
       style={{
         position: "absolute",
         top: 4,
-        left: 4,
+        left: 8,
         zIndex: 60,
         flexDirection: "row",
         alignItems: "center",

@@ -8,7 +8,6 @@ import { View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider } from "@/contexts/auth";
-import { useAuthLinking } from "@/hooks/useAuthLinking";
 import { SplashScreenController } from "./splash";
 
 /**
@@ -22,7 +21,6 @@ export default function RootLayout() {
     <SessionProvider>
       <QueryProvider>
         <SplashScreenController />
-        <AuthLinkingHandler />
         <SafeAreaProvider>
           <View
             className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
@@ -37,15 +35,6 @@ export default function RootLayout() {
       </QueryProvider>
     </SessionProvider>
   );
-}
-
-/**
- * Component to handle authentication deep links
- * Must be inside SessionProvider to access auth context
- */
-function AuthLinkingHandler() {
-  useAuthLinking();
-  return null;
 }
 
 /**
