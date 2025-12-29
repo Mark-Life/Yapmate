@@ -5,7 +5,6 @@ import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
-import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, View } from "react-native";
@@ -23,6 +22,7 @@ type ChatUIMessage = UIMessage;
 type ChatProps = {
   id?: string;
   initialMessages?: ChatUIMessage[];
+  isNew?: boolean;
   onChatCreated?: (id: string) => void;
 };
 
@@ -33,11 +33,13 @@ type ChatProps = {
 export const Chat = ({
   id: initialId,
   initialMessages = [],
+  isNew = false,
   onChatCreated,
 }: ChatProps) => {
   const queryClient = useQueryClient();
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
+  const [searchEnabled, setSearchEnabled] = useState(false);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
@@ -71,7 +73,7 @@ export const Chat = ({
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? Crypto.randomUUID());
-  const [isNewChat, setIsNewChat] = useState(!initialId);
+  const [isNewChat, setIsNewChat] = useState(isNew || !initialId);
 
   // Mutation to create chat
   const createChatMutation = useMutation({
@@ -85,9 +87,13 @@ export const Chat = ({
 
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
+  const searchEnabledRef = useRef(searchEnabled);
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
+  useEffect(() => {
+    searchEnabledRef.current = searchEnabled;
+  }, [searchEnabled]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -128,6 +134,7 @@ export const Chat = ({
               message: allMessages.at(-1),
               id: transportChatId,
               model: modelRef.current,
+              searchEnabled: searchEnabledRef.current,
             },
           };
         },
@@ -175,7 +182,7 @@ export const Chat = ({
   }, [chatId]);
 
   /**
-   * Creates chat in DB on first message, updates navigation
+   * Creates chat in DB on first message
    * Uses placeholder title - real title comes via stream
    */
   const ensureChatExists = useCallback(async () => {
@@ -185,9 +192,6 @@ export const Chat = ({
     // Create with placeholder - real title comes via stream
     await createChatMutation.mutateAsync({ id: chatId, title: "New chat" });
     setIsNewChat(false);
-
-    // Navigate to chat route
-    router.replace(`/chat/${chatId}`);
 
     // Notify parent
     onChatCreated?.(chatId);
@@ -265,9 +269,11 @@ export const Chat = ({
           model={model}
           onInputChange={setInput}
           onModelChange={setModel}
+          onSearchEnabledChange={setSearchEnabled}
           onStop={handleStop}
           onSubmit={handleSubmit}
           portalHost="chat"
+          searchEnabled={searchEnabled}
           status={status}
         />
       </View>
