@@ -8,13 +8,7 @@ import * as Crypto from "expo-crypto";
 import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  View,
-} from "react-native";
+import { Keyboard, Platform, Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
@@ -221,15 +215,40 @@ export const Chat = ({
     }
   }, []);
 
+  // Track keyboard height for absolutely positioned input
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      return;
+    }
+
+    // Use 'will' events on iOS for smoother animations, 'did' events on Android
+    const showEventName =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEventName =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSubscription = Keyboard.addListener(showEventName, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEventName, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+    <View
+      className={`relative flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
     >
       {messages.length === 0 ? (
         <Pressable className="flex-1" onPress={handleDismissKeyboard}>
-          <View className="flex-1 items-center justify-center">
+          <View className="flex-1 items-center justify-center pb-32">
             <Text className="font-bold text-4xl text-primary">Yapmate</Text>
           </View>
         </Pressable>
@@ -237,7 +256,10 @@ export const Chat = ({
         <MessagesHistory messages={messages} status={status} />
       )}
 
-      <View className="p-1">
+      <View
+        className="absolute right-0 left-0 z-10 p-1"
+        style={{ bottom: Math.max(0, keyboardHeight - 32) }}
+      >
         <ChatInput
           input={input}
           model={model}
@@ -250,6 +272,6 @@ export const Chat = ({
         />
       </View>
       <PortalHost name="chat" />
-    </KeyboardAvoidingView>
+    </View>
   );
 };

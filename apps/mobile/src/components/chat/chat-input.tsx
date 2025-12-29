@@ -34,7 +34,7 @@ export const ChatInput = ({
   onStop,
   portalHost,
 }: ChatInputProps) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const [_, setIsFocused] = useState(false);
 
   const handleSubmit = () => {
     if (!input.trim() || status === "streaming" || status === "submitted") {
@@ -50,12 +50,7 @@ export const ChatInput = ({
   const canSubmit = input.trim().length > 0 && !isStreaming;
 
   return (
-    <View
-      className={cn(
-        "rounded-lg bg-background p-2",
-        isFocused && "border-primary"
-      )}
-    >
+    <View className={cn("rounded-3xl border border-input bg-background p-2")}>
       <View className="mb-2 flex-row items-center gap-2">
         <View className="flex-1">
           <ModelSelector
@@ -76,7 +71,7 @@ export const ChatInput = ({
         <View className="flex-1">
           <Textarea
             className={cn(
-              "max-h-32 min-h-10 text-sm",
+              "max-h-32 min-h-10 bg-background text-sm",
               isMultiline ? "rounded-3xl" : "rounded-full"
             )}
             multiline

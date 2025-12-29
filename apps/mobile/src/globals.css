@@ -32,7 +32,7 @@
 
   .dark {
     --background: hsl(0 0% 4%);
-    --foreground: hsl(0 0% 98%);
+    --foreground: hsl(0 0% 96%);
     --card: var(--background);
     --card-foreground: var(--foreground);
     --popover: hsl(0 0% 0%);
