@@ -52,10 +52,7 @@ const renderInlineTokens = (tokens: Token[] | undefined): ReactNode[] => {
 
       case "codespan":
         return (
-          <Text
-            className="rounded-lg bg-muted px-2 py-1 font-mono text-sm"
-            key={key}
-          >
+          <Text className="bg-accent px-2 py-1 font-mono text-sm" key={key}>
             {(token as Tokens.Codespan).text}
           </Text>
         );
@@ -73,8 +70,14 @@ const renderInlineTokens = (tokens: Token[] | undefined): ReactNode[] => {
         );
       }
 
-      case "text":
-        return (token as Tokens.Text).text;
+      case "text": {
+        const textToken = token as Tokens.Text;
+        // If text token has nested tokens, render them recursively
+        if (textToken.tokens && textToken.tokens.length > 0) {
+          return renderInlineTokens(textToken.tokens);
+        }
+        return textToken.text;
+      }
 
       case "br":
         return "\n";
@@ -171,6 +174,14 @@ const BlockToken = memo(({ token }: { token: Token }) => {
 
     case "space":
       return null;
+
+    case "text": {
+      const textToken = token as Tokens.Text;
+      if (textToken.tokens && textToken.tokens.length > 0) {
+        return <Text>{renderInlineTokens(textToken.tokens)}</Text>;
+      }
+      return <Text>{textToken.text}</Text>;
+    }
 
     default:
       // Fallback: render as text if has raw content

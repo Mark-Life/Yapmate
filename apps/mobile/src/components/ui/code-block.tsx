@@ -15,6 +15,7 @@ type CodeBlockProps = {
 type TokenLineProps = {
   tokens: ThemedToken[];
   lineIndex: number;
+  fallbackColor: string;
 };
 
 type CodeBlockHeaderProps = {
@@ -53,20 +54,22 @@ CodeBlockHeader.displayName = "CodeBlockHeader";
 /**
  * Renders a single line of highlighted tokens
  */
-const TokenLine = memo(({ tokens, lineIndex }: TokenLineProps) => (
-  <View className="flex-row" key={`line-${lineIndex}`}>
-    {tokens.map((token, tokenIndex) => (
-      <Text
-        className="font-mono text-sm"
-        // biome-ignore lint/suspicious/noArrayIndexKey: tokens lack stable IDs
-        key={`token-${lineIndex}-${tokenIndex}`}
-        style={{ color: token.color }}
-      >
-        {token.content}
-      </Text>
-    ))}
-  </View>
-));
+const TokenLine = memo(
+  ({ tokens, lineIndex, fallbackColor }: TokenLineProps) => (
+    <View className="flex-row" key={`line-${lineIndex}`}>
+      {tokens.map((token, tokenIndex) => (
+        <Text
+          className="font-mono text-sm"
+          // biome-ignore lint/suspicious/noArrayIndexKey: tokens lack stable IDs
+          key={`token-${lineIndex}-${tokenIndex}`}
+          style={{ color: token.color ?? fallbackColor }}
+        >
+          {token.content}
+        </Text>
+      ))}
+    </View>
+  )
+);
 
 TokenLine.displayName = "TokenLine";
 
@@ -80,6 +83,7 @@ export const CodeBlock = memo(({ code, language = "text" }: CodeBlockProps) => {
   const [error, setError] = useState<boolean>(false);
 
   const theme = colorScheme === "dark" ? DARK_THEME : LIGHT_THEME;
+  const fallbackColor = colorScheme === "dark" ? "#abb2bf" : "#383a42";
 
   useEffect(() => {
     let mounted = true;
@@ -133,6 +137,7 @@ export const CodeBlock = memo(({ code, language = "text" }: CodeBlockProps) => {
           <View>
             {tokens.map((lineTokens, lineIndex) => (
               <TokenLine
+                fallbackColor={fallbackColor}
                 // biome-ignore lint/suspicious/noArrayIndexKey: lines lack stable IDs
                 key={`line-${lineIndex}`}
                 lineIndex={lineIndex}
