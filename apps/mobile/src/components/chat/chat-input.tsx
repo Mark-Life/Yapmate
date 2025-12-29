@@ -2,6 +2,7 @@ import type { ChatStatus } from "ai";
 import { ArrowUpIcon, SquareIcon } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
+import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -9,21 +10,28 @@ import { cn } from "@/lib/utils";
 type ChatInputProps = {
   input: string;
   onInputChange: (value: string) => void;
+  model: string;
+  onModelChange: (model: string) => void;
   status: ChatStatus;
   onSubmit: (text: string) => void;
   onStop?: () => void;
+  /** Portal host name for model selector popover */
+  portalHost?: string;
 };
 
 /**
  * Chat input component for React Native
- * Displays textarea and send/stop button
+ * Displays model selector, textarea and send/stop button
  */
 export const ChatInput = ({
   input,
   onInputChange,
+  model,
+  onModelChange,
   status,
   onSubmit,
   onStop,
+  portalHost,
 }: ChatInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -47,6 +55,13 @@ export const ChatInput = ({
         isFocused && "border-primary"
       )}
     >
+      <View className="mb-2">
+        <ModelSelector
+          model={model}
+          onModelChange={onModelChange}
+          portalHost={portalHost}
+        />
+      </View>
       <View className="flex-row items-end gap-2">
         <View className="flex-1">
           <Textarea

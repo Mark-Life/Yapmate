@@ -7,12 +7,25 @@ import { NativeOnlyAnimatedView } from "src/components/ui/native-only-animated-v
 import { TextClassContext } from "src/components/ui/text";
 import { cn } from "src/lib/utils";
 
-const Popover = PopoverPrimitive.Root;
+type PopoverProps = React.ComponentProps<typeof PopoverPrimitive.Root> & {
+  open?: boolean;
+};
+
+const Popover = PopoverPrimitive.Root as React.FC<PopoverProps>;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 
-const FullWindowOverlay =
-  Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
+/**
+ * Returns the appropriate overlay wrapper.
+ * Uses FullWindowOverlay on iOS when rendering to root portal.
+ * When portalHost is specified, skips FullWindowOverlay to stay within KeyboardAvoidingView.
+ */
+const getOverlayWrapper = (portalHost?: string) => {
+  if (portalHost) {
+    return React.Fragment;
+  }
+  return Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
+};
 
 function PopoverContent({
   className,
@@ -24,9 +37,11 @@ function PopoverContent({
   React.RefAttributes<PopoverPrimitive.ContentRef> & {
     portalHost?: string;
   }) {
+  const OverlayWrapper = getOverlayWrapper(portalHost);
+
   return (
     <PopoverPrimitive.Portal hostName={portalHost}>
-      <FullWindowOverlay>
+      <OverlayWrapper>
         <PopoverPrimitive.Overlay
           style={Platform.select({ native: StyleSheet.absoluteFill })}
         >
@@ -54,7 +69,7 @@ function PopoverContent({
             </TextClassContext.Provider>
           </NativeOnlyAnimatedView>
         </PopoverPrimitive.Overlay>
-      </FullWindowOverlay>
+      </OverlayWrapper>
     </PopoverPrimitive.Portal>
   );
 }
