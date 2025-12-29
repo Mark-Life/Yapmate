@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsList } from "@/components/chat/chats-list";
 import { useDrawer } from "@/contexts/drawer-context";
 
@@ -15,10 +16,12 @@ const ANIMATION_DURATION = 200;
 /**
  * Drawer component that slides in from the left
  * Contains the chats list and can be toggled open/closed
+ * Full-screen overlay with safe area padding for content
  */
 export const Drawer = () => {
   const { colorScheme } = useColorScheme();
   const { isOpen, closeDrawer } = useDrawer();
+  const insets = useSafeAreaInsets();
   const translateX = useSharedValue(-DRAWER_WIDTH);
   const overlayOpacity = useSharedValue(0);
 
@@ -45,7 +48,7 @@ export const Drawer = () => {
 
   return (
     <>
-      {/* Overlay backdrop */}
+      {/* Overlay backdrop - full screen */}
       <Animated.View
         className="absolute inset-0 z-40 bg-black/50"
         pointerEvents={isOpen ? "auto" : "none"}
@@ -54,14 +57,14 @@ export const Drawer = () => {
         <Pressable className="flex-1" onPress={closeDrawer} />
       </Animated.View>
 
-      {/* Drawer content */}
+      {/* Drawer content - full screen height, padding for safe area */}
       <Animated.View
         className={`absolute top-0 left-0 z-50 h-full w-[80%] bg-background shadow-lg ${
           colorScheme === "dark" ? "dark" : ""
         }`}
         style={drawerStyle}
       >
-        <View className="flex-1">
+        <View className="flex-1" style={{ paddingTop: insets.top }}>
           <ChatsList />
         </View>
       </Animated.View>
