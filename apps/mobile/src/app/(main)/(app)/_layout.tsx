@@ -1,7 +1,7 @@
 import { Redirect, Slot } from "expo-router";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Drawer } from "@/components/drawer/drawer";
+import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
 import { useSession } from "@/contexts/auth";
 import { ChatProvider } from "@/contexts/chat-context";
@@ -29,14 +29,15 @@ export default function AppLayout() {
     <ChatProvider>
       <DrawerProvider>
         <View className="flex-1">
-          {/* HeaderControls positioned absolutely, needs full screen reference */}
-          <HeaderControls />
-          {/* Main content respects safe area */}
-          <SafeAreaView className="flex-1">
-            <Slot />
-          </SafeAreaView>
-          {/* Drawer is full-screen, outside SafeAreaView */}
+          {/* Drawer positioned behind content */}
           <Drawer />
+          {/* AnimatedContent shifts right when drawer opens */}
+          <AnimatedContent>
+            <HeaderControls />
+            <SafeAreaView className="flex-1">
+              <Slot />
+            </SafeAreaView>
+          </AnimatedContent>
         </View>
       </DrawerProvider>
     </ChatProvider>

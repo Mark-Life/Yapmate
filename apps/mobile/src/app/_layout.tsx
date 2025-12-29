@@ -5,6 +5,7 @@ import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider } from "@/contexts/auth";
@@ -19,20 +20,22 @@ export default function RootLayout() {
   const { colorScheme } = useColorScheme();
 
   return (
-    <SessionProvider>
-      <QueryProvider>
-        <SplashScreenController />
-        <SafeAreaProvider>
-          <View
-            className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
-          >
-            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-            <RootNavigator />
-            <PortalHost />
-          </View>
-        </SafeAreaProvider>
-      </QueryProvider>
-    </SessionProvider>
+    <GestureHandlerRootView className="flex-1">
+      <SessionProvider>
+        <QueryProvider>
+          <SplashScreenController />
+          <SafeAreaProvider>
+            <View
+              className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+            >
+              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              <RootNavigator />
+              <PortalHost />
+            </View>
+          </SafeAreaProvider>
+        </QueryProvider>
+      </SessionProvider>
+    </GestureHandlerRootView>
   );
 }
 
