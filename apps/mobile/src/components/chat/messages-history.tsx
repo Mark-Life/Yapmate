@@ -139,6 +139,7 @@ const MessageItem = ({ message }: MessageItemProps) => {
  */
 export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
   const listRef = useRef<FlatList<ChatUIMessage>>(null);
+  const layoutHeightRef = useRef(0);
   const insets = useSafeAreaInsets();
 
   return (
@@ -159,11 +160,22 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
           </View>
         ) : null
       }
-      onContentSizeChange={() => {
+      onContentSizeChange={(_width, contentHeight) => {
         // Auto-scroll to bottom when content changes
-        if (messages.length > 0) {
-          listRef.current?.scrollToEnd({ animated: true });
+        // Use scrollToOffset for precise positioning during streaming
+        if (messages.length > 0 && layoutHeightRef.current > 0) {
+          const maxOffset = Math.max(
+            0,
+            contentHeight - layoutHeightRef.current
+          );
+          listRef.current?.scrollToOffset({
+            offset: maxOffset,
+            animated: true,
+          });
         }
+      }}
+      onLayout={(e) => {
+        layoutHeightRef.current = e.nativeEvent.layout.height;
       }}
       onScrollBeginDrag={() => {
         // Dismiss keyboard when user starts scrolling

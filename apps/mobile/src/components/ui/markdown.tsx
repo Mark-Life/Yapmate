@@ -150,7 +150,7 @@ const BlockToken = memo(({ token }: { token: Token }) => {
     case "list": {
       const list = token as Tokens.List;
       return (
-        <View className="my-2">
+        <View className="my-2 pl-2">
           {list.items.map((item, idx) => (
             <ListItem
               index={idx}
@@ -211,7 +211,7 @@ const ListItem = memo(({ item, index, isOrdered }: ListItemProps) => {
   if (item.task) {
     return (
       <View className="mb-1 flex-row">
-        <Text className="mr-2 w-5">{item.checked ? "☑" : "☐"}</Text>
+        <Text className="mr-1 w-4">{item.checked ? "☑" : "☐"}</Text>
         <View className="flex-1">
           {item.tokens?.map((t, idx) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: tokens lack stable IDs
@@ -224,7 +224,7 @@ const ListItem = memo(({ item, index, isOrdered }: ListItemProps) => {
 
   return (
     <View className="mb-1 flex-row">
-      <Text className="mr-2 w-5 text-muted-foreground">{bullet}</Text>
+      <Text className="mr-1 w-3 text-muted-foreground">{bullet}</Text>
       <View className="flex-1">
         {item.tokens?.map((t, idx) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: tokens lack stable IDs

@@ -9,12 +9,12 @@ import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text } from "@/components/ui/text";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
+import { YapmateIcon } from "../yapmate-icon";
 import { createChat, determineDefaultModel } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
 import { MessagesHistory } from "./messages-history";
@@ -268,7 +268,7 @@ export const Chat = ({
             className="flex-1 items-center justify-center pb-36"
             style={{ paddingTop: insets.top }}
           >
-            <Text className="font-bold text-4xl text-primary">Yapmate</Text>
+            <YapmateIcon className="text-primary opacity-70" size={160} />
           </View>
         </Pressable>
       ) : (
