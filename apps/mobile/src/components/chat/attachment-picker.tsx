@@ -118,12 +118,9 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Add attachment"
-          className={cn(
-            "rounded-full transition-all duration-200",
-            hasAttachments && "bg-primary text-primary-foreground"
-          )}
+          className="transition-all duration-200"
           size="icon"
-          variant="outline"
+          variant="ghost"
         >
           <Icon
             as={ImageIcon}

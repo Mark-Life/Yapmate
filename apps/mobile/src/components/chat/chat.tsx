@@ -5,9 +5,10 @@ import type { FileUIPart, UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
+import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard, Platform, Pressable, View } from "react-native";
+import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
@@ -267,7 +268,19 @@ export const Chat = ({
           </View>
         </Pressable>
       ) : (
-        <MessagesHistory messages={messages} status={status} />
+        <View className="flex-1">
+          <MessagesHistory messages={messages} status={status} />
+          <LinearGradient
+            colors={
+              colorScheme === "dark"
+                ? ["transparent", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
+                : ["transparent", "rgba(245, 245, 245, 0.8)", "#f5f5f5"]
+            }
+            locations={[0, 0.5, 1]}
+            pointerEvents="none"
+            style={styles.fadeOverlay}
+          />
+        </View>
       )}
 
       <View
@@ -292,3 +305,13 @@ export const Chat = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  fadeOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 120,
+  },
+});
