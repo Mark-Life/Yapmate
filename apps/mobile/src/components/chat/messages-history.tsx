@@ -90,7 +90,7 @@ const MessageItem = ({ message }: MessageItemProps) => {
       <View
         className={cn(
           "py-2",
-          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : "max-w-[80%]"
+          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : "max-w-[95%]"
         )}
       >
         {message.parts.map((part, i) => {
@@ -109,7 +109,7 @@ const MessageItem = ({ message }: MessageItemProps) => {
               <StreamingMarkdown
                 content={part.text ?? ""}
                 key={partId}
-                textClassName="text-foreground text-sm"
+                textClassName="text-foreground text-sm "
               />
             );
           }
