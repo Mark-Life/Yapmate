@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { Icon } from "@/components/ui/icon";
+import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -96,16 +97,20 @@ const MessageItem = ({ message }: MessageItemProps) => {
           const partId = `${message.id}-${i}`;
 
           if (part.type === "text") {
+            // User messages: plain text, Assistant messages: markdown
+            if (isUser) {
+              return (
+                <Text className="text-primary-foreground text-sm" key={partId}>
+                  {part.text ?? ""}
+                </Text>
+              );
+            }
             return (
-              <Text
-                className={cn(
-                  "text-sm",
-                  isUser ? "text-primary-foreground" : "text-foreground"
-                )}
+              <StreamingMarkdown
+                content={part.text ?? ""}
                 key={partId}
-              >
-                {part.text ?? ""}
-              </Text>
+                textClassName="text-foreground text-sm"
+              />
             );
           }
 
