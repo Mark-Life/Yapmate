@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useCallback, useRef, useState } from "react";
 import { View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
@@ -182,11 +183,7 @@ export const Chat = ({
     >
       {messages.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <View className="opacity-60">
-            <View className="items-center justify-center">
-              <View className="h-24 w-24 rounded-full bg-primary" />
-            </View>
-          </View>
+          <Text className="font-bold text-4xl text-primary">Yapmate</Text>
         </View>
       ) : (
         <MessagesHistory messages={messages} status={status} />

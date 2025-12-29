@@ -59,11 +59,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
   /**
    * Navigates to new chat
-   * Generates a new UUID and navigates to that chat route
+   * Generates a new UUID and navigates with new=true param to skip DB fetch
    */
   const navigateToNew = useCallback(async () => {
     const newChatId = await Crypto.randomUUID();
-    router.push(`/chat/${newChatId}`);
+    router.push(`/chat/${newChatId}?new=true`);
     setNewChatKey((prev) => prev + 1);
   }, []);
 

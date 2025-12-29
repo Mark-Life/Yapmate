@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import { useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "nativewind";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { Chat } from "@/components/chat/chat";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,7 +35,23 @@ const ChatSkeleton = () => (
  */
 export default function ChatScreen() {
   const { colorScheme } = useColorScheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, new: isNew } = useLocalSearchParams<{
+    id: string;
+    new?: string;
+  }>();
+
+  // Track chat created in this session to avoid refetching after creation
+  const [createdChatId, setCreatedChatId] = useState<string | null>(
+    isNew === "true" ? id : null
+  );
+
+  const handleChatCreated = useCallback((chatId: string) => {
+    setCreatedChatId(chatId);
+  }, []);
+
+  // Skip fetch for new chats or chats we just created
+  const isOwnChat = createdChatId === id;
+  const shouldFetch = Boolean(id) && !isOwnChat;
 
   const {
     data: messages,
@@ -43,10 +60,11 @@ export default function ChatScreen() {
   } = useQuery({
     queryKey: ["chat-messages", id],
     queryFn: () => fetchMessages(id),
-    enabled: Boolean(id),
+    enabled: shouldFetch,
   });
 
-  if (isPending) {
+  // Show skeleton only when actually fetching existing chat
+  if (shouldFetch && isPending) {
     return (
       <View
         className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
@@ -73,14 +91,13 @@ export default function ChatScreen() {
     );
   }
 
-  // Handle new chat (no id) or existing chat
   return (
     <View className="flex-1">
-      {id ? (
-        <Chat id={id} initialMessages={messages} />
-      ) : (
-        <Chat initialMessages={[]} />
-      )}
+      <Chat
+        id={id}
+        initialMessages={isOwnChat ? [] : messages}
+        onChatCreated={handleChatCreated}
+      />
     </View>
   );
 }

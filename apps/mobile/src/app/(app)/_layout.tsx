@@ -3,7 +3,6 @@ import { View } from "react-native";
 import { Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
 import { useSession } from "@/contexts/auth";
-import { ChatProvider } from "@/contexts/chat-context";
 import { DrawerProvider } from "@/contexts/drawer-context";
 
 /**
@@ -24,14 +23,12 @@ export default function AppLayout() {
   }
 
   return (
-    <ChatProvider>
-      <DrawerProvider>
-        <View className="flex-1">
-          <HeaderControls />
-          <Slot />
-          <Drawer />
-        </View>
-      </DrawerProvider>
-    </ChatProvider>
+    <DrawerProvider>
+      <View className="flex-1">
+        <HeaderControls />
+        <Slot />
+        <Drawer />
+      </View>
+    </DrawerProvider>
   );
 }
