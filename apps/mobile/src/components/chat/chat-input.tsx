@@ -26,8 +26,6 @@ type ChatInputProps = {
   onSubmit: (message: { text: string; files: FileUIPart[] }) => void;
   onStop?: () => void;
   attachments: AttachmentsContext;
-  /** Portal host name for model selector popover */
-  portalHost?: string;
 };
 
 /**
@@ -45,7 +43,6 @@ export const ChatInput = ({
   onSubmit,
   onStop,
   attachments,
-  portalHost,
 }: ChatInputProps) => {
   const [_, setIsFocused] = useState(false);
   const { colorScheme } = useColorScheme();
@@ -107,7 +104,6 @@ export const ChatInput = ({
             <ModelSelector
               model={model}
               onModelChange={onModelChange}
-              portalHost={portalHost}
               triggerClassName="border-0 bg-transparent rounded-none"
             />
           </GlassView>
