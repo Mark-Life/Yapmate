@@ -1,6 +1,5 @@
 import { Redirect, Slot } from "expo-router";
 import { View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
 import { useSession } from "@/contexts/auth";
@@ -10,7 +9,7 @@ import { DrawerProvider } from "@/contexts/drawer-context";
 /**
  * Layout for authenticated app routes
  * Redirects unauthenticated users to sign-in
- * Main content respects safe area, drawer is full-screen
+ * Content scrolls behind safe areas, safe area padding applied per component
  */
 export default function AppLayout() {
   const { session, isLoading } = useSession();
@@ -34,9 +33,9 @@ export default function AppLayout() {
           {/* AnimatedContent shifts right when drawer opens */}
           <AnimatedContent>
             <HeaderControls />
-            <SafeAreaView className="flex-1">
+            <View className="flex-1">
               <Slot />
-            </SafeAreaView>
+            </View>
           </AnimatedContent>
         </View>
       </DrawerProvider>

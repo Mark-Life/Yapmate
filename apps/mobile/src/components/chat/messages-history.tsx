@@ -10,6 +10,7 @@ import {
   Pressable,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
@@ -134,14 +135,19 @@ const MessageItem = ({ message }: MessageItemProps) => {
 /**
  * Messages history component for React Native
  * Displays chat messages in a FlatList
+ * Content scrolls behind safe areas with padding applied
  */
 export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
   const listRef = useRef<FlatList<ChatUIMessage>>(null);
+  const insets = useSafeAreaInsets();
 
   return (
     <FlatList
       className="flex-1"
-      contentContainerStyle={{ paddingVertical: 8, paddingBottom: 120 }}
+      contentContainerStyle={{
+        paddingTop: insets.top + 8,
+        paddingBottom: 120,
+      }}
       data={messages}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"

@@ -9,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
@@ -232,6 +233,7 @@ export const Chat = ({
 
   // Track keyboard height for absolutely positioned input
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -263,13 +265,30 @@ export const Chat = ({
     >
       {messages.length === 0 ? (
         <Pressable className="flex-1" onPress={handleDismissKeyboard}>
-          <View className="flex-1 items-center justify-center pb-32">
+          <View
+            className="flex-1 items-center justify-center pb-32"
+            style={{ paddingTop: insets.top }}
+          >
             <Text className="font-bold text-4xl text-primary">Yapmate</Text>
           </View>
         </Pressable>
       ) : (
         <View className="flex-1">
           <MessagesHistory messages={messages} status={status} />
+          <LinearGradient
+            colors={
+              colorScheme === "dark"
+                ? ["#0a0a0a", "rgba(10, 10, 10, 0.8)", "rgba(10, 10, 10, 0)"]
+                : [
+                    "#f5f5f5",
+                    "rgba(245, 245, 245, 0.8)",
+                    "rgba(245, 245, 245, 0)",
+                  ]
+            }
+            locations={[0, 0.5, 1]}
+            pointerEvents="none"
+            style={styles.fadeOverlayTop}
+          />
           <LinearGradient
             colors={
               colorScheme === "dark"
@@ -289,7 +308,9 @@ export const Chat = ({
 
       <View
         className="absolute right-0 left-0 z-10 p-1"
-        style={{ bottom: Math.max(0, keyboardHeight - 32) }}
+        style={{
+          bottom: keyboardHeight > 0 ? keyboardHeight : insets.bottom,
+        }}
       >
         <ChatInput
           attachments={attachments}
@@ -311,6 +332,13 @@ export const Chat = ({
 };
 
 const styles = StyleSheet.create({
+  fadeOverlayTop: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 100,
+  },
   fadeOverlay: {
     position: "absolute",
     left: 0,
