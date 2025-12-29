@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
 import type { AttachmentsContext } from "@/hooks/use-attachments";
+import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { AttachmentPicker } from "./attachment-picker";
 import { AttachmentPreviewList } from "./attachment-preview";
@@ -60,6 +61,7 @@ export const ChatInput = ({
       return;
     }
 
+    lightTap();
     // Prepare files for submission
     const files = await attachments.prepareForSubmit();
     onSubmit({ text: input.trim(), files });
@@ -132,7 +134,10 @@ export const ChatInput = ({
           <Button
             aria-label="Toggle search"
             className="transition-all duration-200"
-            onPress={() => onSearchEnabledChange(!searchEnabled)}
+            onPress={() => {
+              lightTap();
+              onSearchEnabledChange(!searchEnabled);
+            }}
             size="icon"
             variant="ghost"
           >
@@ -195,7 +200,10 @@ export const ChatInput = ({
           {isStreaming ? (
             <Button
               disabled={!onStop}
-              onPress={onStop}
+              onPress={() => {
+                lightTap();
+                onStop?.();
+              }}
               size="icon"
               variant="ghost"
             >

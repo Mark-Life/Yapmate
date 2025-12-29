@@ -22,6 +22,7 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { DRAWER_WIDTH, useDrawer } from "@/contexts/drawer-context";
+import { lightTap } from "@/lib/haptics";
 
 /** Edge zone width for detecting swipe-to-open gesture */
 const EDGE_WIDTH = 30;
@@ -149,6 +150,15 @@ export const Drawer = () => {
     closeDrawer();
   }, [signOut, closeDrawer]);
 
+  /**
+   * Handle user menu open change
+   */
+  const handleUserMenuOpenChange = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      lightTap();
+    }
+  }, []);
+
   // Drawer translateX: maps position (0 to DRAWER_WIDTH) to (-DRAWER_WIDTH to 0)
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: position.value - DRAWER_WIDTH }],
@@ -172,7 +182,7 @@ export const Drawer = () => {
           </View>
           {session?.user ? (
             <View className="border-border border-t">
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={handleUserMenuOpenChange}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     className="w-full justify-start gap-2 px-2"

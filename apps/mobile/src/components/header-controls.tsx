@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
+import { lightTap } from "@/lib/haptics";
 
 /**
  * Fixed header controls - menu and plus buttons grouped on top-left
@@ -43,7 +44,10 @@ export const HeaderControls = () => {
       >
         <Button
           className="p-0"
-          onPress={toggleDrawer}
+          onPress={() => {
+            lightTap();
+            toggleDrawer();
+          }}
           size="icon"
           variant="ghost"
         >
@@ -60,7 +64,10 @@ export const HeaderControls = () => {
       >
         <Button
           className="p-0"
-          onPress={navigateToNew}
+          onPress={() => {
+            lightTap();
+            navigateToNew();
+          }}
           size="icon"
           variant="ghost"
         >

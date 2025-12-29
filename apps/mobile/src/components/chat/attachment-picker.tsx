@@ -11,6 +11,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import type { AttachmentsContext } from "@/hooks/use-attachments";
+import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 type AttachmentPickerProps = {
@@ -21,10 +22,17 @@ type AttachmentPickerProps = {
  * Component for picking attachments from camera, photo library, or documents
  */
 export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      lightTap();
+    }
+  };
+
   /**
    * Requests camera permissions and opens camera
    */
   const handleTakePhoto = async () => {
+    lightTap();
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
@@ -56,6 +64,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
    * Requests media library permissions and opens photo picker
    */
   const handleChooseFromLibrary = async () => {
+    lightTap();
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -90,6 +99,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
    * Opens document picker
    */
   const handleChooseDocument = async () => {
+    lightTap();
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "*/*",
@@ -114,7 +124,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
   const hasAttachments = attachments.files.length > 0;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Add attachment"

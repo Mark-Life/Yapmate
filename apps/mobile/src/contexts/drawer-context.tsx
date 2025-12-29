@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
 import { Dimensions } from "react-native";
 import {
+  runOnJS,
   type SharedValue,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { mediumImpact } from "@/lib/haptics";
 
 export const DRAWER_WIDTH = Dimensions.get("window").width * 0.8;
 export const ANIMATION_DURATION = 200;
@@ -39,6 +41,7 @@ export const DrawerProvider = ({ children }: DrawerProviderProps) => {
     (open: boolean) => {
       "worklet";
       isOpenRef.value = open;
+      runOnJS(mediumImpact)();
       position.value = withTiming(open ? DRAWER_WIDTH : 0, {
         duration: ANIMATION_DURATION,
       });
@@ -48,17 +51,20 @@ export const DrawerProvider = ({ children }: DrawerProviderProps) => {
 
   const openDrawer = useCallback(() => {
     isOpenRef.value = true;
+    mediumImpact();
     position.value = withTiming(DRAWER_WIDTH, { duration: ANIMATION_DURATION });
   }, [position, isOpenRef]);
 
   const closeDrawer = useCallback(() => {
     isOpenRef.value = false;
+    mediumImpact();
     position.value = withTiming(0, { duration: ANIMATION_DURATION });
   }, [position, isOpenRef]);
 
   const toggleDrawer = useCallback(() => {
     const newOpen = !isOpenRef.value;
     isOpenRef.value = newOpen;
+    mediumImpact();
     position.value = withTiming(newOpen ? DRAWER_WIDTH : 0, {
       duration: ANIMATION_DURATION,
     });
