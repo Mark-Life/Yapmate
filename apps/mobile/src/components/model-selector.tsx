@@ -166,7 +166,7 @@ export const ModelSelector = ({
     <Popover onOpenChange={handleOpenChange} open={open}>
       <PopoverTrigger asChild>
         <Pressable
-          className="flex h-9 flex-row items-center justify-between gap-2 rounded-full border border-input bg-background/50 px-3 py-2"
+          className="flex h-9 flex-row items-center justify-between gap-2 rounded-full border border-input bg-background px-3 py-2"
           onLayout={handleLayout}
         >
           <Text
@@ -184,7 +184,7 @@ export const ModelSelector = ({
         className="max-h-120 rounded-xl p-0"
         portalHost={portalHost}
         side="top"
-        sideOffset={70}
+        sideOffset={80}
         style={{ width: triggerWidth > 0 ? triggerWidth : undefined }}
       >
         <View className="border-border border-b p-2">

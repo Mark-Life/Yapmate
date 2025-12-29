@@ -8,6 +8,7 @@ import { Loader2Icon, MicIcon } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Animated, {
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -56,10 +57,15 @@ export const TranscribeButton = ({
   }, []);
 
   /**
+   * Derived rotation string value
+   */
+  const rotationString = useDerivedValue(() => `${rotation.value}deg`);
+
+  /**
    * Animated style for spinning loader
    */
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+    transform: [{ rotate: rotationString.value }],
   }));
 
   /**

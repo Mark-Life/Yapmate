@@ -67,7 +67,7 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
   return (
     <FlatList
       className="flex-1"
-      contentContainerStyle={{ paddingVertical: 8 }}
+      contentContainerStyle={{ paddingVertical: 8, paddingBottom: 120 }}
       data={messages}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
