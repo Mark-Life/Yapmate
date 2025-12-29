@@ -5,7 +5,7 @@ import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider } from "@/contexts/auth";
 import { SplashScreenController } from "./splash";
@@ -13,6 +13,7 @@ import { SplashScreenController } from "./splash";
 /**
  * Root layout component for Expo Router
  * Provides SafeAreaProvider, PortalHost, StatusBar, and navigation structure
+ * SafeAreaView is applied at lower levels where needed, allowing drawer to be full-screen
  */
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
@@ -26,9 +27,7 @@ export default function RootLayout() {
             className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
           >
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-            <SafeAreaView className="flex-1">
-              <RootNavigator />
-            </SafeAreaView>
+            <RootNavigator />
             <PortalHost />
           </View>
         </SafeAreaProvider>

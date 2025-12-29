@@ -93,7 +93,7 @@ export const ChatsList = () => {
 
   return (
     <View className="flex-1">
-      <View className="border-border border-b p-4">
+      <View className="p-2 pt-0">
         <Button className="w-full" onPress={handleNewChat} variant="default">
           <Text>New Chat</Text>
         </Button>

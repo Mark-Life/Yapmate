@@ -1,5 +1,6 @@
 import { GlassContainer, GlassView } from "expo-glass-effect";
 import { Menu, Plus } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useChatContext } from "@/contexts/chat-context";
@@ -13,6 +14,7 @@ import { useDrawer } from "@/contexts/drawer-context";
 export const HeaderControls = () => {
   const { isOpen, toggleDrawer } = useDrawer();
   const { navigateToNew } = useChatContext();
+  const insets = useSafeAreaInsets();
 
   if (isOpen) {
     return null;
@@ -23,7 +25,7 @@ export const HeaderControls = () => {
       spacing={8}
       style={{
         position: "absolute",
-        top: 4,
+        top: insets.top + 4,
         left: 8,
         zIndex: 60,
         flexDirection: "row",

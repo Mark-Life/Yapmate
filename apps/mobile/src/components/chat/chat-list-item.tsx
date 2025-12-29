@@ -27,7 +27,7 @@ export const ChatListItem = ({
     <Pressable onPress={onPress}>
       <View
         className={cn(
-          "flex-row items-center justify-between rounded-lg px-4 py-2",
+          "flex-row items-center justify-between rounded-lg p-2 px-3",
           isActive && "bg-accent"
         )}
       >
