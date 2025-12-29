@@ -1,6 +1,16 @@
-import type { ChatStatus, UIMessage } from "ai";
+import type { ChatStatus, FileUIPart, UIMessage } from "ai";
+import { FileIcon } from "lucide-react-native";
 import { useRef } from "react";
-import { FlatList, Keyboard, Platform, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  Keyboard,
+  Linking,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +23,54 @@ type MessagesHistoryProps = {
 
 type MessageItemProps = {
   message: ChatUIMessage;
+};
+
+/**
+ * Renders a file attachment part in a message
+ */
+const FilePart = ({ part, isUser }: { part: FileUIPart; isUser: boolean }) => {
+  const isImage = part.mediaType?.startsWith("image/") && part.url;
+
+  const handlePress = async () => {
+    if (part.url && (isImage || part.url.startsWith("http"))) {
+      try {
+        await Linking.openURL(part.url);
+      } catch (error) {
+        console.error("Failed to open URL:", error);
+      }
+    }
+  };
+
+  return (
+    <Pressable
+      className={cn(
+        "my-1 overflow-hidden rounded-lg",
+        isImage ? "h-48 w-48" : "h-20 w-32",
+        isUser ? "ml-auto" : "mr-auto"
+      )}
+      onPress={handlePress}
+    >
+      {isImage ? (
+        <Image
+          className="size-full"
+          resizeMode="cover"
+          source={{ uri: part.url }}
+        />
+      ) : (
+        <View className="flex size-full items-center justify-center rounded-lg bg-muted">
+          <Icon as={FileIcon} className="size-8 text-muted-foreground" />
+          {part.filename ? (
+            <Text
+              className="mt-1 max-w-32 truncate text-muted-foreground text-xs"
+              numberOfLines={1}
+            >
+              {part.filename}
+            </Text>
+          ) : null}
+        </View>
+      )}
+    </Pressable>
+  );
 };
 
 /**
@@ -31,27 +89,38 @@ const MessageItem = ({ message }: MessageItemProps) => {
       <View
         className={cn(
           "py-2",
-          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : ""
+          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : "max-w-[80%]"
         )}
       >
-        {message.parts.map(
-          (part: { type: string; text?: string }, i: number) => {
-            if (part.type === "text") {
-              return (
-                <Text
-                  className={cn(
-                    "text-sm",
-                    isUser ? "text-primary-foreground" : "text-foreground"
-                  )}
-                  key={`${message.id}-${i}`}
-                >
-                  {part.text ?? ""}
-                </Text>
-              );
-            }
-            return null;
+        {message.parts.map((part, i) => {
+          const partId = `${message.id}-${i}`;
+
+          if (part.type === "text") {
+            return (
+              <Text
+                className={cn(
+                  "text-sm",
+                  isUser ? "text-primary-foreground" : "text-foreground"
+                )}
+                key={partId}
+              >
+                {part.text ?? ""}
+              </Text>
+            );
           }
-        )}
+
+          if (part.type === "file") {
+            return (
+              <FilePart
+                isUser={isUser}
+                key={partId}
+                part={part as FileUIPart}
+              />
+            );
+          }
+
+          return null;
+        })}
       </View>
     </View>
   );

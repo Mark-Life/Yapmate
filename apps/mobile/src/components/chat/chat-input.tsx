@@ -1,4 +1,4 @@
-import type { ChatStatus } from "ai";
+import type { ChatStatus, FileUIPart } from "ai";
 import { ArrowUpIcon, GlobeIcon, SquareIcon } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
@@ -6,7 +6,10 @@ import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
+import type { AttachmentsContext } from "@/hooks/use-attachments";
 import { cn } from "@/lib/utils";
+import { AttachmentPicker } from "./attachment-picker";
+import { AttachmentPreviewList } from "./attachment-preview";
 import { TranscribeButton } from "./transcribe-button";
 
 type ChatInputProps = {
@@ -17,8 +20,9 @@ type ChatInputProps = {
   searchEnabled: boolean;
   onSearchEnabledChange: (enabled: boolean) => void;
   status: ChatStatus;
-  onSubmit: (text: string) => void;
+  onSubmit: (message: { text: string; files: FileUIPart[] }) => void;
   onStop?: () => void;
+  attachments: AttachmentsContext;
   /** Portal host name for model selector popover */
   portalHost?: string;
 };
@@ -37,25 +41,43 @@ export const ChatInput = ({
   status,
   onSubmit,
   onStop,
+  attachments,
   portalHost,
 }: ChatInputProps) => {
   const [_, setIsFocused] = useState(false);
 
-  const handleSubmit = () => {
-    if (!input.trim() || status === "streaming" || status === "submitted") {
+  const handleSubmit = async () => {
+    const hasText = Boolean(input.trim());
+    const hasAttachments = attachments.files.length > 0;
+    if (
+      !(hasText || hasAttachments) ||
+      status === "streaming" ||
+      status === "submitted"
+    ) {
       return;
     }
-    onSubmit(input.trim());
+
+    // Prepare files for submission
+    const files = await attachments.prepareForSubmit();
+    onSubmit({ text: input.trim(), files });
   };
 
   // Check if input is multiline by checking for newlines
   const isMultiline = input.includes("\n");
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const canSubmit = input.trim().length > 0 && !isStreaming;
+  const hasText = input.trim().length > 0;
+  const hasAttachments = attachments.files.length > 0;
+  const canSubmit = (hasText || hasAttachments) && !isStreaming;
 
   return (
     <View className={cn("rounded-3xl border border-input bg-background p-2")}>
+      {hasAttachments ? (
+        <AttachmentPreviewList
+          attachments={attachments.files}
+          onRemove={attachments.remove}
+        />
+      ) : null}
       <View className="mb-2 flex-row items-center gap-2">
         <View className="flex-1">
           <ModelSelector
@@ -64,6 +86,7 @@ export const ChatInput = ({
             portalHost={portalHost}
           />
         </View>
+        <AttachmentPicker attachments={attachments} />
         <Button
           aria-label="Toggle search"
           className={cn(
