@@ -1,5 +1,7 @@
 import type { ChatStatus, FileUIPart } from "ai";
+import { GlassContainer, GlassView } from "expo-glass-effect";
 import { ArrowUpIcon, GlobeIcon, SquareIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 import { useState } from "react";
 import { View } from "react-native";
 import { ModelSelector } from "@/components/model-selector";
@@ -45,6 +47,7 @@ export const ChatInput = ({
   portalHost,
 }: ChatInputProps) => {
   const [_, setIsFocused] = useState(false);
+  const { colorScheme } = useColorScheme();
 
   const handleSubmit = async () => {
     const hasText = Boolean(input.trim());
@@ -70,8 +73,19 @@ export const ChatInput = ({
   const hasAttachments = attachments.files.length > 0;
   const canSubmit = (hasText || hasAttachments) && !isStreaming;
 
+  let searchButtonTintColor: string | undefined;
+  if (searchEnabled) {
+    searchButtonTintColor = colorScheme === "dark" ? "#47d1cd" : "#1375a0";
+  }
+
   return (
-    <View className={cn("rounded-3xl border border-input bg-background p-2")}>
+    <GlassContainer
+      spacing={8}
+      style={{
+        borderRadius: 24,
+        padding: 8,
+      }}
+    >
       {hasAttachments ? (
         <AttachmentPreviewList
           attachments={attachments.files}
@@ -80,80 +94,124 @@ export const ChatInput = ({
       ) : null}
       <View className="mb-2 flex-row items-center gap-2">
         <View className="flex-1">
-          <ModelSelector
-            model={model}
-            onModelChange={onModelChange}
-            portalHost={portalHost}
-          />
+          <GlassView
+            isInteractive={true}
+            style={{
+              borderRadius: 32,
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <ModelSelector
+              model={model}
+              onModelChange={onModelChange}
+              portalHost={portalHost}
+              triggerClassName="border-0 bg-transparent rounded-none"
+            />
+          </GlassView>
         </View>
-        <AttachmentPicker attachments={attachments} />
-        <Button
-          aria-label="Toggle search"
-          className={cn(
-            "rounded-full transition-all duration-200",
-            searchEnabled && "bg-primary text-primary-foreground"
-          )}
-          onPress={() => onSearchEnabledChange(!searchEnabled)}
-          size="icon"
-          variant="outline"
-        >
-          <Icon
-            as={GlobeIcon}
-            className={cn(
-              "size-4",
-              searchEnabled ? "text-primary-foreground" : "text-primary"
-            )}
-          />
-        </Button>
-        <TranscribeButton
-          onTranscriptionChange={(text) => {
-            const currentValue = input.trim();
-            const newValue = currentValue ? `${currentValue} ${text}` : text;
-            onInputChange(newValue);
+        <GlassView
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
           }}
-        />
+        >
+          <AttachmentPicker attachments={attachments} />
+        </GlassView>
+        <GlassView
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
+          tintColor={searchButtonTintColor}
+        >
+          <Button
+            aria-label="Toggle search"
+            className="transition-all duration-200"
+            onPress={() => onSearchEnabledChange(!searchEnabled)}
+            size="icon"
+            variant="ghost"
+          >
+            <Icon
+              as={GlobeIcon}
+              className={cn(
+                "size-4",
+                searchEnabled ? "text-primary-foreground" : "text-primary"
+              )}
+            />
+          </Button>
+        </GlassView>
+        <GlassView
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          <TranscribeButton
+            onTranscriptionChange={(text) => {
+              const currentValue = input.trim();
+              const newValue = currentValue ? `${currentValue} ${text}` : text;
+              onInputChange(newValue);
+            }}
+          />
+        </GlassView>
       </View>
       <View className="flex-row items-end gap-2">
         <View className="flex-1">
-          <Textarea
-            className={cn(
-              "max-h-32 min-h-10 bg-background text-sm",
-              isMultiline ? "rounded-3xl" : "rounded-full"
-            )}
-            multiline
-            numberOfLines={5}
-            onBlur={() => setIsFocused(false)}
-            onChangeText={onInputChange}
-            onFocus={() => setIsFocused(true)}
-            placeholder="Message..."
-            value={input}
-          />
-        </View>
-        {isStreaming ? (
-          <Button
-            className="rounded-full bg-secondary"
-            disabled={!onStop}
-            onPress={onStop}
-            size="icon"
+          <GlassView
+            isInteractive={true}
+            style={{
+              borderRadius: isMultiline ? 32 : 32,
+              padding: 0,
+              overflow: "hidden",
+            }}
           >
-            <SquareIcon className="size-4" />
-          </Button>
-        ) : (
-          <Button
-            className="rounded-full"
-            disabled={!canSubmit}
-            onPress={handleSubmit}
-            size="icon"
-            variant="default"
-          >
-            <Icon
-              as={ArrowUpIcon}
-              className="text-primary-foreground"
-              size={20}
+            <Textarea
+              className="max-h-32 min-h-10 rounded-none border-0 bg-transparent text-sm"
+              multiline
+              numberOfLines={5}
+              onBlur={() => setIsFocused(false)}
+              onChangeText={onInputChange}
+              onFocus={() => setIsFocused(true)}
+              placeholder="Message..."
+              value={input}
             />
-          </Button>
-        )}
+          </GlassView>
+        </View>
+        <GlassView
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          {isStreaming ? (
+            <Button
+              disabled={!onStop}
+              onPress={onStop}
+              size="icon"
+              variant="ghost"
+            >
+              <Icon as={SquareIcon} className="text-primary" size={20} />
+            </Button>
+          ) : (
+            <Button disabled={!canSubmit} onPress={handleSubmit} size="icon">
+              <Icon
+                as={ArrowUpIcon}
+                className="text-primary-foreground"
+                size={20}
+              />
+            </Button>
+          )}
+        </GlassView>
       </View>
-    </View>
+    </GlassContainer>
   );
 };

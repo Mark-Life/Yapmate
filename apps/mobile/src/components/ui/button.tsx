@@ -33,10 +33,11 @@ const buttonVariants = cva(
           "bg-secondary shadow-black/5 shadow-sm active:bg-secondary/80",
           Platform.select({ web: "hover:bg-secondary/80" })
         ),
-        ghost: cn(
-          "active:bg-accent dark:active:bg-accent/50",
-          Platform.select({ web: "hover:bg-accent dark:hover:bg-accent/50" })
-        ),
+        // ghost: cn(
+        //   "active:bg-accent dark:active:bg-accent/50",
+        //   Platform.select({ web: "hover:bg-accent dark:hover:bg-accent/50" })
+        // ),
+        ghost: "",
         link: "",
       },
       size: {

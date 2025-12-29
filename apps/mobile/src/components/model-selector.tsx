@@ -74,6 +74,8 @@ type ModelSelectorProps = {
   onModelChange: (model: string) => void;
   /** Portal host name for rendering popover inside KeyboardAvoidingView */
   portalHost?: string;
+  /** Optional className to override trigger styles (e.g., when inside GlassView) */
+  triggerClassName?: string;
 };
 
 /**
@@ -83,6 +85,7 @@ export const ModelSelector = ({
   model,
   onModelChange,
   portalHost,
+  triggerClassName,
 }: ModelSelectorProps) => {
   const { models, loading } = useModels();
   const [open, setOpen] = useState(false);
@@ -166,7 +169,10 @@ export const ModelSelector = ({
     <Popover onOpenChange={handleOpenChange} open={open}>
       <PopoverTrigger asChild>
         <Pressable
-          className="flex h-9 flex-row items-center gap-2 rounded-full border border-input bg-background px-3 py-2"
+          className={cn(
+            "flex h-9 flex-row items-center gap-2 rounded-full px-3 py-2",
+            triggerClassName ?? "bg-transparent"
+          )}
           onLayout={handleLayout}
         >
           <Text

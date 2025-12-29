@@ -34,8 +34,9 @@ export const HeaderControls = () => {
       <GlassView
         isInteractive={true}
         style={{
-          borderRadius: 16,
+          borderRadius: 32,
           padding: 0,
+          overflow: "hidden",
         }}
       >
         <Button
@@ -44,14 +45,15 @@ export const HeaderControls = () => {
           size="icon"
           variant="ghost"
         >
-          <Icon as={Menu} className="text-primary" size={20} />
+          <Icon as={Menu} className="text-foreground" size={20} />
         </Button>
       </GlassView>
       <GlassView
         isInteractive={true}
         style={{
-          borderRadius: 16,
+          borderRadius: 32,
           padding: 0,
+          overflow: "hidden",
         }}
       >
         <Button
@@ -60,7 +62,7 @@ export const HeaderControls = () => {
           size="icon"
           variant="ghost"
         >
-          <Icon as={Plus} className="text-primary" size={20} />
+          <Icon as={Plus} className="text-foreground" size={20} />
         </Button>
       </GlassView>
     </GlassContainer>

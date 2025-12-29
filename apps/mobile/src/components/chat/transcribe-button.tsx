@@ -220,22 +220,34 @@ export const TranscribeButton = ({
     <Button
       aria-label={getAriaLabel()}
       className={cn(
-        "rounded-full transition-all duration-200",
-        isRecording && "animate-pulse bg-accent text-accent-foreground",
+        "transition-all duration-200",
+        isRecording && "animate-pulse",
         isTranscribing && "opacity-50",
         className
       )}
       disabled={isDisabled}
       onPress={toggleRecording}
       size="icon"
-      variant="outline"
+      variant="ghost"
     >
       {isTranscribing ? (
         <Animated.View style={animatedStyle}>
-          <Icon as={Loader2Icon} className="size-4 text-primary" />
+          <Icon
+            as={Loader2Icon}
+            className={cn(
+              "size-4",
+              isRecording ? "text-accent-foreground" : "text-primary"
+            )}
+          />
         </Animated.View>
       ) : (
-        <Icon as={MicIcon} className="size-4 text-primary" />
+        <Icon
+          as={MicIcon}
+          className={cn(
+            "size-4",
+            isRecording ? "text-accent-foreground" : "text-primary"
+          )}
+        />
       )}
     </Button>
   );
