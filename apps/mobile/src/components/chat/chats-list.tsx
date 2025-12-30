@@ -31,11 +31,15 @@ const ChatListSkeleton = () => (
   </View>
 );
 
+type ChatsListProps = {
+  searchQuery?: string;
+};
+
 /**
  * Reusable chats list component
  * Can be used in drawer or standalone screen
  */
-export const ChatsList = () => {
+export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { closeDrawer } = useDrawer();
   const queryClient = useQueryClient();
@@ -46,6 +50,17 @@ export const ChatsList = () => {
   } = useQuery({
     queryKey: ["chats"],
     queryFn: fetchChats,
+  });
+
+  /**
+   * Filter chats by title based on search query
+   */
+  const filteredChats = chats.filter((chat) => {
+    if (!searchQuery.trim()) {
+      return true;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return chat.title?.toLowerCase().includes(query) ?? false;
   });
 
   /**
@@ -91,9 +106,9 @@ export const ChatsList = () => {
     );
   }
 
-  return (
-    <View className="flex-1">
-      {chats.length === 0 ? (
+  if (chats.length === 0) {
+    return (
+      <View className="flex-1">
         <View className="flex-1 items-center justify-center p-8">
           <Text className="mb-2" variant="h3">
             No chats yet
@@ -105,22 +120,41 @@ export const ChatsList = () => {
             <Text>Create Chat</Text>
           </Button>
         </View>
-      ) : (
-        <FlatList
-          contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
-          data={chats}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ChatListItem
-              id={item.id}
-              isActive={item.id === currentChatId}
-              onPress={() => handleChatPress(item.id)}
-              title={item.title}
-              updatedAt={item.updatedAt}
-            />
-          )}
-        />
-      )}
+      </View>
+    );
+  }
+
+  if (filteredChats.length === 0) {
+    return (
+      <View className="flex-1">
+        <View className="flex-1 items-center justify-center p-8">
+          <Text className="mb-2" variant="h3">
+            No chats found
+          </Text>
+          <Text className="mb-4 text-center" variant="muted">
+            Try adjusting your search query
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1">
+      <FlatList
+        contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
+        data={filteredChats}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ChatListItem
+            id={item.id}
+            isActive={item.id === currentChatId}
+            onPress={() => handleChatPress(item.id)}
+            title={item.title}
+            updatedAt={item.updatedAt}
+          />
+        )}
+      />
     </View>
   );
 };

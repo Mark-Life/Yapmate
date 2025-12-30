@@ -1,7 +1,7 @@
 import { GlassView } from "expo-glass-effect";
-import { LogOut, Plus } from "lucide-react-native";
+import { LogOut, Plus, Search } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { useChatContext } from "@/contexts/chat-context";
@@ -144,6 +145,7 @@ export const Drawer = () => {
   const { session, signOut } = useSession();
   const { navigateToNew } = useChatContext();
   const insets = useSafeAreaInsets();
+  const [searchQuery, setSearchQuery] = useState("");
 
   /**
    * Handle logout
@@ -227,11 +229,11 @@ export const Drawer = () => {
             </View>
           ) : null}
           <View className="flex-1">
-            <ChatsList />
+            <ChatsList searchQuery={searchQuery} />
           </View>
-          {/* New Chat button overlay at bottom */}
+          {/* New Chat button and Search input overlay at bottom */}
           <View
-            className="absolute bottom-0 left-4 p-2"
+            className="absolute right-0 bottom-1 left-0 flex-row items-center gap-2 px-4"
             style={{ paddingBottom: insets.bottom + 8 }}
           >
             <GlassView
@@ -242,16 +244,39 @@ export const Drawer = () => {
                 padding: 1,
                 overflow: "hidden",
               }}
-              // tintColor={colorScheme === "dark" ? "#47d1cd" : "#1375a0"}
             >
               <Button
-                className="size-12"
+                className="size-9"
                 onPress={handleNewChat}
                 variant="ghost"
               >
-                <Icon as={Plus} className="text-primary" size={30} />
+                <Icon as={Plus} className="text-primary" size={22} />
               </Button>
             </GlassView>
+            <View className="flex-1">
+              <GlassView
+                glassEffectStyle={"clear"}
+                isInteractive={true}
+                style={{
+                  borderRadius: 32,
+                  padding: 1,
+                  overflow: "hidden",
+                }}
+              >
+                <View className="relative flex-row items-center">
+                  <Icon
+                    as={Search}
+                    className="absolute left-3 size-4 text-muted-foreground"
+                  />
+                  <Input
+                    className="h-9 flex-1 rounded-none border-0 bg-transparent pr-3 pl-10"
+                    onChangeText={setSearchQuery}
+                    placeholder="Search chats..."
+                    value={searchQuery}
+                  />
+                </View>
+              </GlassView>
+            </View>
           </View>
         </View>
       </Animated.View>
