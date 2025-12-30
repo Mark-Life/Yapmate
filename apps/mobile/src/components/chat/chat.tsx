@@ -265,7 +265,7 @@ export const Chat = ({
       {messages.length === 0 ? (
         <Pressable className="flex-1" onPress={handleDismissKeyboard}>
           <View
-            className="flex-1 items-center justify-center pb-36"
+            className="flex-1 items-center justify-center pb-64"
             style={{ paddingTop: insets.top }}
           >
             <YapmateIcon className="text-primary opacity-70" size={160} />

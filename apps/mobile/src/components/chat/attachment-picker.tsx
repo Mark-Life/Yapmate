@@ -1,17 +1,9 @@
-import { BlurView } from "expo-blur";
+import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { CameraIcon, FileIcon, ImageIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ImageIcon } from "lucide-react-native";
+import { Button as UIButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
 import type { AttachmentsContext } from "@/hooks/use-attachments";
 import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -24,14 +16,6 @@ type AttachmentPickerProps = {
  * Component for picking attachments from camera, photo library, or documents
  */
 export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
-  const { colorScheme } = useColorScheme();
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      lightTap();
-    }
-  };
-
   /**
    * Requests camera permissions and opens camera
    */
@@ -128,48 +112,40 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
   const hasAttachments = attachments.files.length > 0;
 
   return (
-    <DropdownMenu onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label="Add attachment"
-          className="transition-all duration-200"
-          size="icon"
-          variant="ghost"
-        >
-          <Icon
-            as={ImageIcon}
-            className={cn(
-              "size-4",
-              hasAttachments ? "text-primary-foreground" : "text-primary"
-            )}
-          />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="overflow-hidden rounded-2xl border-0 bg-transparent p-0"
-        side="top"
-        sideOffset={10}
-      >
-        <BlurView
-          className="overflow-hidden rounded-2xl border border-border"
-          intensity={50}
-          tint={colorScheme === "dark" ? "dark" : "light"}
-        >
-          <DropdownMenuItem onPress={handleTakePhoto}>
-            <Icon as={CameraIcon} className="mr-2 size-4" />
-            <Text>Take Photo</Text>
-          </DropdownMenuItem>
-          <DropdownMenuItem onPress={handleChooseFromLibrary}>
-            <Icon as={ImageIcon} className="mr-2 size-4" />
-            <Text>Choose from Library</Text>
-          </DropdownMenuItem>
-          <DropdownMenuItem onPress={handleChooseDocument}>
-            <Icon as={FileIcon} className="mr-2 size-4" />
-            <Text>Choose Document</Text>
-          </DropdownMenuItem>
-        </BlurView>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Host>
+      <ContextMenu>
+        <ContextMenu.Items>
+          <Button onPress={handleTakePhoto} systemImage="camera.fill">
+            Take Photo
+          </Button>
+          <Button
+            onPress={handleChooseFromLibrary}
+            systemImage="photo.on.rectangle"
+          >
+            Choose from Library
+          </Button>
+          <Button onPress={handleChooseDocument} systemImage="doc.text">
+            Choose Document
+          </Button>
+        </ContextMenu.Items>
+        <ContextMenu.Trigger>
+          <UIButton
+            aria-label="Add attachment"
+            className="transition-all duration-200"
+            onPress={lightTap}
+            size="icon"
+            variant="ghost"
+          >
+            <Icon
+              as={ImageIcon}
+              className={cn(
+                "size-4",
+                hasAttachments ? "text-primary-foreground" : "text-primary"
+              )}
+            />
+          </UIButton>
+        </ContextMenu.Trigger>
+      </ContextMenu>
+    </Host>
   );
 };
