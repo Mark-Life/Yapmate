@@ -64,6 +64,30 @@ const AppLayoutInner = () => {
                   },
                 }}
               />
+              <Stack.Screen
+                name="rename-chat"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.26],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
+              <Stack.Screen
+                name="delete-chat"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.25],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
             </Stack>
           </View>
         </AnimatedContent>

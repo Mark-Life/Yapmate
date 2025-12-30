@@ -1,3 +1,5 @@
+import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
+import { useRef } from "react";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
@@ -8,11 +10,14 @@ type ChatListItemProps = {
   updatedAt: Date | string | null;
   isActive?: boolean;
   onPress: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 };
 
 /**
  * Chat list item component
  * Displays chat title and handles navigation on press
+ * Supports long press for context menu with rename/delete actions
  */
 export const ChatListItem = ({
   id: _id,
@@ -20,29 +25,78 @@ export const ChatListItem = ({
   updatedAt,
   isActive = false,
   onPress,
+  onRename,
+  onDelete,
 }: ChatListItemProps) => {
   const displayTitle = title ?? "New chat";
+  const longPressedRef = useRef(false);
+
+  /**
+   * Handle press - skip if long press was triggered
+   */
+  const handlePress = () => {
+    if (longPressedRef.current) {
+      longPressedRef.current = false;
+      return;
+    }
+    onPress();
+  };
+
+  /**
+   * Handle long press - set flag to prevent onPress from firing
+   */
+  const handleLongPress = () => {
+    longPressedRef.current = true;
+  };
+
+  /**
+   * Reset long press flag after touch ends
+   */
+  const handlePressOut = () => {
+    setTimeout(() => {
+      longPressedRef.current = false;
+    }, 100);
+  };
 
   return (
-    <Pressable onPress={onPress}>
-      <View
-        className={cn(
-          "flex-row items-center justify-between rounded-lg p-2 px-3",
-          isActive && "bg-accent"
-        )}
-      >
-        <View className="flex-1">
-          <Text className="text-sm" variant="default">
-            {displayTitle}
-          </Text>
-          {updatedAt !== null && updatedAt !== undefined && (
-            <Text className="text-xs" variant="muted">
-              {formatDate(updatedAt)}
-            </Text>
-          )}
-        </View>
-      </View>
-    </Pressable>
+    <Host>
+      <ContextMenu activationMethod="longPress">
+        <ContextMenu.Items>
+          <Button onPress={onRename} systemImage="pencil">
+            Rename
+          </Button>
+          <Button onPress={onDelete} systemImage="trash">
+            Delete
+          </Button>
+        </ContextMenu.Items>
+        <ContextMenu.Trigger>
+          <Pressable
+            delayLongPress={300}
+            onLongPress={handleLongPress}
+            onPress={handlePress}
+            onPressOut={handlePressOut}
+          >
+            <View
+              className={cn(
+                "flex-row items-center justify-between rounded-lg p-2 px-3",
+                isActive && "bg-accent"
+              )}
+            >
+              <View className="flex-1">
+                <Text className="text-sm" variant="default">
+                  {displayTitle}
+                </Text>
+                {updatedAt !== null && updatedAt !== undefined && (
+                  <Text className="text-xs" variant="muted">
+                    {formatDate(updatedAt)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </Pressable>
+        </ContextMenu.Trigger>
+      </ContextMenu>
+    </Host>
   );
 };
 

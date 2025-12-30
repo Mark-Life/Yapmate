@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { FlatList, ScrollView, View } from "react-native";
 import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { closeDrawer } = useDrawer();
   const queryClient = useQueryClient();
+  const router = useRouter();
+
   const {
     data: chats = [],
     isPending,
@@ -83,6 +86,31 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   const handleNewChat = () => {
     navigateToNew();
     closeDrawer();
+  };
+
+  /**
+   * Handle rename dialog open - navigates to rename-chat route
+   */
+  const handleRenameClick = (chatId: string, currentTitle: string | null) => {
+    router.push({
+      pathname: "/(app)/rename-chat",
+      params: {
+        chatId,
+        currentTitle: currentTitle ?? "",
+      },
+    });
+  };
+
+  /**
+   * Handle delete dialog open - navigates to delete-chat route
+   */
+  const handleDeleteClick = (chatId: string) => {
+    router.push({
+      pathname: "/(app)/delete-chat",
+      params: {
+        chatId,
+      },
+    });
   };
 
   if (isPending) {
@@ -149,7 +177,9 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
           <ChatListItem
             id={item.id}
             isActive={item.id === currentChatId}
+            onDelete={() => handleDeleteClick(item.id)}
             onPress={() => handleChatPress(item.id)}
+            onRename={() => handleRenameClick(item.id, item.title)}
             title={item.title}
             updatedAt={item.updatedAt}
           />
