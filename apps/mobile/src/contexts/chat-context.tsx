@@ -54,7 +54,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
    * Navigates to a specific chat
    */
   const navigateToChat = useCallback((id: string) => {
-    router.push(`/chat/${id}`);
+    router.replace(`/chat/${id}`);
   }, []);
 
   /**
@@ -63,7 +63,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
    */
   const navigateToNew = useCallback(async () => {
     const newChatId = await Crypto.randomUUID();
-    router.push(`/chat/${newChatId}?new=true`);
+    router.replace(`/chat/${newChatId}?new=true`);
     setNewChatKey((prev) => prev + 1);
   }, []);
 

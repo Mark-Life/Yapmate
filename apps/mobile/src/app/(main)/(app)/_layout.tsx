@@ -5,13 +5,12 @@ import { Redirect, Stack } from "expo-router";
 import { View } from "react-native";
 import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
+import { useSession } from "@/contexts/auth";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
 import { DrawerProvider } from "@/contexts/drawer-context";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
 import { generateWebSocketUrl } from "@/lib/api-url";
-
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
-
 import { supabase } from "@/lib/supabase";
 
 /**

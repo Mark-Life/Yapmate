@@ -168,7 +168,7 @@ export const Drawer = () => {
     <>
       {/* Drawer content - full screen height, padding for safe area */}
       <Animated.View
-        className={`absolute top-0 left-0 z-50 h-full w-[80%] bg-background ${
+        className={`absolute top-0 left-0 z-50 h-full w-[80%] border-border border-r bg-background ${
           colorScheme === "dark" ? "dark" : ""
         }`}
         style={drawerStyle}
