@@ -26,7 +26,7 @@ export const HeaderControls = () => {
       spacing={8}
       style={{
         position: "absolute",
-        top: insets.top + 4,
+        top: insets.top,
         left: 8,
         zIndex: 60,
         flexDirection: "row",

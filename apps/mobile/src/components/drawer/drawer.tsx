@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react-native";
+import { GlassView } from "expo-glass-effect";
+import { LogOut, Plus } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback } from "react";
 import { Pressable, View } from "react-native";
@@ -21,6 +22,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
+import { useChatContext } from "@/contexts/chat-context";
 import { DRAWER_WIDTH, useDrawer } from "@/contexts/drawer-context";
 import { lightTap } from "@/lib/haptics";
 
@@ -140,6 +142,7 @@ export const Drawer = () => {
   const { colorScheme } = useColorScheme();
   const { position, closeDrawer } = useDrawer();
   const { session, signOut } = useSession();
+  const { navigateToNew } = useChatContext();
   const insets = useSafeAreaInsets();
 
   /**
@@ -159,6 +162,14 @@ export const Drawer = () => {
     }
   }, []);
 
+  /**
+   * Handle new chat creation and close drawer
+   */
+  const handleNewChat = useCallback(() => {
+    navigateToNew();
+    closeDrawer();
+  }, [navigateToNew, closeDrawer]);
+
   // Drawer translateX: maps position (0 to DRAWER_WIDTH) to (-DRAWER_WIDTH to 0)
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: position.value - DRAWER_WIDTH }],
@@ -173,15 +184,9 @@ export const Drawer = () => {
         }`}
         style={drawerStyle}
       >
-        <View
-          className="flex-1 flex-col"
-          style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-        >
-          <View className="flex-1">
-            <ChatsList />
-          </View>
+        <View className="flex-1 flex-col" style={{ paddingTop: insets.top }}>
           {session?.user ? (
-            <View className="border-border border-t">
+            <View className="border-border border-b">
               <DropdownMenu onOpenChange={handleUserMenuOpenChange}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -206,7 +211,7 @@ export const Drawer = () => {
                 <DropdownMenuContent
                   align="end"
                   className="w-56"
-                  side="top"
+                  side="bottom"
                   sideOffset={8}
                 >
                   <DropdownMenuItem
@@ -221,6 +226,33 @@ export const Drawer = () => {
               </DropdownMenu>
             </View>
           ) : null}
+          <View className="flex-1">
+            <ChatsList />
+          </View>
+          {/* New Chat button overlay at bottom */}
+          <View
+            className="absolute bottom-0 left-4 p-2"
+            style={{ paddingBottom: insets.bottom + 8 }}
+          >
+            <GlassView
+              glassEffectStyle={"clear"}
+              isInteractive={true}
+              style={{
+                borderRadius: 32,
+                padding: 1,
+                overflow: "hidden",
+              }}
+              // tintColor={colorScheme === "dark" ? "#47d1cd" : "#1375a0"}
+            >
+              <Button
+                className="size-12"
+                onPress={handleNewChat}
+                variant="ghost"
+              >
+                <Icon as={Plus} className="text-primary" size={30} />
+              </Button>
+            </GlassView>
+          </View>
         </View>
       </Animated.View>
     </>

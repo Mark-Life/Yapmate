@@ -36,7 +36,6 @@ export const ChatInput = ({
   input,
   onInputChange,
   model,
-  onModelChange,
   searchEnabled,
   onSearchEnabledChange,
   status,

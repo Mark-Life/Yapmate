@@ -93,11 +93,6 @@ export const ChatsList = () => {
 
   return (
     <View className="flex-1">
-      <View className="p-2 pt-0">
-        <Button className="w-full" onPress={handleNewChat} variant="default">
-          <Text>New Chat</Text>
-        </Button>
-      </View>
       {chats.length === 0 ? (
         <View className="flex-1 items-center justify-center p-8">
           <Text className="mb-2" variant="h3">
@@ -112,7 +107,7 @@ export const ChatsList = () => {
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: 8 }}
+          contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
           data={chats}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
