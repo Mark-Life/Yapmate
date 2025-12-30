@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mark-life.yapmate.dev",
+      "bundleIdentifier": "com.mark-life.yapmate",
       "icon": "./assets/yapmate-apple-2-dark.icon",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -28,7 +28,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.mark-life.yapmate"
+      "package": "com.mark-life.yapmate",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -54,6 +55,12 @@
         "projectId": "d495901c-3363-4686-a32e-fb09c86e4789"
       }
     },
-    "owner": "mark-life-ltd"
+    "owner": "mark-life-ltd",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d495901c-3363-4686-a32e-fb09c86e4789"
+    }
   }
 }
