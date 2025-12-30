@@ -31,17 +31,35 @@ const getAppName = (baseName) => {
   return baseName;
 };
 
+/**
+ * Returns scheme based on build variant
+ */
+const getScheme = () => {
+  if (IS_DEV) {
+    return "yapmate-dev";
+  }
+
+  if (IS_PREVIEW) {
+    return "yapmate-preview";
+  }
+
+  return "yapmate";
+};
+
 export default ({ config }) => {
   const baseBundleIdentifier =
     config.ios?.bundleIdentifier ?? config.android?.package;
   const baseAppName = config.name;
+  const scheme = getScheme();
 
   return {
     ...config,
     name: getAppName(baseAppName),
+    scheme,
     ios: {
       ...config.ios,
       bundleIdentifier: getUniqueIdentifier(baseBundleIdentifier),
+      associatedDomains: ["applinks:yapmate.com"],
     },
     android: {
       ...config.android,

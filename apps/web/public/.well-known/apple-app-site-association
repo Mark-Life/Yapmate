@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "96ZJ439B4W.com.mark-life.yapmate",
+          "96ZJ439B4W.com.mark-life.yapmate.preview",
+          "96ZJ439B4W.com.mark-life.yapmate.dev"
+        ],
+        "paths": ["/auth/mobile"]
+      }
+    ]
+  }
+}

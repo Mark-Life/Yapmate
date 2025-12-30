@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "./contexts/user-context";
 import { ChatLayout } from "./pages/chat-layout";
 import { LoginPage } from "./pages/login";
+import { MobileAuthPage } from "./pages/mobile-auth";
 import { NotFoundPage } from "./pages/not-found";
 
 /**
@@ -60,6 +61,10 @@ export const Router = () => {
   // Auth routes (public)
   if (pathname === "/login") {
     return <LoginPage />;
+  }
+
+  if (pathname === "/auth/mobile") {
+    return <MobileAuthPage />;
   }
 
   // Protected routes - only render if authenticated

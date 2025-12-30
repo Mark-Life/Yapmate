@@ -62,7 +62,7 @@ const FilePart = ({
     >
       {isImage ? (
         <Image
-          className="size-full"
+          className="size-full bg-accent"
           resizeMode="cover"
           source={{ uri: part.url }}
         />

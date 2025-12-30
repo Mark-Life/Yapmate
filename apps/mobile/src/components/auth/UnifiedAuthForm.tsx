@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
+import { generateAPIUrl } from "@/lib/api-url";
 
 interface UnifiedAuthFormProps {
   type: "login" | "signup";
@@ -151,8 +152,8 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
 
     if (!password.trim()) {
       errors.password = "Password is required";
-    } else if (password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
+    } else if (password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
     }
 
     setFieldErrors((prev) => ({ ...prev, ...errors }));
@@ -206,11 +207,8 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
 
     setIsLoading(true);
     try {
-      // Get redirect URL for magic link
-      const redirectTo =
-        process.env.NODE_ENV === "development"
-          ? "http://localhost:3000/auth/mobile"
-          : "https://yapmate.com/auth/mobile";
+      // Get redirect URL for magic link using API URL
+      const redirectTo = generateAPIUrl("/auth/mobile");
 
       await sendMagicLink(email.trim(), redirectTo);
       Alert.alert(

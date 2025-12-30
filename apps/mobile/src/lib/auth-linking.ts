@@ -14,10 +14,12 @@ type AuthUrlResult = {
 /**
  * Checks if a URL is an auth callback URL
  * Returns true if URL contains auth-related parameters
+ * Handles both deep links (yapmate://auth/callback) and universal links (https://yapmate.com/auth/mobile)
  */
 export const isAuthCallbackUrl = (url: string): boolean => {
   try {
     // Quick check: look for auth-related query parameters in the URL string
+    // Works for both deep links (yapmate://) and universal links (https://)
     const authParams = [
       "token_hash",
       "type=magiclink",
@@ -95,6 +97,7 @@ const verifyMagicLink = async (token_hash: string): Promise<AuthUrlResult> => {
 /**
  * Creates a session from a magic link URL
  * Handles both token_hash (for magic links) and regular OTP tokens
+ * Supports both deep links (yapmate://auth/callback) and universal links (https://yapmate.com/auth/mobile)
  * Returns null session and null error if URL is not an auth callback
  */
 export const createSessionFromUrl = async (
@@ -102,6 +105,7 @@ export const createSessionFromUrl = async (
 ): Promise<AuthUrlResult> => {
   try {
     // First check if this is an auth callback URL
+    // Works for both deep links and universal links
     if (!isAuthCallbackUrl(url)) {
       // Not an auth callback, silently skip
       return { session: null, error: null };

@@ -289,11 +289,20 @@ const server = serve<WsClientData>({
     // Frontend SPA routes - HTML import bundles React app
     "/": index,
     "/login": index,
+    "/auth/mobile": index,
     "/chat": index,
     "/chat/*": index,
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,
+
+    // Universal link configuration files
+    "/.well-known/apple-app-site-association": () => {
+      const file = Bun.file("./public/.well-known/apple-app-site-association");
+      return new Response(file, {
+        headers: { "Content-Type": "application/json" },
+      });
+    },
 
     // API routes - streaming and file uploads (kept as HTTP)
     "/api/chat": async (req: Request) => {
