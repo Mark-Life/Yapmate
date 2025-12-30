@@ -4,16 +4,21 @@ import type { FileUIPart, UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
+import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
+import { ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
 import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
+import { lightTap } from "@/lib/haptics";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
 import { YapmateIcon } from "../yapmate-icon";
@@ -281,6 +286,10 @@ export const Chat = ({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
 
+  // Track scroll state and scroll-to-bottom function
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const scrollToBottomRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     if (Platform.OS === "web") {
       return;
@@ -320,7 +329,12 @@ export const Chat = ({
         </Pressable>
       ) : (
         <View className="flex-1">
-          <MessagesHistory messages={messages} status={status} />
+          <MessagesHistory
+            messages={messages}
+            onScrollStateChange={setIsAtBottom}
+            scrollToBottomRef={scrollToBottomRef}
+            status={status}
+          />
           <LinearGradient
             colors={
               colorScheme === "dark"
@@ -352,6 +366,35 @@ export const Chat = ({
         </View>
       )}
 
+      {!isAtBottom && messages.length > 0 ? (
+        <View
+          className="absolute right-0 left-0 z-20 items-center"
+          style={{
+            bottom:
+              (keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom) + 94,
+          }}
+        >
+          <GlassView
+            isInteractive={true}
+            style={{
+              borderRadius: 32,
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <Button
+              className="size-8"
+              onPress={() => {
+                lightTap();
+                scrollToBottomRef.current?.();
+              }}
+              variant="ghost"
+            >
+              <Icon as={ChevronDown} className="text-primary" size={20} />
+            </Button>
+          </GlassView>
+        </View>
+      ) : null}
       <View
         className="absolute right-0 left-0 z-10 p-1 pb-0"
         style={{

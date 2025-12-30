@@ -1,6 +1,6 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
 import { FileIcon } from "lucide-react-native";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Image,
@@ -21,6 +21,8 @@ type ChatUIMessage = UIMessage;
 type MessagesHistoryProps = {
   messages: ChatUIMessage[];
   status: ChatStatus;
+  onScrollStateChange?: (isAtBottom: boolean) => void;
+  scrollToBottomRef?: React.MutableRefObject<(() => void) | null>;
 };
 
 type MessageItemProps = {
@@ -154,10 +156,77 @@ const MessageItem = ({ message }: MessageItemProps) => {
  * Displays chat messages in a FlatList
  * Content scrolls behind safe areas with padding applied
  */
-export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
+export const MessagesHistory = ({
+  messages,
+  status,
+  onScrollStateChange,
+  scrollToBottomRef,
+}: MessagesHistoryProps) => {
   const listRef = useRef<FlatList<ChatUIMessage>>(null);
   const layoutHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
+  const scrollOffsetRef = useRef(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const insets = useSafeAreaInsets();
+
+  /**
+   * Scrolls to the bottom of the messages list
+   */
+  const scrollToBottom = useCallback(() => {
+    if (contentHeightRef.current > 0 && layoutHeightRef.current > 0) {
+      const maxOffset = Math.max(
+        0,
+        contentHeightRef.current - layoutHeightRef.current
+      );
+      listRef.current?.scrollToOffset({
+        offset: maxOffset,
+        animated: true,
+      });
+    }
+  }, []);
+
+  // Expose scrollToBottom function via ref
+  useEffect(() => {
+    if (scrollToBottomRef) {
+      scrollToBottomRef.current = scrollToBottom;
+    }
+  }, [scrollToBottom, scrollToBottomRef]);
+
+  /**
+   * Checks if user is at the bottom of the scroll view
+   */
+  const checkIfAtBottom = useCallback(
+    (offset: number, contentHeight: number, layoutHeight: number) => {
+      const threshold = 50; // Consider "at bottom" if within 50px
+      const maxOffset = Math.max(0, contentHeight - layoutHeight);
+      const isNearBottom = offset >= maxOffset - threshold;
+      return isNearBottom;
+    },
+    []
+  );
+
+  /**
+   * Handles scroll events to track if user is at bottom
+   */
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      const offset = event.nativeEvent.contentOffset.y;
+      scrollOffsetRef.current = offset;
+
+      if (contentHeightRef.current > 0 && layoutHeightRef.current > 0) {
+        const atBottom = checkIfAtBottom(
+          offset,
+          contentHeightRef.current,
+          layoutHeightRef.current
+        );
+        if (atBottom !== isAtBottom) {
+          setIsAtBottom(atBottom);
+          onScrollStateChange?.(atBottom);
+        }
+      }
+    },
+    [checkIfAtBottom, isAtBottom, onScrollStateChange]
+  );
 
   return (
     <FlatList
@@ -178,6 +247,7 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
         ) : null
       }
       onContentSizeChange={(_width, contentHeight) => {
+        contentHeightRef.current = contentHeight;
         // Auto-scroll to bottom when content changes
         // Use scrollToOffset for precise positioning during streaming
         if (messages.length > 0 && layoutHeightRef.current > 0) {
@@ -189,11 +259,15 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
             offset: maxOffset,
             animated: true,
           });
+          // Update isAtBottom state after auto-scroll
+          setIsAtBottom(true);
+          onScrollStateChange?.(true);
         }
       }}
       onLayout={(e) => {
         layoutHeightRef.current = e.nativeEvent.layout.height;
       }}
+      onScroll={handleScroll}
       onScrollBeginDrag={() => {
         // Dismiss keyboard when user starts scrolling
         if (Platform.OS !== "web") {
@@ -202,6 +276,7 @@ export const MessagesHistory = ({ messages, status }: MessagesHistoryProps) => {
       }}
       ref={listRef}
       renderItem={({ item }) => <MessageItem message={item} />}
+      scrollEventThrottle={16}
     />
   );
 };
