@@ -135,7 +135,7 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
       const ws = new WebSocket(url.toString());
 
       ws.onopen = () => {
-        console.log("[WS] Connected");
+        // console.log("[WS] Connected");
         isConnectingRef.current = false;
         setReconnectAttempts(0);
 
@@ -169,7 +169,7 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
       };
 
       ws.onclose = () => {
-        console.log("[WS] Disconnected");
+        // console.log("[WS] Disconnected");
         isConnectingRef.current = false;
 
         // Clear ping interval

@@ -1,11 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-
-import { Redirect, Stack } from "expo-router";
-
+import { Stack } from "expo-router";
 import { View } from "react-native";
 import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
-import { useSession } from "@/contexts/auth";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
 import { DrawerProvider } from "@/contexts/drawer-context";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
@@ -77,22 +74,9 @@ const AppLayoutInner = () => {
 
 /**
  * Layout for authenticated app routes
- * Redirects unauthenticated users to sign-in
- * Content scrolls behind safe areas, safe area padding applied per component
+ * Route protection handled by Stack.Protected in root layout
  */
 export default function AppLayout() {
-  const { session, isLoading } = useSession();
-
-  // Show nothing while loading to prevent flash
-  if (isLoading) {
-    return null;
-  }
-
-  // Redirect to sign-in if not authenticated
-  if (!session) {
-    return <Redirect href="/sign-in" />;
-  }
-
   return (
     <ChatProvider>
       <AppLayoutInner />
