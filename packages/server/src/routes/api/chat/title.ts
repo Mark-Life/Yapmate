@@ -5,6 +5,7 @@
 import { streamText } from "ai";
 import { openrouter } from "../../../lib/openrouter";
 import { publishStreamChunk } from "../../../lib/redis/stream";
+import { publishUserEvent } from "../../../lib/websocket";
 import { updateChatTitle } from "./store";
 
 const TITLE_GENERATION_MODEL = "google/gemma-3n-e4b-it:free";
@@ -54,6 +55,7 @@ type GenerateTitleOptions = {
   chatId: string;
   streamId: string;
   userMessage: string;
+  userId: string;
   writer: Parameters<
     Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
   >[0]["writer"];
@@ -66,18 +68,25 @@ type GenerateTitleOptions = {
 export const generateAndPublishTitle = async (
   options: GenerateTitleOptions
 ): Promise<void> => {
-  const { chatId, streamId, userMessage, writer, chunkIndex } = options;
+  const { chatId, streamId, userMessage, userId, writer, chunkIndex } = options;
   const userText = userMessage || "New chat";
   try {
     const title = await generateChatTitle(userText);
     await updateChatTitle(chatId, title);
+
+    // Publish WebSocket event to notify all clients about title update
+    await publishUserEvent(userId, {
+      type: "chat_updated",
+      chatId,
+    });
+
     const titleChunk = {
       type: "data-chat-title" as const,
       data: { title },
       transient: true,
     };
     writer.write(titleChunk);
-    // Publish title to Redis
+    // Publish title to Redis for resume purposes
     await publishStreamChunk(streamId, {
       type: titleChunk.type,
       data: titleChunk.data,

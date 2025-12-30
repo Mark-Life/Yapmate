@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWebSocketSync } from "@yapmate/components/hooks/use-websocket-sync";
 import { Button } from "@yapmate/components/ui/button";
 import {
   SidebarInset,
@@ -12,6 +13,7 @@ import { Chat } from "../components/chat/chat";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
 import { rpcClient } from "../lib/rpc-client";
+import { createClient } from "../lib/supabase/client";
 
 /**
  * Header controls - sidebar trigger + new chat button when collapsed
@@ -100,6 +102,43 @@ const ChatContainer = () => {
 };
 
 /**
+ * WebSocket sync component - must be inside ChatProvider
+ */
+const WebSocketSync = () => {
+  const queryClient = useQueryClient();
+  const { currentChatId } = useChatContext();
+  const supabase = createClient();
+
+  /**
+   * Handles stream started event - dispatches custom event for Chat component
+   */
+  const handleStreamStarted = useCallback((chatId: string) => {
+    // Dispatch custom event that Chat component can listen to
+    window.dispatchEvent(
+      new CustomEvent("stream-started", { detail: { chatId } })
+    );
+  }, []);
+
+  // WebSocket real-time sync
+  useWebSocketSync({
+    wsUrl: `${
+      window.location.protocol === "https:" ? "wss:" : "ws:"
+    }//${window.location.host}/ws`,
+    getToken: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
+    },
+    queryClient,
+    currentChatId: currentChatId ?? undefined,
+    onStreamStarted: handleStreamStarted,
+  });
+
+  return null;
+};
+
+/**
  * Layout for chat pages - includes sidebar with chat history
  */
 export const ChatLayout = () => {
@@ -122,6 +161,7 @@ export const ChatLayout = () => {
 
   return (
     <ChatProvider>
+      <WebSocketSync />
       <SidebarProvider>
         <AppSidebar
           chats={chats}

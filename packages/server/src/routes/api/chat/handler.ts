@@ -16,6 +16,7 @@ import {
 import { registerStream } from "../../../lib/redis/controller";
 import { setStreamStatus } from "../../../lib/redis/stream";
 import { getCurrentUserId } from "../../../lib/supabase";
+import { publishUserEvent } from "../../../lib/websocket";
 import { processMessageFiles } from "./files";
 import { handleEdit, handleRegeneration } from "./messages";
 import { getChat, loadChatMessages } from "./store";
@@ -110,6 +111,13 @@ export const chatHandler = {
     await updateActiveStreamId(id, streamId);
     await setStreamStatus(streamId, "streaming");
 
+    // Publish stream_started event for real-time sync
+    await publishUserEvent(userId, {
+      type: "stream_started",
+      chatId: id,
+      hasActiveStream: true,
+    });
+
     const chunkIndex = { current: 0 };
     const userMessage =
       message.parts.find((p) => p.type === "text")?.text || "";
@@ -146,6 +154,7 @@ export const chatHandler = {
           model,
           finalMessages,
           usage: streamUsage,
+          userId,
         });
       },
     });

@@ -12,10 +12,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
+import { eventTarget } from "@/lib/event-emitter";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
 import { YapmateIcon } from "../yapmate-icon";
-import { createChat, determineDefaultModel } from "./chat-helpers";
+import {
+  createChat,
+  determineDefaultModel,
+  resumeStream,
+} from "./chat-helpers";
 import { ChatInput } from "./chat-input";
 import { MessagesHistory } from "./messages-history";
 
@@ -199,6 +204,30 @@ export const Chat = ({
     // Notify parent
     onChatCreated?.(chatId);
   }, [isNewChat, chatId, createChatMutation, onChatCreated]);
+
+  /**
+   * Listens for stream-started events from WebSocket sync
+   * Resumes stream when another device starts streaming to this chat
+   */
+  useEffect(() => {
+    if (!chatId || isNewChat) {
+      return;
+    }
+
+    const handleStreamStarted = (event: CustomEvent<{ chatId: string }>) => {
+      if (event.detail.chatId === chatId) {
+        const isCancelled = { current: false };
+        resumeStream(chatId, setMessages, queryClient, isCancelled);
+      }
+    };
+
+    // Use cross-platform event target
+    eventTarget.addEventListener("stream-started", handleStreamStarted);
+
+    return () => {
+      eventTarget.removeEventListener("stream-started", handleStreamStarted);
+    };
+  }, [chatId, isNewChat, setMessages, queryClient]);
 
   const handleSubmit = async (message: {
     text: string;

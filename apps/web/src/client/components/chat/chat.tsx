@@ -175,6 +175,35 @@ export const Chat = ({
   }, [chatId, isNewChat, setMessages, queryClient]);
 
   /**
+   * Listens for stream-started events from WebSocket sync
+   * Resumes stream when another device starts streaming to this chat
+   */
+  useEffect(() => {
+    if (!chatId || isNewChat) {
+      return;
+    }
+
+    const handleStreamStarted = (event: CustomEvent<{ chatId: string }>) => {
+      if (event.detail.chatId === chatId) {
+        const isCancelled = { current: false };
+        resumeStream(chatId, setMessages, queryClient, isCancelled);
+      }
+    };
+
+    window.addEventListener(
+      "stream-started",
+      handleStreamStarted as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "stream-started",
+        handleStreamStarted as EventListener
+      );
+    };
+  }, [chatId, isNewChat, setMessages, queryClient]);
+
+  /**
    * Creates chat in DB on first message, updates URL and sidebar
    * Uses placeholder title - real title comes via stream
    */

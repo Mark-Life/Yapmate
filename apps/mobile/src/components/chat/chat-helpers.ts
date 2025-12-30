@@ -1,6 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
+import * as Crypto from "expo-crypto";
+import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
+import { supabase } from "@/lib/supabase";
 
 type Model = { value: string };
 
@@ -119,4 +122,195 @@ export const determineDefaultModel = (
   }
 
   return models[0]?.value ?? fallbackModel;
+};
+
+type ResumeChunkState = { messageId: string | null; text: string };
+
+/**
+ * Handles text-start chunk: creates new assistant message
+ */
+const handleTextStartChunk = async (
+  chunk: Record<string, unknown>,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): Promise<ResumeChunkState> => {
+  if (chunk.type === "text-start" && typeof chunk.id === "string") {
+    const newMessageId = await Crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: newMessageId,
+        role: "assistant",
+        parts: [{ type: "text", text: "" }],
+      } as ChatUIMessage,
+    ]);
+    return { messageId: newMessageId, text: "" };
+  }
+  return { messageId: null, text: "" };
+};
+
+/**
+ * Handles text-delta chunk: appends to accumulated text
+ */
+const handleTextDeltaChunk = (
+  chunk: Record<string, unknown>,
+  state: ResumeChunkState,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): ResumeChunkState => {
+  if (chunk.type === "text-delta" && typeof chunk.delta === "string") {
+    const newText = state.text + chunk.delta;
+    if (state.messageId) {
+      const msgId = state.messageId;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === msgId
+            ? { ...msg, parts: [{ type: "text", text: newText }] }
+            : msg
+        )
+      );
+    }
+    return { ...state, text: newText };
+  }
+  return state;
+};
+
+/**
+ * Processes a single SSE chunk and updates state
+ */
+const processResumeChunk = async (
+  chunk: Record<string, unknown>,
+  state: ResumeChunkState,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): Promise<ResumeChunkState> => {
+  // Handle text-start: create new assistant message
+  if (chunk.type === "text-start") {
+    return await handleTextStartChunk(chunk, setMessages);
+  }
+
+  // Handle text-delta: append to accumulated text
+  if (chunk.type === "text-delta") {
+    return handleTextDeltaChunk(chunk, state, setMessages);
+  }
+
+  return state;
+};
+
+/**
+ * Parses SSE line and extracts JSON chunk
+ */
+const parseSSELine = (line: string): Record<string, unknown> | null => {
+  if (!line.startsWith("data: ")) {
+    return null;
+  }
+  try {
+    return JSON.parse(line.slice(6)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Processes buffered SSE lines
+ */
+const processSSELines = async (
+  lines: string[],
+  state: ResumeChunkState,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): Promise<ResumeChunkState> => {
+  let currentState = state;
+  for (const line of lines) {
+    const chunk = parseSSELine(line);
+    if (chunk) {
+      currentState = await processResumeChunk(chunk, currentState, setMessages);
+    }
+  }
+  return currentState;
+};
+
+/**
+ * Reads and processes stream chunks
+ */
+const processStreamChunks = async (
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  decoder: TextDecoder,
+  isCancelled: { current: boolean },
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): Promise<ResumeChunkState> => {
+  let buffer = "";
+  let state: ResumeChunkState = { messageId: null, text: "" };
+
+  while (!isCancelled.current) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    state = await processSSELines(lines, state, setMessages);
+  }
+
+  return state;
+};
+
+/**
+ * Fetches stream response
+ */
+const fetchStreamResponse = async (
+  chatId: string
+): Promise<Response | null> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const headers: HeadersInit = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(generateAPIUrl(`/api/chat/${chatId}/stream`), {
+    headers,
+  });
+  if (res.status === 204) {
+    return null;
+  }
+  return res;
+};
+
+/**
+ * Resumes an active stream on mount or when notified
+ */
+export const resumeStream = async (
+  chatId: string,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>,
+  queryClient: QueryClient,
+  isCancelled: { current: boolean }
+): Promise<void> => {
+  try {
+    const res = await fetchStreamResponse(chatId);
+    if (!res || isCancelled.current) {
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    await processStreamChunks(reader, decoder, isCancelled, setMessages);
+
+    // Stream completed - invalidate query so navigation fetches fresh DB data
+    if (!isCancelled.current) {
+      queryClient.invalidateQueries({
+        queryKey: ["chat-messages", chatId],
+      });
+    }
+  } catch (error) {
+    if (!isCancelled.current) {
+      console.error("Resume stream failed:", error);
+    }
+  }
 };

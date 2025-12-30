@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import { publishUserEvent } from "@yapmate/server/lib/websocket";
 import {
   createChat,
   deleteChat,
@@ -35,6 +36,13 @@ export const chats = {
         input.title ?? undefined,
         input.id
       );
+
+      // Publish chat_created event for real-time sync
+      await publishUserEvent(context.userId, {
+        type: "chat_created",
+        chatId,
+      });
+
       return { id: chatId };
     }),
 
