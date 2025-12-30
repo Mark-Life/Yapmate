@@ -54,13 +54,10 @@ export const MobileAuthPage = () => {
     setDeepLinkUrl(deepLink);
     setStatus("redirecting");
 
-    // Try to open the app immediately
-    window.location.href = deepLink;
-
-    // Fallback: if app doesn't open after 2 seconds, show manual link
-    setTimeout(() => {
-      // Keep showing the redirecting state with manual link option
-    }, 2000);
+    // Don't auto-redirect - let universal links handle it naturally
+    // If universal links are configured, iOS will intercept the https:// URL
+    // If not, the user can tap the button to open via deep link
+    // Auto-redirecting breaks Safari when universal links aren't working
   }, []);
 
   const handleGoToLogin = () => {

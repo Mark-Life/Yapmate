@@ -23,6 +23,7 @@ export const isAuthCallbackUrl = (url: string): boolean => {
     const authParams = [
       "token_hash",
       "type=magiclink",
+      "type=email",
       "access_token",
       "refresh_token",
     ];
@@ -130,7 +131,8 @@ export const createSessionFromUrl = async (
     }
 
     // For magic links, we need to verify the token_hash
-    if (type === "magiclink" && token_hash) {
+    // Supabase sends type=email for magic links, but we verify with type=magiclink
+    if (token_hash && (type === "magiclink" || type === "email")) {
       return await verifyMagicLink(token_hash);
     }
 

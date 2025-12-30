@@ -120,7 +120,7 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [authMethod, setAuthMethod] = useState<"password" | "magiclink">(
-    "password"
+    "magiclink"
   );
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -278,12 +278,12 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
     if (authMethod === "password") {
       return buttonText;
     }
-    return "Send Magic Link";
+    return "Send Login Link";
   };
 
   const getToggleText = () => {
     if (authMethod === "password") {
-      return "Use magic link instead";
+      return "Use Login Link instead";
     }
     return "Use password instead";
   };
