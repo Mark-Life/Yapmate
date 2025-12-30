@@ -215,7 +215,7 @@ export const Chat = ({
 
     // Send message via transport with files
     sendMessage({
-      text: message.text.trim() || "Sent with attachments",
+      text: message.text.trim(),
       files: message.files,
     });
 
