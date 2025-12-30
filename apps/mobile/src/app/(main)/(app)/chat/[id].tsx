@@ -22,7 +22,7 @@ const fetchMessages = async (chatId: string): Promise<ChatUIMessage[]> =>
  * Skeleton loader for chat messages
  */
 const ChatSkeleton = () => (
-  <View className="flex-1 gap-2 p-4">
+  <View className="flex-1 gap-2 p-4 pt-32">
     {[1, 2, 3].map((i) => (
       <Skeleton className="h-16 w-full rounded-lg" key={i} />
     ))}

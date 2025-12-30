@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import { generateAPIUrl } from "@/lib/api-url";
+import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
@@ -78,6 +79,22 @@ export const Chat = ({
       setModel(defaultModel);
     }
   }, [models, initialId, initialMessages, queryClient]);
+
+  /**
+   * Listens for model-selected events from model-selector screen
+   */
+  useEffect(() => {
+    const handleModelSelected: EventListener = (event) => {
+      const detail = event.detail as { model: string };
+      setModel(detail.model);
+    };
+
+    eventTarget.addEventListener("model-selected", handleModelSelected);
+
+    return () => {
+      eventTarget.removeEventListener("model-selected", handleModelSelected);
+    };
+  }, []);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? Crypto.randomUUID());
@@ -214,8 +231,9 @@ export const Chat = ({
       return;
     }
 
-    const handleStreamStarted = (event: CustomEvent<{ chatId: string }>) => {
-      if (event.detail.chatId === chatId) {
+    const handleStreamStarted: EventListener = (event) => {
+      const detail = event.detail as { chatId: string };
+      if (detail.chatId === chatId) {
         const isCancelled = { current: false };
         resumeStream(chatId, setMessages, queryClient, isCancelled);
       }

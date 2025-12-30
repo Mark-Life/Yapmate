@@ -103,7 +103,6 @@ export const ChatInput = ({
           >
             <ModelSelector
               model={model}
-              onModelChange={onModelChange}
               triggerClassName="border-0 bg-transparent rounded-none"
             />
           </GlassView>
