@@ -1,8 +1,8 @@
 import { GlassView } from "expo-glass-effect";
 import { LogOut, Plus, Search } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback, useState } from "react";
-import { Pressable, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Keyboard, Platform, Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
@@ -146,6 +146,7 @@ export const Drawer = () => {
   const { navigateToNew } = useChatContext();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   /**
    * Handle logout
@@ -171,6 +172,33 @@ export const Drawer = () => {
     navigateToNew();
     closeDrawer();
   }, [navigateToNew, closeDrawer]);
+
+  /**
+   * Track keyboard height for absolutely positioned buttons
+   */
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      return;
+    }
+
+    // Use 'will' events on iOS for smoother animations, 'did' events on Android
+    const showEventName =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEventName =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSubscription = Keyboard.addListener(showEventName, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEventName, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // Drawer translateX: maps position (0 to DRAWER_WIDTH) to (-DRAWER_WIDTH to 0)
   const drawerStyle = useAnimatedStyle(() => ({
@@ -233,8 +261,10 @@ export const Drawer = () => {
           </View>
           {/* New Chat button and Search input overlay at bottom */}
           <View
-            className="absolute right-0 bottom-1 left-0 flex-row items-center gap-2 px-4"
-            style={{ paddingBottom: insets.bottom + 8 }}
+            className="absolute right-0 left-0 flex-row items-center gap-2 px-4"
+            style={{
+              bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
+            }}
           >
             <GlassView
               glassEffectStyle={"clear"}

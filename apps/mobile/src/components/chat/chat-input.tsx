@@ -82,6 +82,7 @@ export const ChatInput = ({
       style={{
         borderRadius: 24,
         padding: 8,
+        paddingBottom: 0,
       }}
     >
       {hasAttachments ? (

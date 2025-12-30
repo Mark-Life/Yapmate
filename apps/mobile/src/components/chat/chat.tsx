@@ -353,9 +353,9 @@ export const Chat = ({
       )}
 
       <View
-        className="absolute right-0 left-0 z-10 p-1"
+        className="absolute right-0 left-0 z-10 p-1 pb-0"
         style={{
-          bottom: keyboardHeight > 0 ? keyboardHeight : insets.bottom,
+          bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
         }}
       >
         <ChatInput
