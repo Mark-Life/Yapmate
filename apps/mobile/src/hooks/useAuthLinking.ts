@@ -1,39 +1,38 @@
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { Alert } from "react-native";
-import { createSessionFromUrl } from "@/lib/auth-linking";
+import { isAuthCallbackUrl } from "@/lib/auth-linking";
 
 /**
  * Hook to handle authentication deep links
- * Processes magic link URLs when app is opened via deep link
+ * Redirects auth callback URLs to the /auth/callback route for processing
  * Only processes URLs that contain auth callback parameters
  */
 export function useAuthLinking() {
   useEffect(() => {
-    const handleUrl = async (url: string | null) => {
+    const handleUrl = (url: string | null) => {
       if (!url) {
         return;
       }
 
-      try {
-        const { session, error } = await createSessionFromUrl(url);
+      // Check if this is an auth callback URL
+      if (isAuthCallbackUrl(url)) {
+        // Parse the URL to extract query params
+        try {
+          const urlObj = new URL(url);
+          const params = new URLSearchParams(urlObj.search);
 
-        // If error is null, it means URL wasn't an auth callback - silently skip
-        if (error === null && session === null) {
-          return;
-        }
+          // Build route path with query params
+          const queryString = params.toString();
+          const routePath = `/auth/callback${queryString ? `?${queryString}` : ""}`;
 
-        if (session) {
-          Alert.alert("Success", "You have been successfully authenticated!");
-          router.replace("/");
-        } else if (error) {
-          console.error("Error creating session from URL:", error);
-          Alert.alert("Error", "Failed to authenticate. Please try again.");
+          // Navigate to the callback route which will handle authentication
+          router.push(routePath);
+        } catch (error) {
+          console.error("Error parsing auth URL:", error);
+          // Fallback: try to navigate with the full URL as query
+          router.push(`/auth/callback?url=${encodeURIComponent(url)}`);
         }
-      } catch (error) {
-        console.error("Error processing auth URL:", error);
-        Alert.alert("Error", "Failed to authenticate. Please try again.");
       }
     };
 
