@@ -314,3 +314,72 @@ export const resumeStream = async (
     }
   }
 };
+
+type HandleRegenerateOptions = {
+  messageId?: string;
+  role?: "user" | "assistant";
+  selectedModel?: string;
+  messages: ChatUIMessage[];
+  setModel: (model: string) => void;
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>;
+  regenerate: (options?: { messageId?: string }) => void;
+  regenerateMessageIdRef: React.MutableRefObject<string | undefined>;
+  regenerateRoleRef: React.MutableRefObject<"user" | "assistant" | undefined>;
+};
+
+/**
+ * Handles regeneration from a specific message
+ */
+export const handleRegenerate = (options: HandleRegenerateOptions): void => {
+  const {
+    messageId,
+    role,
+    selectedModel,
+    messages,
+    setModel,
+    setMessages,
+    regenerate,
+    regenerateMessageIdRef,
+    regenerateRoleRef,
+  } = options;
+
+  // Update model state if provided (before regenerate to ensure transport uses correct model)
+  if (selectedModel) {
+    setModel(selectedModel);
+  }
+
+  if (!messageId) {
+    // Default behavior: regenerate last assistant message
+    regenerate();
+    return;
+  }
+
+  // Find the message index
+  const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+  if (messageIndex === -1) {
+    return;
+  }
+
+  // Truncate messages based on role
+  // For user message: keep 0..N (including the user message)
+  // For assistant message: keep 0..N-1 (excluding the assistant message)
+  const truncateTo = role === "user" ? messageIndex + 1 : messageIndex;
+  const truncatedMessages = messages.slice(0, truncateTo);
+
+  // Update local state
+  setMessages(truncatedMessages);
+
+  // Store regenerateMessageId and role for transport to pass to API
+  // This tells the API which message we're regenerating from to delete stale messages
+  regenerateMessageIdRef.current = messageId;
+  regenerateRoleRef.current = role;
+
+  // Trigger regeneration
+  // For assistant messages: regenerate() without messageId (message already removed from array)
+  // For user messages: regenerate({ messageId }) with the user message ID (still in array)
+  if (role === "assistant") {
+    regenerate();
+  } else {
+    regenerate({ messageId });
+  }
+};

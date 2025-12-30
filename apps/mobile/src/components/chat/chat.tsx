@@ -6,6 +6,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
 import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ import { YapmateIcon } from "../yapmate-icon";
 import {
   createChat,
   determineDefaultModel,
+  handleRegenerate,
   resumeStream,
 } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
@@ -85,21 +87,7 @@ export const Chat = ({
     }
   }, [models, initialId, initialMessages, queryClient]);
 
-  /**
-   * Listens for model-selected events from model-selector screen
-   */
-  useEffect(() => {
-    const handleModelSelected: EventListener = (event) => {
-      const detail = event.detail as { model: string };
-      setModel(detail.model);
-    };
-
-    eventTarget.addEventListener("model-selected", handleModelSelected);
-
-    return () => {
-      eventTarget.removeEventListener("model-selected", handleModelSelected);
-    };
-  }, []);
+  const router = useRouter();
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? Crypto.randomUUID());
@@ -118,6 +106,12 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
+  const regenerateMessageIdRef = useRef<string | undefined>(undefined);
+  const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
+  const pendingRegenerationRef = useRef<{
+    messageId: string;
+    role: "user" | "assistant";
+  } | null>(null);
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
@@ -159,20 +153,29 @@ export const Chat = ({
           messages: allMessages,
           id: transportChatId,
         }) {
+          // Use refs to get latest values
+          const regenerateMessageId = regenerateMessageIdRef.current;
+          const regenerateRole = regenerateRoleRef.current;
+          // Clear after use
+          regenerateMessageIdRef.current = undefined;
+          regenerateRoleRef.current = undefined;
           return {
             body: {
               message: allMessages.at(-1),
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
+              ...(regenerateMessageId
+                ? { regenerateMessageId, regenerateRole }
+                : {}),
             },
           };
         },
       })
   );
 
-  const { messages, sendMessage, status, setMessages } = useChat<ChatUIMessage>(
-    {
+  const { messages, sendMessage, status, regenerate, setMessages } =
+    useChat<ChatUIMessage>({
       id: chatId,
       messages: initialMessages,
       transport,
@@ -193,8 +196,75 @@ export const Chat = ({
       onError: (error) => {
         console.error("useChat error:", error);
       },
-    }
+    });
+
+  /**
+   * Handles regeneration from a specific message
+   */
+  const handleRegenerateCallback = useCallback(
+    (messageId: string, role: "user" | "assistant", selectedModel?: string) => {
+      handleRegenerate({
+        messageId,
+        role,
+        selectedModel,
+        messages,
+        setModel,
+        setMessages,
+        regenerate,
+        regenerateMessageIdRef,
+        regenerateRoleRef,
+      });
+    },
+    [messages, regenerate, setMessages]
   );
+
+  /**
+   * Handles request to open model selector for regeneration
+   */
+  const handleRequestModelForRegeneration = useCallback(
+    (messageId: string, role: "user" | "assistant") => {
+      // Store pending regeneration info
+      pendingRegenerationRef.current = { messageId, role };
+      // Navigate to model selector
+      router.push({
+        pathname: "/model-selector",
+        params: { model: modelRef.current },
+      });
+    },
+    [router]
+  );
+
+  /**
+   * Listens for model-selected events from model-selector screen
+   */
+  useEffect(() => {
+    const handleModelSelected: EventListener = (event) => {
+      const detail = event.detail as { model: string };
+      const selectedModel = detail.model;
+
+      // Check if there's a pending regeneration
+      const pending = pendingRegenerationRef.current;
+      if (pending) {
+        // Clear pending regeneration
+        pendingRegenerationRef.current = null;
+        // Trigger regeneration with selected model
+        handleRegenerateCallback(
+          pending.messageId,
+          pending.role,
+          selectedModel
+        );
+      } else {
+        // Regular model change
+        setModel(selectedModel);
+      }
+    };
+
+    eventTarget.addEventListener("model-selected", handleModelSelected);
+
+    return () => {
+      eventTarget.removeEventListener("model-selected", handleModelSelected);
+    };
+  }, [handleRegenerateCallback]);
 
   /**
    * Handles stopping the current stream
@@ -331,6 +401,8 @@ export const Chat = ({
         <View className="flex-1">
           <MessagesHistory
             messages={messages}
+            onRegenerate={handleRegenerateCallback}
+            onRequestModelForRegeneration={handleRequestModelForRegeneration}
             onScrollStateChange={setIsAtBottom}
             scrollToBottomRef={scrollToBottomRef}
             status={status}

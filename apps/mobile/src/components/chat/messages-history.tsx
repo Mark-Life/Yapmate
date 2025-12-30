@@ -1,6 +1,11 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
 import * as Clipboard from "expo-clipboard";
-import { CheckIcon, CopyIcon, FileIcon } from "lucide-react-native";
+import {
+  CheckIcon,
+  CopyIcon,
+  FileIcon,
+  RefreshCcwIcon,
+} from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -26,12 +31,22 @@ type MessagesHistoryProps = {
   status: ChatStatus;
   onScrollStateChange?: (isAtBottom: boolean) => void;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | null>;
+  onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
+  onRequestModelForRegeneration?: (
+    messageId: string,
+    role: "user" | "assistant"
+  ) => void;
 };
 
 type MessageItemProps = {
   message: ChatUIMessage;
   copiedPartId: string | null;
   onCopy: (text: string, partId: string) => void;
+  onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
+  onRequestModelForRegeneration?: (
+    messageId: string,
+    role: "user" | "assistant"
+  ) => void;
 };
 
 /**
@@ -118,10 +133,156 @@ const CopyButton = ({
 };
 
 /**
+ * Renders a retry button for messages
+ */
+const RetryButton = ({
+  onPress,
+  onLongPress,
+  alignRight = false,
+}: {
+  onPress: () => void;
+  onLongPress: () => void;
+  alignRight?: boolean;
+}) => {
+  const { colorScheme } = useColorScheme();
+  const iconColor = colorScheme === "dark" ? "#a1a1aa" : "#71717a";
+  const longPressedRef = useRef(false);
+
+  /**
+   * Handle press - skip if long press was triggered
+   */
+  const handlePress = () => {
+    if (longPressedRef.current) {
+      longPressedRef.current = false;
+      return;
+    }
+    lightTap();
+    onPress();
+  };
+
+  /**
+   * Handle long press - set flag to prevent onPress from firing
+   */
+  const handleLongPress = () => {
+    longPressedRef.current = true;
+    lightTap();
+    onLongPress();
+  };
+
+  /**
+   * Reset long press flag after touch ends
+   */
+  const handlePressOut = () => {
+    setTimeout(() => {
+      longPressedRef.current = false;
+    }, 100);
+  };
+
+  return (
+    <Pressable
+      className={cn("rounded p-1", alignRight && "self-end")}
+      delayLongPress={300}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onLongPress={handleLongPress}
+      onPress={handlePress}
+      onPressOut={handlePressOut}
+    >
+      <RefreshCcwIcon color={iconColor} size={14} />
+    </Pressable>
+  );
+};
+
+type TextPartProps = {
+  part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
+  partId: string;
+  isUser: boolean;
+  isCopied: boolean;
+  messageId: string;
+  messageRole: "user" | "assistant";
+  onCopy: (text: string, partId: string) => void;
+  onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
+  onRequestModelForRegeneration?: (
+    messageId: string,
+    role: "user" | "assistant"
+  ) => void;
+};
+
+/**
+ * Renders a text message part with actions
+ */
+const TextPart = ({
+  part,
+  partId,
+  isUser,
+  isCopied,
+  messageId,
+  messageRole,
+  onCopy,
+  onRegenerate,
+  onRequestModelForRegeneration,
+}: TextPartProps) => {
+  const textContent = part.text?.trim();
+  if (!textContent) {
+    return null;
+  }
+
+  const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
+
+  return (
+    <View className="flex-col gap-0">
+      <View
+        className={cn(
+          "py-1",
+          isUser
+            ? "mb-1 max-w-[80%] rounded-lg bg-primary px-4"
+            : "max-w-[95%] pb-0"
+        )}
+      >
+        {isUser ? (
+          <Text className="text-primary-foreground text-sm">{textContent}</Text>
+        ) : (
+          <StreamingMarkdown
+            content={textContent}
+            textClassName="text-foreground text-sm "
+          />
+        )}
+      </View>
+      <View
+        className={cn(
+          "flex-row gap-1",
+          isUser ? "justify-end" : "justify-start"
+        )}
+      >
+        <CopyButton
+          alignRight={isUser}
+          isCopied={isCopied}
+          onPress={() => onCopy(textContent, partId)}
+        />
+        {canRegenerate ? (
+          <RetryButton
+            alignRight={isUser}
+            onLongPress={() =>
+              onRequestModelForRegeneration?.(messageId, messageRole)
+            }
+            onPress={() => onRegenerate?.(messageId, messageRole)}
+          />
+        ) : null}
+      </View>
+    </View>
+  );
+};
+
+/**
  * Renders a single message item
  * Iterates through all parts in order, matching web app behavior
  */
-const MessageItem = ({ message, copiedPartId, onCopy }: MessageItemProps) => {
+const MessageItem = ({
+  message,
+  copiedPartId,
+  onCopy,
+  onRegenerate,
+  onRequestModelForRegeneration,
+}: MessageItemProps) => {
   const isUser = message.role === "user";
   const parts = message.parts ?? [];
 
@@ -148,39 +309,19 @@ const MessageItem = ({ message, copiedPartId, onCopy }: MessageItemProps) => {
             );
           }
           case "text": {
-            // Render text parts in a bubble
-            const textContent = part.text?.trim();
-            if (!textContent) {
-              return null;
-            }
-            const isCopied = copiedPartId === partId;
             return (
-              <View className="flex-col gap-0" key={partId}>
-                <View
-                  className={cn(
-                    "py-1",
-                    isUser
-                      ? "mb-1 max-w-[80%] rounded-lg bg-primary px-4"
-                      : "max-w-[95%] pb-0"
-                  )}
-                >
-                  {isUser ? (
-                    <Text className="text-primary-foreground text-sm">
-                      {textContent}
-                    </Text>
-                  ) : (
-                    <StreamingMarkdown
-                      content={textContent}
-                      textClassName="text-foreground text-sm "
-                    />
-                  )}
-                </View>
-                <CopyButton
-                  alignRight={isUser}
-                  isCopied={isCopied}
-                  onPress={() => onCopy(textContent, partId)}
-                />
-              </View>
+              <TextPart
+                isCopied={copiedPartId === partId}
+                isUser={isUser}
+                key={partId}
+                messageId={message.id}
+                messageRole={message.role as "user" | "assistant"}
+                onCopy={onCopy}
+                onRegenerate={onRegenerate}
+                onRequestModelForRegeneration={onRequestModelForRegeneration}
+                part={part}
+                partId={partId}
+              />
             );
           }
           default:
@@ -201,6 +342,8 @@ export const MessagesHistory = ({
   status,
   onScrollStateChange,
   scrollToBottomRef,
+  onRegenerate,
+  onRequestModelForRegeneration,
 }: MessagesHistoryProps) => {
   const listRef = useRef<FlatList<ChatUIMessage>>(null);
   const layoutHeightRef = useRef(0);
@@ -331,6 +474,8 @@ export const MessagesHistory = ({
           copiedPartId={copiedPartId}
           message={item}
           onCopy={handleCopy}
+          onRegenerate={onRegenerate}
+          onRequestModelForRegeneration={onRequestModelForRegeneration}
         />
       )}
       scrollEventThrottle={16}
