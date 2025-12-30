@@ -8,11 +8,18 @@ import { networkInterfaces } from "node:os";
 import { join, relative, sep } from "node:path";
 import { RPCHandler } from "@orpc/server/fetch";
 import { router } from "@yapmate/api/router";
+import { getCurrentUserId } from "@yapmate/server/lib/supabase";
+import {
+  addConnection,
+  initializeRedisBridge,
+  removeConnection,
+  type WsClientData,
+} from "@yapmate/server/lib/websocket";
 import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
 import { streamResumeHandler } from "@yapmate/server/routes/api/stream";
 import { transcribeHandler } from "@yapmate/server/routes/api/transcribe";
 import { callbackHandler } from "@yapmate/server/routes/auth/callback";
-import type { BunFile, HTMLBundle } from "bun";
+import type { BunFile, HTMLBundle, Server, ServerWebSocket } from "bun";
 import { serve } from "bun";
 
 /**
@@ -230,7 +237,51 @@ if (publicAssetCount > 0) {
 /** oRPC handler for type-safe API */
 const rpcHandler = new RPCHandler(router);
 
-const server = serve({
+/**
+ * Extracts JWT token from WebSocket upgrade request
+ * Supports both query parameter and Authorization header
+ */
+const extractTokenFromRequest = (req: Request): string | null => {
+  // Try query parameter first (easier for WebSocket)
+  const url = new URL(req.url);
+  const tokenParam = url.searchParams.get("token");
+  if (tokenParam) {
+    return tokenParam;
+  }
+
+  // Fall back to Authorization header
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  if (authHeader) {
+    return authHeader;
+  }
+
+  return null;
+};
+
+/**
+ * Validates token and returns userId
+ */
+const validateWebSocketToken = async (
+  token: string | null
+): Promise<string | null> => {
+  if (!token) {
+    return null;
+  }
+
+  // Create a mock request with the token for getCurrentUserId
+  const mockReq = new Request("http://localhost", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return await getCurrentUserId(mockReq);
+};
+
+// Initialize Redis bridge for WebSocket events
+await initializeRedisBridge();
+
+const server = serve<WsClientData>({
   port,
   hostname: "0.0.0.0", // Bind to all network interfaces
 
@@ -245,7 +296,7 @@ const server = serve({
     "/auth/callback": callbackHandler.GET,
 
     // API routes - streaming and file uploads (kept as HTTP)
-    "/api/chat": async (req) => {
+    "/api/chat": async (req: Request) => {
       const preflightResponse = handleCorsPreflight(req);
       if (preflightResponse) {
         return preflightResponse;
@@ -253,15 +304,19 @@ const server = serve({
       const response = await chatHandler.POST(req);
       return addCorsHeaders(req, response);
     },
-    "/api/chat/:id/stream": async (req) => {
+    "/api/chat/:id/stream": async (
+      req: Request & { params: { id: string } }
+    ) => {
       const preflightResponse = handleCorsPreflight(req);
       if (preflightResponse) {
         return preflightResponse;
       }
-      const response = await streamResumeHandler.GET(req);
+      const response = await streamResumeHandler.GET(
+        req as Request & { params: { id: string } }
+      );
       return addCorsHeaders(req, response);
     },
-    "/api/transcribe": async (req) => {
+    "/api/transcribe": async (req: Request) => {
       const preflightResponse = handleCorsPreflight(req);
       if (preflightResponse) {
         return preflightResponse;
@@ -273,8 +328,35 @@ const server = serve({
     // Health check endpoint
     "/health": () => Response.json({ status: "ok" }),
 
+    // WebSocket upgrade route
+    "/ws": async (req: Request, bunServer: Server<WsClientData>) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+
+      const token = extractTokenFromRequest(req);
+      const userId = await validateWebSocketToken(token);
+
+      if (!userId) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      // Upgrade to WebSocket
+      const success = bunServer.upgrade(req, {
+        data: { userId } satisfies WsClientData,
+      });
+
+      if (!success) {
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      }
+
+      // Return undefined to indicate upgrade handled
+      return;
+    },
+
     // oRPC routes
-    "/rpc/*": async (req) => {
+    "/rpc/*": async (req: Request) => {
       // Handle CORS preflight
       const preflightResponse = handleCorsPreflight(req);
       if (preflightResponse) {
@@ -295,7 +377,7 @@ const server = serve({
     ...publicAssets,
 
     // Serve /public/* for relative paths in HTML that reference ../../public/
-    "/public/*": (req) => {
+    "/public/*": (req: Request) => {
       const url = new URL(req.url);
       const fileName = url.pathname.replace("/public/", "");
       const filePath = isProduction ? `./${fileName}` : `./public/${fileName}`;
@@ -322,6 +404,37 @@ const server = serve({
 
     // This shouldn't be reached since "/*" catches all non-file routes
     return new Response("Not Found", { status: 404 });
+  },
+
+  // WebSocket handler
+  websocket: {
+    async open(wsConnection: ServerWebSocket<WsClientData>) {
+      const userId = wsConnection.data.userId;
+      await addConnection(userId, wsConnection);
+      // console.log(`[WS] Client connected: user ${userId}`);
+    },
+    async close(wsConnection: ServerWebSocket<WsClientData>) {
+      const userId = wsConnection.data.userId;
+      await removeConnection(userId, wsConnection);
+      // console.log(`[WS] Client disconnected: user ${userId}`);
+    },
+    message(
+      wsConnection: ServerWebSocket<WsClientData>,
+      message: string | Buffer
+    ) {
+      // Handle ping/pong for keepalive
+      try {
+        const data =
+          typeof message === "string"
+            ? JSON.parse(message)
+            : JSON.parse(message.toString());
+        if (data.type === "ping") {
+          wsConnection.send(JSON.stringify({ type: "pong" }));
+        }
+      } catch {
+        // Ignore invalid messages
+      }
+    },
   },
 
   // Development mode configuration

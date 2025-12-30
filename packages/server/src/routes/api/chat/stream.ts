@@ -3,6 +3,7 @@
  */
 
 import {
+  getChat,
   savePartialAssistantMessage,
   saveUsageRecord,
   updateActiveStreamId,
@@ -15,6 +16,7 @@ import {
   publishStreamChunk,
   setStreamStatus,
 } from "../../../lib/redis/stream";
+import { publishUserEvent } from "../../../lib/websocket";
 import { saveChatMessages } from "./store";
 import { generateAndPublishTitle } from "./title";
 
@@ -154,6 +156,7 @@ export const executeStream = async (
           chatId,
           streamId,
           userMessage,
+          userId,
           writer,
           chunkIndex,
         })
@@ -248,6 +251,7 @@ type HandleStreamFinishOptions = {
   model: string;
   finalMessages: UIMessage[];
   usage: StreamUsage | null;
+  userId?: string;
 };
 
 /**
@@ -256,7 +260,7 @@ type HandleStreamFinishOptions = {
 export const handleStreamFinish = async (
   options: HandleStreamFinishOptions
 ): Promise<void> => {
-  const { streamId, chatId, model, finalMessages, usage } = options;
+  const { streamId, chatId, model, finalMessages, usage, userId } = options;
   // Save complete messages with proper IDs from AI SDK
   // This is the single source of truth for successful stream completion
   try {
@@ -285,6 +289,16 @@ export const handleStreamFinish = async (
     await updateActiveStreamId(chatId, null);
     await setStreamStatus(streamId, "complete");
     unregisterStream(streamId);
+
+    // Publish message_created event for real-time sync
+    // Get userId from chat if not provided
+    const finalUserId = userId ?? (await getChat(chatId))?.userId;
+    if (finalUserId) {
+      await publishUserEvent(finalUserId, {
+        type: "message_created",
+        chatId,
+      });
+    }
   } catch (error) {
     console.error(`[Stream ${streamId}] Error in onFinish:`, error);
     await setStreamStatus(streamId, "error");
