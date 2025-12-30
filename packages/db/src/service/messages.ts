@@ -104,8 +104,8 @@ export const getMessagesByChatId = async (
         mediaType: file.mimeType,
         filename: file.filename,
       };
-    } catch (e) {
-      console.error(`Failed to get file URL for ${dbPart.file_id}:`, e);
+    } catch {
+      // Return part with empty URL if file access fails
       return {
         ...part,
         url: "",

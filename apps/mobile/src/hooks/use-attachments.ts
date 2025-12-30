@@ -1,6 +1,6 @@
 import type { FileUIPart } from "ai";
 import * as Crypto from "expo-crypto";
-import * as FileSystem from "expo-file-system";
+import { File } from "expo-file-system/next";
 import { useCallback, useMemo, useState } from "react";
 
 /**
@@ -83,9 +83,8 @@ export const useAttachments = (): AttachmentsContext => {
         }
 
         // Read file as base64
-        const base64 = await FileSystem.readAsStringAsync(file.uri, {
-          encoding: "base64",
-        });
+        const fileInstance = new File(file.uri);
+        const base64 = await fileInstance.base64();
 
         // Convert to data URL format
         const dataUrl = `data:${file.mediaType};base64,${base64}`;

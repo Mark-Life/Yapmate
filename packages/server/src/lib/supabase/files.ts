@@ -2,6 +2,8 @@
  * Supabase Storage service for file operations
  * Handles upload, download, and deletion of files in the user-files bucket
  */
+
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./index";
 
 const BUCKET_NAME = "user-files";
@@ -54,7 +56,8 @@ export const uploadFileFromDataUrl = async (
 
 /**
  * Gets a signed URL for accessing a file
- * @param req - Request object for Bun cookie access
+ * Supports both Bearer token (mobile) and cookie (web) authentication
+ * @param req - Request object for Bun cookie access or Bearer token
  * @param storagePath - Path in storage bucket
  * @param expiresIn - Seconds until expiry (default 1 hour)
  */
@@ -63,7 +66,45 @@ export const getSignedUrl = async (
   storagePath: string,
   expiresIn = 3600
 ): Promise<string> => {
-  const supabase = createClient(req);
+  // Check for Bearer token in Authorization header (mobile apps)
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7) // Remove 'Bearer ' prefix
+    : authHeader;
+
+  let supabase:
+    | ReturnType<typeof createSupabaseClient>
+    | ReturnType<typeof createClient>;
+  if (token) {
+    // Use Bearer token authentication (mobile apps)
+    if (typeof process.env.PUBLIC_SUPABASE_URL !== "string") {
+      throw new Error("PUBLIC_SUPABASE_URL is not set");
+    }
+    if (typeof process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY !== "string") {
+      throw new Error("PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
+    }
+    // Create client with auth header - this should work for storage operations
+    supabase = createSupabaseClient(
+      process.env.PUBLIC_SUPABASE_URL,
+      process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+  } else {
+    // Fall back to cookie-based authentication (web apps)
+    const cookieClient = createClient(req);
+    supabase = cookieClient;
+  }
+
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .createSignedUrl(storagePath, expiresIn);

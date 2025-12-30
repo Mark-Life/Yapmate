@@ -44,12 +44,31 @@ export const getFileAccessUrl = async (
   req: Request,
   file: FileSelect
 ): Promise<string> => {
-  if (file.storagePath) {
-    return await getSignedUrl(req, file.storagePath);
+  // Check file status - if not uploaded, use dataUrl
+  if (file.status !== "uploaded" && file.dataUrl) {
+    return file.dataUrl;
   }
+
+  // Try storagePath first if available
+  if (file.storagePath) {
+    try {
+      return await getSignedUrl(req, file.storagePath);
+    } catch (error) {
+      // If storage file doesn't exist, fall back to dataUrl if available
+      if (file.dataUrl) {
+        return file.dataUrl;
+      }
+
+      // Re-throw if no fallback available
+      throw error;
+    }
+  }
+
+  // Fall back to dataUrl if no storagePath
   if (file.dataUrl) {
     return file.dataUrl;
   }
+
   throw new Error(`File ${file.id} has no accessible data`);
 };
 

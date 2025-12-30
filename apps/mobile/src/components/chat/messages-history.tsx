@@ -30,7 +30,15 @@ type MessageItemProps = {
 /**
  * Renders a file attachment part in a message
  */
-const FilePart = ({ part, isUser }: { part: FileUIPart; isUser: boolean }) => {
+const FilePart = ({
+  part,
+  isUser,
+  useAutoMargin = true,
+}: {
+  part: FileUIPart;
+  isUser: boolean;
+  useAutoMargin?: boolean;
+}) => {
   const isImage = part.mediaType?.startsWith("image/") && part.url;
 
   const handlePress = async () => {
@@ -48,7 +56,7 @@ const FilePart = ({ part, isUser }: { part: FileUIPart; isUser: boolean }) => {
       className={cn(
         "my-1 overflow-hidden rounded-lg",
         isImage ? "h-48 w-48" : "h-20 w-32",
-        isUser ? "ml-auto" : "mr-auto"
+        useAutoMargin && (isUser ? "ml-auto" : "mr-auto")
       )}
       onPress={handlePress}
     >
@@ -77,6 +85,7 @@ const FilePart = ({ part, isUser }: { part: FileUIPart; isUser: boolean }) => {
 
 /**
  * Renders a single message item
+ * Iterates through all parts in order, matching web app behavior
  */
 const MessageItem = ({ message }: MessageItemProps) => {
   const isUser = message.role === "user";
@@ -84,50 +93,58 @@ const MessageItem = ({ message }: MessageItemProps) => {
   return (
     <View
       className={cn(
-        "mx-4 my-2 flex-row",
-        isUser ? "justify-end" : "justify-start"
+        "mx-4 my-2 flex-col gap-2",
+        isUser ? "items-end" : "items-start"
       )}
     >
-      <View
-        className={cn(
-          "py-2",
-          isUser ? "max-w-[80%] rounded-lg bg-primary px-4" : "max-w-[95%]"
-        )}
-      >
-        {message.parts.map((part, i) => {
-          const partId = `${message.id}-${i}`;
+      {message.parts.map((part, i) => {
+        const partId = `${message.id}-${i}`;
 
-          if (part.type === "text") {
-            // User messages: plain text, Assistant messages: markdown
-            if (isUser) {
-              return (
-                <Text className="text-primary-foreground text-sm" key={partId}>
-                  {part.text ?? ""}
-                </Text>
-              );
-            }
-            return (
-              <StreamingMarkdown
-                content={part.text ?? ""}
-                key={partId}
-                textClassName="text-foreground text-sm "
-              />
-            );
-          }
-
-          if (part.type === "file") {
+        switch (part.type) {
+          case "file": {
+            // Render file parts as separate items (like web app)
             return (
               <FilePart
                 isUser={isUser}
                 key={partId}
                 part={part as FileUIPart}
+                useAutoMargin={true}
               />
             );
           }
-
-          return null;
-        })}
-      </View>
+          case "text": {
+            // Render text parts in a bubble
+            const textContent = part.text?.trim();
+            if (!textContent) {
+              return null;
+            }
+            return (
+              <View
+                className={cn(
+                  "py-2",
+                  isUser
+                    ? "max-w-[80%] rounded-lg bg-primary px-4"
+                    : "max-w-[95%]"
+                )}
+                key={partId}
+              >
+                {isUser ? (
+                  <Text className="text-primary-foreground text-sm">
+                    {textContent}
+                  </Text>
+                ) : (
+                  <StreamingMarkdown
+                    content={textContent}
+                    textClassName="text-foreground text-sm "
+                  />
+                )}
+              </View>
+            );
+          }
+          default:
+            return null;
+        }
+      })}
     </View>
   );
 };
