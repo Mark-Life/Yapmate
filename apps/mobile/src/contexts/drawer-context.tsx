@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useMemo } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { Dimensions } from "react-native";
 import {
   runOnJS,
@@ -34,55 +40,62 @@ type DrawerProviderProps = {
  */
 export const DrawerProvider = ({ children }: DrawerProviderProps) => {
   const position = useSharedValue(0);
-  // Track isOpen state separately for components that need boolean check
-  const isOpenRef = useSharedValue(false);
+  // Track isOpen state with React state for render-time access
+  const [isOpen, setIsOpen] = useState(false);
 
   const setPositionAndState = useCallback(
     (open: boolean) => {
       "worklet";
-      isOpenRef.value = open;
+      runOnJS(setIsOpen)(open);
       runOnJS(mediumImpact)();
       position.value = withTiming(open ? DRAWER_WIDTH : 0, {
         duration: ANIMATION_DURATION,
       });
     },
-    [position, isOpenRef]
+    [position]
   );
 
   const openDrawer = useCallback(() => {
-    isOpenRef.value = true;
+    setIsOpen(true);
     mediumImpact();
     position.value = withTiming(DRAWER_WIDTH, { duration: ANIMATION_DURATION });
-  }, [position, isOpenRef]);
+  }, [position]);
 
   const closeDrawer = useCallback(() => {
-    isOpenRef.value = false;
+    setIsOpen(false);
     mediumImpact();
     position.value = withTiming(0, { duration: ANIMATION_DURATION });
-  }, [position, isOpenRef]);
+  }, [position]);
 
   const toggleDrawer = useCallback(() => {
-    const newOpen = !isOpenRef.value;
-    isOpenRef.value = newOpen;
-    mediumImpact();
-    position.value = withTiming(newOpen ? DRAWER_WIDTH : 0, {
-      duration: ANIMATION_DURATION,
+    setIsOpen((prev) => {
+      const newOpen = !prev;
+      // Update position based on new state
+      position.value = withTiming(newOpen ? DRAWER_WIDTH : 0, {
+        duration: ANIMATION_DURATION,
+      });
+      return newOpen;
     });
-  }, [position, isOpenRef]);
+    mediumImpact();
+  }, [position]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isOpenRef is a stable shared value, getter reads current value
   const value = useMemo(
     () => ({
-      get isOpen() {
-        return isOpenRef.value;
-      },
+      isOpen,
       openDrawer,
       closeDrawer,
       toggleDrawer,
       position,
       setPositionAndState,
     }),
-    [openDrawer, closeDrawer, toggleDrawer, position, setPositionAndState]
+    [
+      isOpen,
+      openDrawer,
+      closeDrawer,
+      toggleDrawer,
+      position,
+      setPositionAndState,
+    ]
   );
 
   return (
