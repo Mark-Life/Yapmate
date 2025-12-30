@@ -1,5 +1,6 @@
+import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
 import { GlassView } from "expo-glass-effect";
-import { LogOut, Plus, Search } from "lucide-react-native";
+import { Plus, Search } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useState } from "react";
 import { Keyboard, Platform, Pressable, View } from "react-native";
@@ -12,13 +13,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsList } from "@/components/chat/chats-list";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button as UIButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -152,18 +147,10 @@ export const Drawer = () => {
    * Handle logout
    */
   const handleLogout = useCallback(async () => {
+    lightTap();
     await signOut();
     closeDrawer();
   }, [signOut, closeDrawer]);
-
-  /**
-   * Handle user menu open change
-   */
-  const handleUserMenuOpenChange = useCallback((isOpen: boolean) => {
-    if (isOpen) {
-      lightTap();
-    }
-  }, []);
 
   /**
    * Handle new chat creation and close drawer
@@ -216,44 +203,41 @@ export const Drawer = () => {
       >
         <View className="flex-1 flex-col" style={{ paddingTop: insets.top }}>
           {session?.user ? (
-            <View className="border-border border-b">
-              <DropdownMenu onOpenChange={handleUserMenuOpenChange}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="w-full justify-start gap-2 px-2"
-                    variant="ghost"
-                  >
-                    <Avatar
-                      alt={session.user.email ?? "User avatar"}
-                      className="size-8"
+            <View className="border-border border-b pb-1">
+              <Host>
+                <ContextMenu activationMethod="longPress">
+                  <ContextMenu.Items>
+                    {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
+                    <Button
+                      onPress={handleLogout}
+                      role="destructive"
+                      systemImage="rectangle.portrait.and.arrow.right"
                     >
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        <Text>
-                          {session.user.email?.[0]?.toUpperCase() ?? "U"}
-                        </Text>
-                      </AvatarFallback>
-                    </Avatar>
-                    <Text className="truncate text-sm" numberOfLines={1}>
-                      {session.user.email ?? "User"}
-                    </Text>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56"
-                  side="bottom"
-                  sideOffset={8}
-                >
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onPress={handleLogout}
-                    variant="destructive"
-                  >
-                    <Icon as={LogOut} className="size-4" />
-                    <Text>Log out</Text>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      Log out
+                    </Button>
+                  </ContextMenu.Items>
+                  <ContextMenu.Trigger>
+                    <UIButton
+                      className="w-full justify-start gap-2 bg-background px-2"
+                      variant="ghost"
+                    >
+                      <Avatar
+                        alt={session.user.email ?? "User avatar"}
+                        className="size-8"
+                      >
+                        <AvatarFallback className="bg-accent text-primary text-xs">
+                          <Text>
+                            {session.user.email?.[0]?.toUpperCase() ?? "U"}
+                          </Text>
+                        </AvatarFallback>
+                      </Avatar>
+                      <Text className="truncate text-sm" numberOfLines={1}>
+                        {session.user.email ?? "User"}
+                      </Text>
+                    </UIButton>
+                  </ContextMenu.Trigger>
+                </ContextMenu>
+              </Host>
             </View>
           ) : null}
           <View className="flex-1">
@@ -275,13 +259,13 @@ export const Drawer = () => {
                 overflow: "hidden",
               }}
             >
-              <Button
+              <UIButton
                 className="size-9"
                 onPress={handleNewChat}
                 variant="ghost"
               >
                 <Icon as={Plus} className="text-primary" size={22} />
-              </Button>
+              </UIButton>
             </GlassView>
             <View className="flex-1">
               <GlassView

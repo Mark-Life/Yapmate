@@ -65,7 +65,8 @@ export const ChatListItem = ({
           <Button onPress={onRename} systemImage="pencil">
             Rename
           </Button>
-          <Button onPress={onDelete} systemImage="trash">
+          {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
+          <Button onPress={onDelete} role="destructive" systemImage="trash">
             Delete
           </Button>
         </ContextMenu.Items>
@@ -78,7 +79,7 @@ export const ChatListItem = ({
           >
             <View
               className={cn(
-                "flex-row items-center justify-between rounded-lg p-2 px-3",
+                "flex-row items-center justify-between rounded-lg bg-background p-2 px-3",
                 isActive && "bg-accent"
               )}
             >

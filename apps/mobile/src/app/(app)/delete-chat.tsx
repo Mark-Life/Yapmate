@@ -103,9 +103,10 @@ export default function DeleteChatScreen() {
               tintColor="#ef4444"
             >
               <Button
-                className="flex-1 rounded-none bg-[#ef4444]"
+                className="flex-1 rounded-full"
                 disabled={deleteChatMutation.isPending}
                 onPress={handleDeleteConfirm}
+                variant="destructive"
               >
                 <Text>
                   {deleteChatMutation.isPending ? "Deleting..." : "Delete"}
