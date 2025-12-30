@@ -383,3 +383,69 @@ export const handleRegenerate = (options: HandleRegenerateOptions): void => {
     regenerate({ messageId });
   }
 };
+
+type HandleEditOptions = {
+  messageId: string;
+  editedText: string;
+  messages: ChatUIMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>;
+  regenerate: (options?: { messageId?: string }) => void;
+  editMessageIdRef: React.MutableRefObject<string | undefined>;
+  editedTextRef: React.MutableRefObject<string | undefined>;
+};
+
+/**
+ * Handles editing a user message
+ */
+export const handleEdit = (options: HandleEditOptions): void => {
+  const {
+    messageId,
+    editedText,
+    messages,
+    setMessages,
+    regenerate,
+    editMessageIdRef,
+    editedTextRef,
+  } = options;
+
+  // Find the message index
+  const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+  if (messageIndex === -1) {
+    return;
+  }
+
+  const message = messages[messageIndex];
+  if (message.role !== "user") {
+    return;
+  }
+
+  // Update the message text in local state
+  const updatedMessages = [...messages];
+  const textPartIndex = updatedMessages[messageIndex].parts.findIndex(
+    (p: { type: string }) => p.type === "text"
+  );
+
+  if (textPartIndex !== -1) {
+    updatedMessages[messageIndex] = {
+      ...updatedMessages[messageIndex],
+      parts: [
+        ...updatedMessages[messageIndex].parts.slice(0, textPartIndex),
+        { type: "text", text: editedText },
+        ...updatedMessages[messageIndex].parts.slice(textPartIndex + 1),
+      ],
+    };
+  }
+
+  // Truncate messages after the edited message
+  const truncatedMessages = updatedMessages.slice(0, messageIndex + 1);
+
+  // Update local state
+  setMessages(truncatedMessages);
+
+  // Store editMessageId and editedText for transport to pass to API
+  editMessageIdRef.current = messageId;
+  editedTextRef.current = editedText;
+
+  // Trigger regeneration from the edited message
+  regenerate({ messageId });
+};

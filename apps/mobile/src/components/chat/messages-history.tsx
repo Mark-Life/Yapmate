@@ -4,7 +4,9 @@ import {
   CheckIcon,
   CopyIcon,
   FileIcon,
+  PencilIcon,
   RefreshCcwIcon,
+  XIcon,
 } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +17,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,6 +34,7 @@ type MessagesHistoryProps = {
   status: ChatStatus;
   onScrollStateChange?: (isAtBottom: boolean) => void;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | null>;
+  onEdit?: (messageId: string, editedText: string) => void;
   onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
   onRequestModelForRegeneration?: (
     messageId: string,
@@ -41,12 +45,17 @@ type MessagesHistoryProps = {
 type MessageItemProps = {
   message: ChatUIMessage;
   copiedPartId: string | null;
+  isEditing: boolean;
   onCopy: (text: string, partId: string) => void;
+  onCancelEdit: () => void;
+  onEdit?: (messageId: string, editedText: string) => void;
   onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
   onRequestModelForRegeneration?: (
     messageId: string,
     role: "user" | "assistant"
   ) => void;
+  onStartEdit: (messageId: string) => void;
+  status: ChatStatus;
 };
 
 /**
@@ -192,11 +201,174 @@ const RetryButton = ({
   );
 };
 
+/**
+ * Renders an edit button for user messages
+ */
+const EditButton = ({
+  disabled = false,
+  onPress,
+  alignRight = false,
+}: {
+  disabled?: boolean;
+  onPress: () => void;
+  alignRight?: boolean;
+}) => {
+  const { colorScheme } = useColorScheme();
+  const iconColor = colorScheme === "dark" ? "#a1a1aa" : "#71717a";
+
+  return (
+    <Pressable
+      className={cn(
+        "rounded p-1",
+        alignRight && "self-end",
+        disabled && "opacity-50"
+      )}
+      disabled={disabled}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onPress={() => {
+        lightTap();
+        onPress();
+      }}
+    >
+      <PencilIcon color={iconColor} size={14} />
+    </Pressable>
+  );
+};
+
 type TextPartProps = {
   part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
   partId: string;
   isUser: boolean;
   isCopied: boolean;
+  isEditing: boolean;
+  messageId: string;
+  messageRole: "user" | "assistant";
+  onCopy: (text: string, partId: string) => void;
+  onCancelEdit: () => void;
+  onEdit?: (messageId: string, editedText: string) => void;
+  onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
+  onRequestModelForRegeneration?: (
+    messageId: string,
+    role: "user" | "assistant"
+  ) => void;
+  onStartEdit: (messageId: string) => void;
+  status: ChatStatus;
+};
+
+/**
+ * Renders message content (text input when editing, text/markdown when not)
+ */
+const MessageContent = ({
+  isEditing,
+  isUser,
+  editedText,
+  textContent,
+  textInputRef,
+  onTextChange,
+}: {
+  isEditing: boolean;
+  isUser: boolean;
+  editedText: string;
+  textContent: string;
+  textInputRef: React.RefObject<TextInput>;
+  onTextChange: (text: string) => void;
+}) => {
+  if (isEditing) {
+    return (
+      <TextInput
+        className="py-1 text-primary-foreground text-sm"
+        multiline
+        onChangeText={onTextChange}
+        ref={textInputRef}
+        value={editedText}
+      />
+    );
+  }
+
+  if (isUser) {
+    return (
+      <Text className="text-primary-foreground text-sm">{textContent}</Text>
+    );
+  }
+
+  return (
+    <StreamingMarkdown
+      content={textContent}
+      textClassName="text-foreground text-sm "
+    />
+  );
+};
+
+/**
+ * Renders edit action buttons (Cancel and Save)
+ */
+const EditActions = ({
+  isUser,
+  hasChanges,
+  iconColor,
+  onCancel,
+  onSave,
+}: {
+  isUser: boolean;
+  hasChanges: boolean;
+  iconColor: string;
+  onCancel: () => void;
+  onSave: () => void;
+}) => (
+  <>
+    <Pressable
+      className={cn("rounded p-1", isUser && "self-end")}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onPress={() => {
+        lightTap();
+        onCancel();
+      }}
+    >
+      <XIcon color={iconColor} size={16} />
+    </Pressable>
+    <Pressable
+      className={cn(
+        "rounded p-1",
+        isUser && "self-end",
+        !hasChanges && "opacity-50"
+      )}
+      disabled={!hasChanges}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onPress={() => {
+        lightTap();
+        onSave();
+      }}
+    >
+      <CheckIcon color={iconColor} size={16} />
+    </Pressable>
+  </>
+);
+
+/**
+ * Renders normal action buttons (Copy, Retry, Edit)
+ */
+const NormalActions = ({
+  isUser,
+  isCopied,
+  canRegenerate,
+  canEdit,
+  isStreaming,
+  textContent,
+  partId,
+  messageId,
+  messageRole,
+  onCopy,
+  onRegenerate,
+  onRequestModelForRegeneration,
+  onStartEdit,
+}: {
+  isUser: boolean;
+  isCopied: boolean;
+  canRegenerate: boolean;
+  canEdit: boolean;
+  isStreaming: boolean;
+  textContent: string;
+  partId: string;
   messageId: string;
   messageRole: "user" | "assistant";
   onCopy: (text: string, partId: string) => void;
@@ -205,7 +377,32 @@ type TextPartProps = {
     messageId: string,
     role: "user" | "assistant"
   ) => void;
-};
+  onStartEdit: (messageId: string) => void;
+}) => (
+  <>
+    <CopyButton
+      alignRight={isUser}
+      isCopied={isCopied}
+      onPress={() => onCopy(textContent, partId)}
+    />
+    {canRegenerate ? (
+      <RetryButton
+        alignRight={isUser}
+        onLongPress={() =>
+          onRequestModelForRegeneration?.(messageId, messageRole)
+        }
+        onPress={() => onRegenerate?.(messageId, messageRole)}
+      />
+    ) : null}
+    {canEdit ? (
+      <EditButton
+        alignRight={isUser}
+        disabled={isStreaming}
+        onPress={() => onStartEdit(messageId)}
+      />
+    ) : null}
+  </>
+);
 
 /**
  * Renders a text message part with actions
@@ -215,58 +412,106 @@ const TextPart = ({
   partId,
   isUser,
   isCopied,
+  isEditing,
   messageId,
   messageRole,
   onCopy,
+  onCancelEdit,
+  onEdit,
   onRegenerate,
   onRequestModelForRegeneration,
+  onStartEdit,
+  status,
 }: TextPartProps) => {
+  const { colorScheme } = useColorScheme();
   const textContent = part.text?.trim();
-  if (!textContent) {
+  const [editedText, setEditedText] = useState(part.text);
+  const textInputRef = useRef<TextInput>(null);
+  const iconColor = colorScheme === "dark" ? "#a1a1aa" : "#71717a";
+
+  useEffect(() => {
+    if (isEditing && textInputRef.current) {
+      textInputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedText(part.text);
+    }
+  }, [isEditing, part.text]);
+
+  if (!(textContent || isEditing)) {
     return null;
   }
 
   const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
+  const canEdit = Boolean(isUser && onEdit);
+  const hasChanges = editedText.trim() !== part.text.trim();
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  const handleEdit = () => {
+    if (isUser && onEdit) {
+      onEdit(messageId, editedText.trim());
+      onCancelEdit();
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedText(part.text);
+    onCancelEdit();
+  };
 
   return (
     <View className="flex-col gap-0">
       <View
         className={cn(
-          "py-1",
+          "py-1.5",
           isUser
-            ? "mb-1 max-w-[80%] rounded-lg bg-primary px-4"
+            ? "mb-2 max-w-[80%] rounded-lg bg-primary px-4"
             : "max-w-[95%] pb-0"
         )}
       >
-        {isUser ? (
-          <Text className="text-primary-foreground text-sm">{textContent}</Text>
-        ) : (
-          <StreamingMarkdown
-            content={textContent}
-            textClassName="text-foreground text-sm "
-          />
-        )}
+        <MessageContent
+          editedText={editedText}
+          isEditing={isEditing}
+          isUser={isUser}
+          onTextChange={setEditedText}
+          textContent={textContent}
+          textInputRef={textInputRef as React.RefObject<TextInput>}
+        />
       </View>
       <View
         className={cn(
-          "flex-row gap-1",
+          "flex-row gap-3",
           isUser ? "justify-end" : "justify-start"
         )}
       >
-        <CopyButton
-          alignRight={isUser}
-          isCopied={isCopied}
-          onPress={() => onCopy(textContent, partId)}
-        />
-        {canRegenerate ? (
-          <RetryButton
-            alignRight={isUser}
-            onLongPress={() =>
-              onRequestModelForRegeneration?.(messageId, messageRole)
-            }
-            onPress={() => onRegenerate?.(messageId, messageRole)}
+        {isEditing ? (
+          <EditActions
+            hasChanges={hasChanges}
+            iconColor={iconColor}
+            isUser={isUser}
+            onCancel={handleCancel}
+            onSave={handleEdit}
           />
-        ) : null}
+        ) : (
+          <NormalActions
+            canEdit={canEdit}
+            canRegenerate={canRegenerate}
+            isCopied={isCopied}
+            isStreaming={isStreaming}
+            isUser={isUser}
+            messageId={messageId}
+            messageRole={messageRole}
+            onCopy={onCopy}
+            onRegenerate={onRegenerate}
+            onRequestModelForRegeneration={onRequestModelForRegeneration}
+            onStartEdit={onStartEdit}
+            partId={partId}
+            textContent={textContent}
+          />
+        )}
       </View>
     </View>
   );
@@ -279,9 +524,14 @@ const TextPart = ({
 const MessageItem = ({
   message,
   copiedPartId,
+  isEditing,
   onCopy,
+  onCancelEdit,
+  onEdit,
   onRegenerate,
   onRequestModelForRegeneration,
+  onStartEdit,
+  status,
 }: MessageItemProps) => {
   const isUser = message.role === "user";
   const parts = message.parts ?? [];
@@ -312,15 +562,20 @@ const MessageItem = ({
             return (
               <TextPart
                 isCopied={copiedPartId === partId}
+                isEditing={isEditing}
                 isUser={isUser}
                 key={partId}
                 messageId={message.id}
                 messageRole={message.role as "user" | "assistant"}
+                onCancelEdit={onCancelEdit}
                 onCopy={onCopy}
+                onEdit={onEdit}
                 onRegenerate={onRegenerate}
                 onRequestModelForRegeneration={onRequestModelForRegeneration}
+                onStartEdit={onStartEdit}
                 part={part}
                 partId={partId}
+                status={status}
               />
             );
           }
@@ -342,6 +597,7 @@ export const MessagesHistory = ({
   status,
   onScrollStateChange,
   scrollToBottomRef,
+  onEdit,
   onRegenerate,
   onRequestModelForRegeneration,
 }: MessagesHistoryProps) => {
@@ -351,6 +607,7 @@ export const MessagesHistory = ({
   const scrollOffsetRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   /**
@@ -443,8 +700,13 @@ export const MessagesHistory = ({
       onContentSizeChange={(_width, contentHeight) => {
         contentHeightRef.current = contentHeight;
         // Auto-scroll to bottom when content changes
+        // Skip auto-scroll if user is editing a message to prevent interrupting their typing
         // Use scrollToOffset for precise positioning during streaming
-        if (messages.length > 0 && layoutHeightRef.current > 0) {
+        if (
+          messages.length > 0 &&
+          layoutHeightRef.current > 0 &&
+          editingMessageId === null
+        ) {
           const maxOffset = Math.max(
             0,
             contentHeight - layoutHeightRef.current
@@ -472,10 +734,15 @@ export const MessagesHistory = ({
       renderItem={({ item }) => (
         <MessageItem
           copiedPartId={copiedPartId}
+          isEditing={editingMessageId === item.id}
           message={item}
+          onCancelEdit={() => setEditingMessageId(null)}
           onCopy={handleCopy}
+          onEdit={onEdit}
           onRegenerate={onRegenerate}
           onRequestModelForRegeneration={onRequestModelForRegeneration}
+          onStartEdit={setEditingMessageId}
+          status={status}
         />
       )}
       scrollEventThrottle={16}

@@ -26,6 +26,7 @@ import { YapmateIcon } from "../yapmate-icon";
 import {
   createChat,
   determineDefaultModel,
+  handleEdit,
   handleRegenerate,
   resumeStream,
 } from "./chat-helpers";
@@ -108,6 +109,8 @@ export const Chat = ({
   const searchEnabledRef = useRef(searchEnabled);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
+  const editMessageIdRef = useRef<string | undefined>(undefined);
+  const editedTextRef = useRef<string | undefined>(undefined);
   const pendingRegenerationRef = useRef<{
     messageId: string;
     role: "user" | "assistant";
@@ -156,9 +159,13 @@ export const Chat = ({
           // Use refs to get latest values
           const regenerateMessageId = regenerateMessageIdRef.current;
           const regenerateRole = regenerateRoleRef.current;
+          const editMessageId = editMessageIdRef.current;
+          const editedText = editedTextRef.current;
           // Clear after use
           regenerateMessageIdRef.current = undefined;
           regenerateRoleRef.current = undefined;
+          editMessageIdRef.current = undefined;
+          editedTextRef.current = undefined;
           return {
             body: {
               message: allMessages.at(-1),
@@ -167,6 +174,9 @@ export const Chat = ({
               searchEnabled: searchEnabledRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
+                : {}),
+              ...(editMessageId && editedText
+                ? { editMessageId, editedText }
                 : {}),
             },
           };
@@ -213,6 +223,24 @@ export const Chat = ({
         regenerate,
         regenerateMessageIdRef,
         regenerateRoleRef,
+      });
+    },
+    [messages, regenerate, setMessages]
+  );
+
+  /**
+   * Handles editing a user message
+   */
+  const handleEditCallback = useCallback(
+    (messageId: string, editedText: string) => {
+      handleEdit({
+        messageId,
+        editedText,
+        messages,
+        setMessages,
+        regenerate,
+        editMessageIdRef,
+        editedTextRef,
       });
     },
     [messages, regenerate, setMessages]
@@ -401,6 +429,7 @@ export const Chat = ({
         <View className="flex-1">
           <MessagesHistory
             messages={messages}
+            onEdit={handleEditCallback}
             onRegenerate={handleRegenerateCallback}
             onRequestModelForRegeneration={handleRequestModelForRegeneration}
             onScrollStateChange={setIsAtBottom}
