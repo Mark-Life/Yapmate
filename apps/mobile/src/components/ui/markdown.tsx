@@ -130,6 +130,9 @@ const BlockToken = memo(({ token }: { token: Token }) => {
 
     case "code": {
       const codeToken = token as Tokens.Code;
+      if (!codeToken.text) {
+        return null;
+      }
       return (
         <CodeBlock code={codeToken.text} language={codeToken.lang ?? "text"} />
       );

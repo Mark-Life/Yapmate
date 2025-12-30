@@ -1,5 +1,7 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
-import { FileIcon } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
+import { CheckIcon, CopyIcon, FileIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -14,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
+import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 type ChatUIMessage = UIMessage;
@@ -27,6 +30,8 @@ type MessagesHistoryProps = {
 
 type MessageItemProps = {
   message: ChatUIMessage;
+  copiedPartId: string | null;
+  onCopy: (text: string, partId: string) => void;
 };
 
 /**
@@ -86,11 +91,39 @@ const FilePart = ({
 };
 
 /**
+ * Renders a copy button for messages
+ */
+const CopyButton = ({
+  isCopied,
+  onPress,
+  alignRight = false,
+}: {
+  isCopied: boolean;
+  onPress: () => void;
+  alignRight?: boolean;
+}) => {
+  const { colorScheme } = useColorScheme();
+  const IconComponent = isCopied ? CheckIcon : CopyIcon;
+  const iconColor = colorScheme === "dark" ? "#a1a1aa" : "#71717a";
+
+  return (
+    <Pressable
+      className={cn("rounded p-1", alignRight && "self-end")}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onPress={onPress}
+    >
+      <IconComponent color={iconColor} size={14} />
+    </Pressable>
+  );
+};
+
+/**
  * Renders a single message item
  * Iterates through all parts in order, matching web app behavior
  */
-const MessageItem = ({ message }: MessageItemProps) => {
+const MessageItem = ({ message, copiedPartId, onCopy }: MessageItemProps) => {
   const isUser = message.role === "user";
+  const parts = message.parts ?? [];
 
   return (
     <View
@@ -99,7 +132,7 @@ const MessageItem = ({ message }: MessageItemProps) => {
         isUser ? "items-end" : "items-start"
       )}
     >
-      {message.parts.map((part, i) => {
+      {parts.map((part, i) => {
         const partId = `${message.id}-${i}`;
 
         switch (part.type) {
@@ -120,26 +153,33 @@ const MessageItem = ({ message }: MessageItemProps) => {
             if (!textContent) {
               return null;
             }
+            const isCopied = copiedPartId === partId;
             return (
-              <View
-                className={cn(
-                  "py-2",
-                  isUser
-                    ? "max-w-[80%] rounded-lg bg-primary px-4"
-                    : "max-w-[95%]"
-                )}
-                key={partId}
-              >
-                {isUser ? (
-                  <Text className="text-primary-foreground text-sm">
-                    {textContent}
-                  </Text>
-                ) : (
-                  <StreamingMarkdown
-                    content={textContent}
-                    textClassName="text-foreground text-sm "
-                  />
-                )}
+              <View className="flex-col gap-0" key={partId}>
+                <View
+                  className={cn(
+                    "py-1",
+                    isUser
+                      ? "mb-1 max-w-[80%] rounded-lg bg-primary px-4"
+                      : "max-w-[95%] pb-0"
+                  )}
+                >
+                  {isUser ? (
+                    <Text className="text-primary-foreground text-sm">
+                      {textContent}
+                    </Text>
+                  ) : (
+                    <StreamingMarkdown
+                      content={textContent}
+                      textClassName="text-foreground text-sm "
+                    />
+                  )}
+                </View>
+                <CopyButton
+                  alignRight={isUser}
+                  isCopied={isCopied}
+                  onPress={() => onCopy(textContent, partId)}
+                />
               </View>
             );
           }
@@ -167,7 +207,18 @@ export const MessagesHistory = ({
   const contentHeightRef = useRef(0);
   const scrollOffsetRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+
+  /**
+   * Copies text to clipboard with haptic feedback
+   */
+  const handleCopy = useCallback(async (text: string, partId: string) => {
+    await Clipboard.setStringAsync(text);
+    lightTap();
+    setCopiedPartId(partId);
+    setTimeout(() => setCopiedPartId(null), 1000);
+  }, []);
 
   /**
    * Scrolls to the bottom of the messages list
@@ -275,7 +326,13 @@ export const MessagesHistory = ({
         }
       }}
       ref={listRef}
-      renderItem={({ item }) => <MessageItem message={item} />}
+      renderItem={({ item }) => (
+        <MessageItem
+          copiedPartId={copiedPartId}
+          message={item}
+          onCopy={handleCopy}
+        />
+      )}
       scrollEventThrottle={16}
     />
   );
