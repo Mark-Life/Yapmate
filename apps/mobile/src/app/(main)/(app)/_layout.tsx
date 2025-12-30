@@ -1,14 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Redirect, Slot } from "expo-router";
+
+import { Redirect, Stack } from "expo-router";
+
 import { View } from "react-native";
 import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
-import { useSession } from "@/contexts/auth";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
 import { DrawerProvider } from "@/contexts/drawer-context";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
 import { generateWebSocketUrl } from "@/lib/api-url";
-import { eventTarget } from "@/lib/event-emitter";
+
+import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
+
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -23,9 +26,7 @@ const AppLayoutInner = () => {
    */
   const handleStreamStarted = (chatId: string) => {
     // Dispatch custom event that Chat component can listen to
-    eventTarget.dispatchEvent(
-      new CustomEvent("stream-started", { detail: { chatId } })
-    );
+    eventTarget.dispatchEvent(createCustomEvent("stream-started", { chatId }));
   };
 
   // WebSocket real-time sync
@@ -51,7 +52,23 @@ const AppLayoutInner = () => {
         <AnimatedContent>
           <HeaderControls />
           <View className="flex-1">
-            <Slot />
+            <Stack>
+              <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="chats" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="model-selector"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.45, 0.95],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
+            </Stack>
           </View>
         </AnimatedContent>
       </View>
