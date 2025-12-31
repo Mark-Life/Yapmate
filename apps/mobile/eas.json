@@ -22,5 +22,13 @@
       },
       "channel": "production"
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "companyName": "Mark Life Ltd",
+        "ascAppId": "6757226545"
+      }
+    }
   }
 }
