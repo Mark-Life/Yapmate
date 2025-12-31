@@ -9,9 +9,9 @@
     "newArchEnabled": true,
     "scheme": "yapmate",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/yapmate-apple-2-dark.icon/Assets/YAP.svg",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,8 +23,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "image": "./assets/yapmate-apple-2-dark.icon/Assets/YAP.svg",
+        "backgroundColor": "#0a0a0a"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
