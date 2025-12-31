@@ -1,36 +1,142 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yapmate
+
+AI chat application with web and mobile clients. Built as a monorepo with shared packages for type-safe APIs, database access, and UI components.
+
+## Tech Stack
+
+- **Runtime**: Bun
+- **Frontend**: React 19, TypeScript, Tailwind CSS
+- **Web**: Vite + Bun fullstack
+- **Mobile**: Expo React Native
+- **Backend**: Bun HTTP server with oRPC for type-safe APIs
+- **Database**: PostgreSQL with Drizzle ORM
+- **Auth**: Supabase
+- **AI**: Vercel AI SDK
+- **Code Quality**: Biome (linting & formatting)
+
+## Project Structure
+
+```
+yapmate/
+├── apps/
+│   ├── web/          # Web application (Bun + Vite)
+│   └── mobile/       # Mobile application (Expo React Native)
+├── packages/
+│   ├── api/          # Type-safe API layer (oRPC)
+│   ├── components/   # Shared UI components
+│   ├── core/         # Shared types and utilities
+│   ├── db/           # Database schema and migrations (Drizzle)
+│   └── server/       # Server-side logic and AI integrations
+└── docs/             # Documentation
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- [Bun](https://bun.sh) (latest version)
+- PostgreSQL database
+- Supabase project (for authentication)
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env` file in the root directory with the following variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database
+DATABASE_URL=postgresql://...
 
-## Learn More
+# Supabase
+SUPABASE_URL=https://...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 
-To learn more about Next.js, take a look at the following resources:
+# AI Providers (OpenRouter, Groq, etc.)
+OPENROUTER_API_KEY=...
+GROQ_API_KEY=...
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Redis (optional, for WebSocket scaling)
+REDIS_URL=...
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Development
 
-## Deploy on Vercel
+```bash
+# Start web app
+bun run dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Start mobile app
+cd apps/mobile
+bun run dev
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Type checking
+bun run typecheck
+
+# Linting
+bun run lint
+
+# Format code
+bun run format
+```
+
+### Database
+
+```bash
+# Generate migrations
+bun run db:generate
+
+# Run migrations
+bun run db:migrate
+
+# Open Drizzle Studio
+bun run db:studio
+
+# Pull schema from database
+bun run db:pull
+```
+
+## Scripts
+
+- `dev` - Start web development server
+- `build` - Build web app for production
+- `start` - Start production server
+- `lint` - Run Biome linter
+- `typecheck` - Run TypeScript type checking
+- `format` - Format code with Biome
+- `db:*` - Database management commands
+
+## Deployment
+
+Deployed on Railway. Configuration in `railway.toml`.
+
+## Architecture
+
+### API Layer
+
+Type-safe APIs using oRPC. See `packages/api/README.md` for route documentation.
+
+- **oRPC routes**: `/rpc/*` - Type-safe procedures for CRUD operations
+- **HTTP routes**: `/api/*` - Streaming endpoints and file uploads
+
+### Database
+
+Drizzle ORM with PostgreSQL. Schema definitions in `packages/db/src/schema/`.
+
+### Shared Packages
+
+- `@yapmate/api` - Type-safe API client and server router
+- `@yapmate/components` - Shared React components
+- `@yapmate/core` - Shared types and utilities
+- `@yapmate/db` - Database schema and services
+- `@yapmate/server` - Server-side logic and AI model integrations
+
+## License
+
+Private project.
