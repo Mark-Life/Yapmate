@@ -47,8 +47,6 @@ const getScheme = () => {
 };
 
 export default ({ config }) => {
-  const baseBundleIdentifier =
-    config.ios?.bundleIdentifier ?? config.android?.package;
   const baseAppName = config.name;
   const scheme = getScheme();
 
@@ -58,12 +56,12 @@ export default ({ config }) => {
     scheme,
     ios: {
       ...config.ios,
-      bundleIdentifier: getUniqueIdentifier(baseBundleIdentifier),
+      bundleIdentifier: getUniqueIdentifier(config.ios?.bundleIdentifier),
       associatedDomains: ["applinks:yapmate.com"],
     },
     android: {
       ...config.android,
-      package: getUniqueIdentifier(baseBundleIdentifier),
+      package: getUniqueIdentifier(config.android?.package),
     },
   };
 };

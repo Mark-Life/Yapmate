@@ -28,7 +28,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.mark-life.yapmate",
+      "package": "com.marklife.yapmate",
       "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
