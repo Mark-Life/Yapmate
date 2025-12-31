@@ -10,7 +10,14 @@ import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -144,12 +151,26 @@ export const Chat = ({
           const urlString = url instanceof Request ? url.url : url.toString();
 
           // Use expo/fetch for streaming support
-          return expoFetch(urlString, {
+          const response = await expoFetch(urlString, {
             ...init,
             body: init?.body ?? undefined,
             signal: init?.signal ?? undefined,
             headers,
           });
+
+          // Handle 402 Payment Required (rate limit exceeded)
+          if (response.status === 402) {
+            const errorData = await response.json().catch(() => ({}));
+            const error = new Error(
+              errorData.error || "Message limit exceeded"
+            );
+            (error as Error & { status: number; data: unknown }).status = 402;
+            (error as Error & { status: number; data: unknown }).data =
+              errorData;
+            throw error;
+          }
+
+          return response;
         }) as unknown as typeof fetch,
         api: generateAPIUrl("/api/chat"),
         prepareSendMessagesRequest({
@@ -204,6 +225,19 @@ export const Chat = ({
         queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
       },
       onError: (error) => {
+        // Handle 402 Payment Required (rate limit exceeded)
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          error.status === 402
+        ) {
+          Alert.alert(
+            "Message limit reached",
+            "The app is under development. Message limit reached for this month."
+          );
+          return;
+        }
         console.error("useChat error:", error);
       },
     });

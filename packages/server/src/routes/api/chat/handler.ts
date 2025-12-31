@@ -4,6 +4,7 @@
  */
 
 import {
+  checkMessageLimit,
   saveMessage as saveMessageService,
   updateActiveStreamId,
   uploadFilesInBackground,
@@ -23,6 +24,7 @@ import { getChat, loadChatMessages } from "./store";
 import { executeStream, handleStreamError, handleStreamFinish } from "./stream";
 
 export const chatHandler = {
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok for now, fix later
   async POST(req: Request) {
     const userId = await getCurrentUserId(req);
     if (!userId) {
@@ -60,6 +62,24 @@ export const chatHandler = {
     }
     if (chat.userId !== userId) {
       return new Response("Forbidden", { status: 403 });
+    }
+
+    // Check message limit (skip for regeneration/edit - those don't count as new messages)
+    if (!(regenerateMessageId || editMessageId)) {
+      const { allowed, count, limit } = await checkMessageLimit(userId);
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "message_limit_exceeded",
+            count,
+            limit,
+          }),
+          {
+            status: 402,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
     let fileRecords: Awaited<

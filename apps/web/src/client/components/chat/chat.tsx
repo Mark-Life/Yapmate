@@ -6,6 +6,7 @@ import { cn } from "@yapmate/components/lib/utils";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
 import { rpcClient } from "../../lib/rpc-client";
@@ -86,6 +87,21 @@ export const Chat = ({
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
+        fetch: (async (url, init) => {
+          const response = await fetch(url, init);
+          // Handle 402 Payment Required (rate limit exceeded)
+          if (response.status === 402) {
+            const errorData = await response.json().catch(() => ({}));
+            const error = new Error(
+              errorData.error || "Message limit exceeded"
+            );
+            (error as Error & { status: number; data: unknown }).status = 402;
+            (error as Error & { status: number; data: unknown }).data =
+              errorData;
+            throw error;
+          }
+          return response;
+        }) as typeof fetch,
         prepareSendMessagesRequest({
           messages: allMessages,
           id: transportChatId,
@@ -138,6 +154,20 @@ export const Chat = ({
         queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
       },
       onError: (error) => {
+        // Handle 402 Payment Required (rate limit exceeded)
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          error.status === 402
+        ) {
+          toast.error("Message limit reached", {
+            description:
+              "The app is under development. Message limit reached for this month.",
+            duration: 5000,
+          });
+          return;
+        }
         console.error("useChat error:", error);
       },
     });

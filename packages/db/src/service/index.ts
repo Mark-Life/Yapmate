@@ -8,4 +8,5 @@ export * from "./file-upload";
 export * from "./files";
 export * from "./mapping";
 export * from "./messages";
+export * from "./rate-limit";
 export * from "./usage";
