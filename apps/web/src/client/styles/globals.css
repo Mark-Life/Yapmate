@@ -5,6 +5,8 @@
 /* Scan monorepo component sources for Tailwind classes */
 @source "../../../../../packages/components/src/**/*.tsx";
 @source "../**/*.tsx";
+/* Explicitly include static pages for Tailwind scanning */
+@source "../pages/static/*.tsx";
 
 @custom-variant dark (&:is(.dark *));
 

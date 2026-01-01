@@ -21,13 +21,14 @@ import { transcribeHandler } from "@yapmate/server/routes/api/transcribe";
 import { callbackHandler } from "@yapmate/server/routes/auth/callback";
 import type { BunFile, HTMLBundle, Server, ServerWebSocket } from "bun";
 import { serve } from "bun";
-
 /**
  * HTML import for development (HMR support)
  * In production builds, this is replaced with `null` by the build plugin
  * See: build.ts excludeHtmlPlugin
  */
 import devIndexHtml from "../client/index.html";
+import devAboutHtml from "../client/pages/static/about.html";
+import devHelpHtml from "../client/pages/static/help.html";
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
@@ -295,6 +296,22 @@ const server = serve<WsClientData>({
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,
+
+    // Static pages - public, no auth required
+    // Production: serve Vite-built HTML from dist/client/pages/static/
+    // Development: use HTML imports for HMR support
+    "/about": isProduction
+      ? () =>
+          new Response(Bun.file("./client/pages/static/about.html"), {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+      : devAboutHtml,
+    "/help": isProduction
+      ? () =>
+          new Response(Bun.file("./client/pages/static/help.html"), {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+      : devHelpHtml,
 
     // Universal link configuration files
     "/.well-known/apple-app-site-association": () => {

@@ -31,7 +31,11 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       sourcemap: true,
       rollupOptions: {
-        input: resolve(__dirname, "src/client/index.html"),
+        input: {
+          main: resolve(__dirname, "src/client/index.html"),
+          about: resolve(__dirname, "src/client/pages/static/about.html"),
+          help: resolve(__dirname, "src/client/pages/static/help.html"),
+        },
       },
       target: "esnext",
       minify: "esbuild",
