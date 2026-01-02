@@ -1,6 +1,8 @@
+import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import { FlatList, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +41,7 @@ export default function ChatsScreen() {
   const { colorScheme } = useColorScheme();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const {
     data: chats = [],
     isPending,
@@ -58,6 +61,31 @@ export default function ChatsScreen() {
       queryKey: ["chat-messages", chatId],
       queryFn: () => rpcClient.messages.list({ chatId }),
       staleTime: 60 * 1000,
+    });
+  };
+
+  /**
+   * Handle rename dialog open - navigates to rename-chat route
+   */
+  const handleRenameClick = (chatId: string, currentTitle: string | null) => {
+    router.push({
+      pathname: "/(app)/rename-chat",
+      params: {
+        chatId,
+        currentTitle: currentTitle ?? "",
+      },
+    });
+  };
+
+  /**
+   * Handle delete dialog open - navigates to delete-chat route
+   */
+  const handleDeleteClick = (chatId: string) => {
+    router.push({
+      pathname: "/(app)/delete-chat",
+      params: {
+        chatId,
+      },
     });
   };
 
@@ -108,15 +136,18 @@ export default function ChatsScreen() {
           </Button>
         </View>
       ) : (
-        <FlatList
+        <LegendList
           contentContainerStyle={{ padding: 8 }}
           data={chats}
           keyExtractor={(item) => item.id}
+          recycleItems
           renderItem={({ item }) => (
             <ChatListItem
               id={item.id}
               isActive={item.id === currentChatId}
+              onDelete={() => handleDeleteClick(item.id)}
               onPress={() => handleChatPress(item.id)}
+              onRename={() => handleRenameClick(item.id, item.title)}
               title={item.title}
               updatedAt={item.updatedAt}
             />
