@@ -139,6 +139,7 @@ export default function ChatsScreen() {
         <LegendList
           contentContainerStyle={{ padding: 8 }}
           data={chats}
+          estimatedItemSize={72}
           keyExtractor={(item) => item.id}
           recycleItems
           renderItem={({ item }) => (

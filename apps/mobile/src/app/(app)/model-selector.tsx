@@ -203,6 +203,7 @@ export default function ModelSelectorScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 60 }}
         data={listItems}
+        estimatedItemSize={44}
         keyboardShouldPersistTaps="handled"
         keyExtractor={(item, index) =>
           item.type === "section"

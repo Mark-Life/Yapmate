@@ -173,6 +173,7 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
       <LegendList
         contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
         data={filteredChats}
+        estimatedItemSize={72}
         keyExtractor={(item) => item.id}
         recycleItems
         renderItem={({ item }) => (
