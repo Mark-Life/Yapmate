@@ -1,6 +1,7 @@
+import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { FlatList, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -169,10 +170,11 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
 
   return (
     <View className="flex-1">
-      <FlatList
+      <LegendList
         contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
         data={filteredChats}
         keyExtractor={(item) => item.id}
+        recycleItems
         renderItem={({ item }) => (
           <ChatListItem
             id={item.id}

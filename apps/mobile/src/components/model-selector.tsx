@@ -11,6 +11,8 @@ type ModelSelectorProps = {
   model: string;
   /** Optional className to override trigger styles (e.g., when inside GlassView) */
   triggerClassName?: string;
+  /** Callback fired when model selector is opened */
+  onOpen?: () => void;
 };
 
 /**
@@ -20,6 +22,7 @@ type ModelSelectorProps = {
 export const ModelSelector = ({
   model,
   triggerClassName,
+  onOpen,
 }: ModelSelectorProps) => {
   const router = useRouter();
   const { models, loading } = useModels();
@@ -34,6 +37,7 @@ export const ModelSelector = ({
    */
   const handleOpen = () => {
     lightTap();
+    onOpen?.();
     router.push({
       pathname: "/model-selector",
       params: { model },

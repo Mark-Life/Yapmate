@@ -2,8 +2,9 @@ import type { ChatStatus, FileUIPart } from "ai";
 import { GlassContainer, GlassView } from "expo-glass-effect";
 import { ArrowUpIcon, GlobeIcon, SquareIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useState } from "react";
-import { View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import type { TextInput } from "react-native";
+import { Keyboard, View } from "react-native";
 import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -26,6 +27,7 @@ type ChatInputProps = {
   onSubmit: (message: { text: string; files: FileUIPart[] }) => void;
   onStop?: () => void;
   attachments: AttachmentsContext;
+  isNew?: boolean;
 };
 
 /**
@@ -42,9 +44,24 @@ export const ChatInput = ({
   onSubmit,
   onStop,
   attachments,
+  isNew = false,
 }: ChatInputProps) => {
   const [_, setIsFocused] = useState(false);
   const { colorScheme } = useColorScheme();
+  const textareaRef = useRef<TextInput>(null);
+
+  /**
+   * Focus input when it's a new chat
+   */
+  useEffect(() => {
+    if (isNew && textareaRef.current) {
+      // Small delay to ensure component is fully mounted
+      const timeoutId = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isNew]);
 
   const handleSubmit = async () => {
     const hasText = Boolean(input.trim());
@@ -103,6 +120,11 @@ export const ChatInput = ({
           >
             <ModelSelector
               model={model}
+              onOpen={() => {
+                // Blur chat input when model selector opens
+                textareaRef.current?.blur();
+                Keyboard.dismiss();
+              }}
               triggerClassName="border-0 bg-transparent rounded-none"
             />
           </GlassView>
@@ -180,6 +202,7 @@ export const ChatInput = ({
               onChangeText={onInputChange}
               onFocus={() => setIsFocused(true)}
               placeholder="Message..."
+              ref={textareaRef}
               value={input}
             />
           </GlassView>

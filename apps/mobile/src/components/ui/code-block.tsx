@@ -7,6 +7,7 @@ import { useColorScheme } from "nativewind";
 import { memo, useCallback, useState } from "react";
 import { Pressable, View } from "react-native";
 // import { DARK_THEME, getHighlighter, LIGHT_THEME } from "src/lib/highlighter";
+import { lightTap } from "@/lib/haptics";
 import { Text } from "./text";
 
 type CodeBlockProps = {
@@ -27,6 +28,7 @@ const CodeBlockHeader = memo(({ language, code }: CodeBlockHeaderProps) => {
   const { colorScheme } = useColorScheme();
 
   const handleCopy = useCallback(async () => {
+    lightTap();
     await Clipboard.setStringAsync(code);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);

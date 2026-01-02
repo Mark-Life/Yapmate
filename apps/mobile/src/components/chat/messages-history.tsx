@@ -1,7 +1,8 @@
+import { LegendList, type LegendListRef } from "@legendapp/list";
 import type { ChatStatus, UIMessage } from "ai";
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Keyboard, Platform, View } from "react-native";
+import { Keyboard, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { lightTap } from "@/lib/haptics";
@@ -24,7 +25,7 @@ type MessagesHistoryProps = {
 
 /**
  * Messages history component for React Native
- * Displays chat messages in a FlatList
+ * Displays chat messages in a LegendList
  * Content scrolls behind safe areas with padding applied
  */
 export const MessagesHistory = ({
@@ -36,7 +37,7 @@ export const MessagesHistory = ({
   onRegenerate,
   onRequestModelForRegeneration,
 }: MessagesHistoryProps) => {
-  const listRef = useRef<FlatList<ChatUIMessage>>(null);
+  const listRef = useRef<LegendListRef>(null);
   const layoutHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
   const scrollOffsetRef = useRef(0);
@@ -115,7 +116,7 @@ export const MessagesHistory = ({
   );
 
   return (
-    <FlatList
+    <LegendList
       className="flex-1"
       contentContainerStyle={{
         paddingTop: insets.top + 24,
@@ -165,6 +166,7 @@ export const MessagesHistory = ({
           Keyboard.dismiss();
         }
       }}
+      recycleItems
       ref={listRef}
       renderItem={({ item }) => (
         <MessageItem

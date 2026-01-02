@@ -1,14 +1,26 @@
+import { forwardRef } from "react";
 import { Platform, TextInput, type TextInputProps } from "react-native";
 import { cn } from "src/lib/utils";
 
-function Textarea({
-  className,
-  multiline = true,
-  numberOfLines = Platform.select({ web: 2, native: 8 }), // On web, numberOfLines also determines initial height. On native, it determines the maximum height.
-  placeholderClassName,
-  ...props
-}: TextInputProps & React.RefAttributes<TextInput>) {
-  return (
+const Textarea = forwardRef<
+  TextInput,
+  TextInputProps & {
+    className?: string;
+    multiline?: boolean;
+    numberOfLines?: number;
+    placeholderClassName?: string;
+  }
+>(
+  (
+    {
+      className,
+      multiline = true,
+      numberOfLines = Platform.select({ web: 2, native: 8 }), // On web, numberOfLines also determines initial height. On native, it determines the maximum height.
+      placeholderClassName,
+      ...props
+    },
+    ref
+  ) => (
     <TextInput
       className={cn(
         "flex min-h-16 w-full flex-row rounded-md border border-input bg-transparent px-3 py-2 text-base text-foreground shadow-black/5 shadow-sm md:text-sm dark:bg-input/30",
@@ -21,10 +33,13 @@ function Textarea({
       multiline={multiline}
       numberOfLines={numberOfLines}
       placeholderClassName={cn("text-muted-foreground", placeholderClassName)}
+      ref={ref}
       textAlignVertical="top"
       {...props}
     />
-  );
-}
+  )
+);
+
+Textarea.displayName = "Textarea";
 
 export { Textarea };

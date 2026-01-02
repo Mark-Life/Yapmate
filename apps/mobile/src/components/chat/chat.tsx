@@ -539,6 +539,7 @@ export const Chat = ({
         <ChatInput
           attachments={attachments}
           input={input}
+          isNew={isNewChat}
           model={model}
           onInputChange={setInput}
           onModelChange={setModel}

@@ -1,11 +1,11 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { LegendList } from "@legendapp/list";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   type TextInput,
   View,
@@ -49,6 +49,34 @@ const getProviderDisplayName = (provider: string): string => {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 };
 
+type ListItem =
+  | { type: "section"; provider: string }
+  | { type: "model"; name: string; value: string; provider: string };
+
+/**
+ * Flattens grouped models into a list with section headers
+ */
+const flattenGroupedModels = (
+  grouped: Array<{
+    provider: string;
+    items: Array<{ name: string; value: string }>;
+  }>
+): ListItem[] => {
+  const result: ListItem[] = [];
+  for (const group of grouped) {
+    result.push({ type: "section", provider: group.provider });
+    for (const item of group.items) {
+      result.push({
+        type: "model",
+        name: item.name,
+        value: item.value,
+        provider: group.provider,
+      });
+    }
+  }
+  return result;
+};
+
 /**
  * Filters models by search query (case-insensitive, matches name or provider)
  */
@@ -90,6 +118,10 @@ export default function ModelSelectorScreen() {
     () => groupModelsByProvider(filteredModels),
     [filteredModels]
   );
+  const listItems = useMemo(
+    () => flattenGroupedModels(groupedModels),
+    [groupedModels]
+  );
 
   /**
    * Handles model selection
@@ -105,50 +137,82 @@ export default function ModelSelectorScreen() {
   };
 
   /**
-   * Focuses search input when screen appears
+   * Focuses search input when screen comes into focus
+   * Uses useFocusEffect to ensure focus happens after navigation completes
    */
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 300);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      // Delay focus to ensure keyboard dismisses from previous screen first
+      const timeoutId = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 400);
+      return () => clearTimeout(timeoutId);
+    }, [])
+  );
 
-  const renderContent = () => {
+  /**
+   * Renders a list item (section header or model)
+   */
+  const renderItem = ({ item }: { item: ListItem }) => {
+    if (item.type === "section") {
+      return (
+        <View className="px-3 py-1.5">
+          <Text className="text-muted-foreground text-xs">
+            {getProviderDisplayName(item.provider)}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <Pressable
+        className="flex flex-row items-center gap-2 rounded-sm px-3 py-2 active:bg-accent"
+        onPress={() => handleSelect(item.value)}
+      >
+        <Text className="flex-1 text-foreground text-sm">{item.name}</Text>
+        {item.value === currentModel && (
+          <Icon as={Check} className="size-4 text-muted-foreground" />
+        )}
+      </Pressable>
+    );
+  };
+
+  /**
+   * Renders the model list content based on loading and data state
+   */
+  const renderListContent = () => {
     if (loading) {
       return (
-        <View className="px-3 py-2">
+        <View className="flex-1 px-3 py-2">
           <Text className="text-muted-foreground text-sm">
             Loading models...
           </Text>
         </View>
       );
     }
-    if (groupedModels.length === 0) {
+    if (listItems.length === 0) {
       return (
-        <View className="px-3 py-2">
+        <View className="flex-1 px-3 py-2">
           <Text className="text-muted-foreground text-sm">
             No models found.
           </Text>
         </View>
       );
     }
-    return groupedModels.map((group) => (
-      <View key={group.provider}>
-        <Text className="px-3 py-1.5 text-muted-foreground text-xs">
-          {getProviderDisplayName(group.provider)}
-        </Text>
-        {group.items.map((item) => (
-          <Pressable
-            className="flex flex-row items-center gap-2 rounded-sm px-3 py-2 active:bg-accent"
-            key={item.value}
-            onPress={() => handleSelect(item.value)}
-          >
-            <Text className="flex-1 text-foreground text-sm">{item.name}</Text>
-            {item.value === currentModel && (
-              <Icon as={Check} className="size-4 text-muted-foreground" />
-            )}
-          </Pressable>
-        ))}
-      </View>
-    ));
+    return (
+      <LegendList
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 60 }}
+        data={listItems}
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(item, index) =>
+          item.type === "section"
+            ? `section-${item.provider}`
+            : `model-${item.value}-${index}`
+        }
+        recycleItems
+        renderItem={renderItem}
+      />
+    );
   };
 
   return (
@@ -169,9 +233,7 @@ export default function ModelSelectorScreen() {
       </View>
 
       {/* Model list */}
-      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
-        <View className="px-1 pb-2">{renderContent()}</View>
-      </ScrollView>
+      {renderListContent()}
     </KeyboardAvoidingView>
   );
 }
