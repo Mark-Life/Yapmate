@@ -58,16 +58,17 @@ export const DragDropZone = ({
       }
     };
 
-    container.addEventListener("dragenter", onDragEnter);
-    container.addEventListener("dragover", onDragOver);
-    container.addEventListener("dragleave", onDragLeave);
-    container.addEventListener("drop", onDrop);
+    // Use capture phase to handle events before they reach child elements (like PromptInput)
+    container.addEventListener("dragenter", onDragEnter, true);
+    container.addEventListener("dragover", onDragOver, true);
+    container.addEventListener("dragleave", onDragLeave, true);
+    container.addEventListener("drop", onDrop, true);
 
     return () => {
-      container.removeEventListener("dragenter", onDragEnter);
-      container.removeEventListener("dragover", onDragOver);
-      container.removeEventListener("dragleave", onDragLeave);
-      container.removeEventListener("drop", onDrop);
+      container.removeEventListener("dragenter", onDragEnter, true);
+      container.removeEventListener("dragover", onDragOver, true);
+      container.removeEventListener("dragleave", onDragLeave, true);
+      container.removeEventListener("drop", onDrop, true);
     };
   }, [attachments, containerRef, setIsDragging]);
 
