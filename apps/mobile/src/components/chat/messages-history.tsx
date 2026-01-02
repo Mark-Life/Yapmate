@@ -3,7 +3,6 @@ import type { ChatStatus, UIMessage } from "ai";
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { lightTap } from "@/lib/haptics";
 import { MessageItem } from "./message-item";
@@ -44,7 +43,6 @@ export const MessagesHistory = ({
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const insets = useSafeAreaInsets();
 
   /**
    * Copies text to clipboard with haptic feedback
@@ -119,9 +117,10 @@ export const MessagesHistory = ({
     <LegendList
       className="flex-1"
       contentContainerStyle={{
-        paddingTop: insets.top + 24,
-        paddingBottom: 140,
+        paddingTop: 20,
+        paddingBottom: 100,
       }}
+      contentInsetAdjustmentBehavior="automatic"
       data={messages}
       estimatedItemSize={120}
       keyboardDismissMode="on-drag"

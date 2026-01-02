@@ -174,6 +174,7 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
         contentContainerStyle={{ padding: 8, paddingBottom: 80 }}
         data={filteredChats}
         estimatedItemSize={72}
+        extraData={currentChatId}
         keyExtractor={(item) => item.id}
         recycleItems
         renderItem={({ item }) => (
