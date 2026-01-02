@@ -171,7 +171,7 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   return (
     <View className="flex-1">
       <LegendList
-        contentContainerStyle={{ padding: 8, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 8, paddingBottom: 80 }}
         data={filteredChats}
         estimatedItemSize={72}
         keyExtractor={(item) => item.id}

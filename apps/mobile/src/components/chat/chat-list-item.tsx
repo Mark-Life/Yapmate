@@ -1,6 +1,6 @@
-import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
 import { useRef } from "react";
 import { Pressable, View } from "react-native";
+import ContextMenu from "react-native-context-menu-view";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,14 @@ type ChatListItemProps = {
   onRename: () => void;
   onDelete: () => void;
 };
+
+/**
+ * Context menu actions for chat list items
+ */
+const CONTEXT_MENU_ACTIONS = [
+  { title: "Rename", systemIcon: "pencil" },
+  { title: "Delete", systemIcon: "trash", destructive: true },
+];
 
 /**
  * Chat list item component
@@ -32,7 +40,7 @@ export const ChatListItem = ({
   const longPressedRef = useRef(false);
 
   /**
-   * Handle press - skip if long press was triggered
+   * Handle tap - skip if long press was triggered
    */
   const handlePress = () => {
     if (longPressedRef.current) {
@@ -50,54 +58,44 @@ export const ChatListItem = ({
   };
 
   /**
-   * Reset long press flag after touch ends
+   * Handle context menu action selection
    */
-  const handlePressOut = () => {
-    setTimeout(() => {
-      longPressedRef.current = false;
-    }, 100);
+  const handleContextMenuPress = (event: {
+    nativeEvent: { index: number; name: string };
+  }) => {
+    const { index } = event.nativeEvent;
+    if (index === 0) {
+      onRename();
+    } else if (index === 1) {
+      onDelete();
+    }
   };
 
   return (
-    <Host>
-      <ContextMenu activationMethod="longPress">
-        <ContextMenu.Items>
-          <Button onPress={onRename} systemImage="pencil">
-            Rename
-          </Button>
-          {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
-          <Button onPress={onDelete} role="destructive" systemImage="trash">
-            Delete
-          </Button>
-        </ContextMenu.Items>
-        <ContextMenu.Trigger>
-          <Pressable
-            delayLongPress={300}
-            onLongPress={handleLongPress}
-            onPress={handlePress}
-            onPressOut={handlePressOut}
-          >
-            <View
-              className={cn(
-                "flex-row items-center justify-between rounded-lg bg-background p-2 px-3",
-                isActive && "bg-accent"
-              )}
-            >
-              <View className="flex-1">
-                <Text className="text-sm" variant="default">
-                  {displayTitle}
-                </Text>
-                {updatedAt !== null && updatedAt !== undefined && (
-                  <Text className="text-xs" variant="muted">
-                    {formatDate(updatedAt)}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </Pressable>
-        </ContextMenu.Trigger>
-      </ContextMenu>
-    </Host>
+    <ContextMenu
+      actions={CONTEXT_MENU_ACTIONS}
+      onPress={handleContextMenuPress}
+    >
+      <Pressable onLongPress={handleLongPress} onPress={handlePress}>
+        <View
+          className={cn(
+            "flex-row items-center justify-between rounded-lg bg-background p-2 px-3",
+            isActive && "bg-accent"
+          )}
+        >
+          <View className="flex-1">
+            <Text className="text-sm" variant="default">
+              {displayTitle}
+            </Text>
+            {updatedAt !== null && updatedAt !== undefined && (
+              <Text className="text-xs" variant="muted">
+                {formatDate(updatedAt)}
+              </Text>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </ContextMenu>
   );
 };
 
