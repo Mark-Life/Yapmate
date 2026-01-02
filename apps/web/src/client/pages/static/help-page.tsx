@@ -53,7 +53,16 @@ export const HelpPage = () => (
       <ContentSection />
     </div>
     <footer className="border-border border-t py-8 text-center text-muted-foreground text-sm">
-      © {new Date().getFullYear()} Mark Life Ltd. All rights reserved.
+      © {new Date().getFullYear()}{" "}
+      <a
+        className="transition-opacity hover:opacity-80"
+        href="https://mark-life.com"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Mark Life Ltd
+      </a>
+      . All rights reserved.
     </footer>
   </div>
 );

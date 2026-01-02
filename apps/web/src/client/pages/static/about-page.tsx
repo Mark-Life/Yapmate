@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 
+import { ModelsExplorer } from "./models-explorer";
+
 /**
  * AI provider data for the models grid
  * Logos available at https://models.dev/logos/{id}.svg
@@ -123,6 +125,7 @@ const HeroSection = () => (
 /**
  * Grid showing supported AI providers
  */
+// biome-ignore lint/correctness/noUnusedVariables: kept as fallback component
 const ModelsSection = () => (
   <section className="mx-auto max-w-6xl py-16">
     <h2 className="mb-4 text-center font-bold text-3xl">
@@ -181,6 +184,7 @@ const FeaturesSection = () => (
 /**
  * Platform showcase section
  */
+// biome-ignore lint/correctness/noUnusedVariables: kept for future use
 const PlatformSection = () => (
   <section className="mx-auto max-w-6xl py-16">
     <h2 className="mb-4 text-center font-bold text-3xl">Web & iOS</h2>
@@ -233,13 +237,22 @@ export const AboutPage = () => (
   <div className="min-h-screen bg-background text-foreground">
     <div className="mx-auto max-w-8xl px-4">
       <HeroSection />
-      <ModelsSection />
+      <ModelsExplorer />
       <FeaturesSection />
       {/* <PlatformSection /> */}
       <CTASection />
     </div>
     <footer className="border-border border-t py-8 text-center text-muted-foreground text-sm">
-      © {new Date().getFullYear()} Mark Life Ltd. All rights reserved.
+      © {new Date().getFullYear()}{" "}
+      <a
+        className="transition-opacity hover:opacity-80"
+        href="https://mark-life.com"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Mark Life Ltd
+      </a>
+      . All rights reserved.
     </footer>
   </div>
 );
