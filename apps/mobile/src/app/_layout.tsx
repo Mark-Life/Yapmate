@@ -4,11 +4,13 @@ import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
+import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider, useSession } from "@/contexts/auth";
+import { initUserPreferences } from "@/hooks/use-user-preferences";
 import { useAuthLinking } from "@/hooks/useAuthLinking";
 import { SplashScreenController } from "./splash";
 
@@ -25,6 +27,7 @@ export default function RootLayout() {
         <QueryProvider>
           <SplashScreenController />
           <AuthLinkingHandler />
+          <UserPreferencesInitializer />
           <SafeAreaProvider>
             <View
               className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
@@ -67,5 +70,15 @@ function RootNavigator() {
  */
 function AuthLinkingHandler() {
   useAuthLinking();
+  return null;
+}
+
+/**
+ * Initializes user preferences from AsyncStorage on app start
+ */
+function UserPreferencesInitializer() {
+  useEffect(() => {
+    initUserPreferences();
+  }, []);
   return null;
 }

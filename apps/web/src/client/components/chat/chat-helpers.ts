@@ -93,11 +93,16 @@ export const determineDefaultModel = (
 
   let defaultModelId: string | null = null;
 
-  if (initialId && initialMessages) {
+  // Check if this is an existing chat with messages
+  const hasExistingMessages = initialMessages && initialMessages.length > 0;
+
+  if (initialId && hasExistingMessages) {
     // Existing chat: find last assistant message model
     defaultModelId = getLastAssistantModel(initialMessages);
-  } else if (!initialId) {
-    // New chat: check localStorage first for user's last used model
+  }
+
+  // For new chats or if no model found from messages, check localStorage
+  if (!defaultModelId) {
     const localModel = getLastUsedModel();
     if (localModel && isModelAvailable(localModel, models)) {
       return localModel;

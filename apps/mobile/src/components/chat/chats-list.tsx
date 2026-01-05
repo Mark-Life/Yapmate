@@ -8,14 +8,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
+import { syncWithServer } from "@/hooks/use-user-preferences";
 import { rpcClient } from "@/lib/rpc-client";
 
 /**
- * Fetches user's chats from API and parses dates
+ * Fetches user's chats from API, parses dates, and syncs last used model
  * Return type is inferred from the router and transformation
  */
 const fetchChats = async () => {
   const chats = await rpcClient.chats.list();
+
+  // Sync last used model from most recent chat to storage
+  // (first chat is most recent due to updatedAt ordering)
+  const mostRecentModel = chats[0]?.lastUsedModel ?? null;
+  await syncWithServer(mostRecentModel);
+
   return chats.map((chat) => ({
     ...chat,
     updatedAt: chat.updatedAt ? new Date(chat.updatedAt) : null,

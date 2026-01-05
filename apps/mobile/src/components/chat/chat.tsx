@@ -23,6 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
+import {
+  getSearchEnabled,
+  setSearchEnabled as persistSearchEnabled,
+  setLastUsedModel,
+} from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
 import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
@@ -62,7 +67,7 @@ export const Chat = ({
   const queryClient = useQueryClient();
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
-  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
   const { models } = useModels();
   const attachments = useAttachments();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
@@ -94,6 +99,22 @@ export const Chat = ({
       setModel(defaultModel);
     }
   }, [models, initialId, initialMessages, queryClient]);
+
+  /**
+   * Handles model change with AsyncStorage persistence
+   */
+  const handleModelChange = useCallback((newModel: string) => {
+    setModel(newModel);
+    setLastUsedModel(newModel);
+  }, []);
+
+  /**
+   * Handles search enabled change with AsyncStorage persistence
+   */
+  const handleSearchEnabledChange = useCallback((enabled: boolean) => {
+    setSearchEnabled(enabled);
+    persistSearchEnabled(enabled);
+  }, []);
 
   const router = useRouter();
 
@@ -252,14 +273,14 @@ export const Chat = ({
         role,
         selectedModel,
         messages,
-        setModel,
+        setModel: handleModelChange,
         setMessages,
         regenerate,
         regenerateMessageIdRef,
         regenerateRoleRef,
       });
     },
-    [messages, regenerate, setMessages]
+    [messages, regenerate, setMessages, handleModelChange]
   );
 
   /**
@@ -316,8 +337,8 @@ export const Chat = ({
           selectedModel
         );
       } else {
-        // Regular model change
-        setModel(selectedModel);
+        // Regular model change - persist to storage
+        handleModelChange(selectedModel);
       }
     };
 
@@ -326,7 +347,7 @@ export const Chat = ({
     return () => {
       eventTarget.removeEventListener("model-selected", handleModelSelected);
     };
-  }, [handleRegenerateCallback]);
+  }, [handleRegenerateCallback, handleModelChange]);
 
   /**
    * Handles stopping the current stream
@@ -542,8 +563,8 @@ export const Chat = ({
           isNew={isNewChat}
           model={model}
           onInputChange={setInput}
-          onModelChange={setModel}
-          onSearchEnabledChange={setSearchEnabled}
+          onModelChange={handleModelChange}
+          onSearchEnabledChange={handleSearchEnabledChange}
           onStop={handleStop}
           onSubmit={handleSubmit}
           searchEnabled={searchEnabled}

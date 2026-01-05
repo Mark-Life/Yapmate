@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import * as Crypto from "expo-crypto";
+import { getLastUsedModel } from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
@@ -93,7 +94,7 @@ type DetermineDefaultModelOptions = {
 
 /**
  * Determines the default model based on chat context
- * Uses messages array instead of making API calls
+ * Priority: initial messages → cached preferences → query cache → fallback
  */
 export const determineDefaultModel = (
   options: DetermineDefaultModelOptions
@@ -103,12 +104,25 @@ export const determineDefaultModel = (
 
   let defaultModelId: string | null = null;
 
-  if (initialId && initialMessages) {
+  // Check if this is an existing chat with messages
+  const hasExistingMessages = initialMessages && initialMessages.length > 0;
+
+  if (initialId && hasExistingMessages) {
     // Existing chat: find last assistant message model
     defaultModelId = getLastAssistantModel(initialMessages);
-  } else if (!initialId && queryClient) {
-    // New chat: look at last chat's messages from cache
-    defaultModelId = getLastChatModelFromCache(queryClient, models);
+  }
+
+  // For new chats or if no model found from messages, check cached preferences
+  if (!defaultModelId) {
+    const localModel = getLastUsedModel();
+    if (localModel && isModelAvailable(localModel, models)) {
+      return localModel;
+    }
+
+    // Then try query cache
+    if (queryClient) {
+      defaultModelId = getLastChatModelFromCache(queryClient, models);
+    }
   }
 
   // Validate model is available
