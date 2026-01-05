@@ -152,8 +152,8 @@ const MessageBubble = ({
 }) => (
   <View
     className={cn(
-      "w-full py-1.5",
-      isUser ? "rounded-lg bg-primary px-4" : "pb-0"
+      "w-full bg-background py-1.5",
+      isUser ? "rounded-lg bg-primary px-4 text-primary-foreground" : "pb-0"
     )}
   >
     <MessageContent
@@ -232,9 +232,19 @@ export const TextPart = ({
       {showContextMenu ? (
         <ContextMenu
           actions={contextMenuActions}
-          dropdownMenuMode={true}
           key={contextMenuKey}
           onPress={onContextMenuPress}
+          preview={
+            <MessageBubble
+              editedText={editedText}
+              isEditing={false}
+              isUser={isUser}
+              onTextChange={setEditedText}
+              textContent={textContent}
+              textInputRef={textInputRef as React.RefObject<TextInput>}
+            />
+          }
+          // previewBackgroundColor="transparent"
         >
           <MessageBubble
             editedText={editedText}
