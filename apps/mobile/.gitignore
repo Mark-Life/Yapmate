@@ -42,3 +42,6 @@ yarn-error.*
 
 # builds
 *.ipa
+
+# credentials
+credentials.json
