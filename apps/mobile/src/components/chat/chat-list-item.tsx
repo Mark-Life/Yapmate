@@ -5,7 +5,6 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 type ChatListItemProps = {
-  id: string;
   title: string | null;
   updatedAt: Date | string | null;
   isActive?: boolean;
@@ -28,7 +27,6 @@ const CONTEXT_MENU_ACTIONS = [
  * Supports long press for context menu with rename/delete actions
  */
 export const ChatListItem = ({
-  id: _id,
   title,
   updatedAt,
   isActive = false,
@@ -63,10 +61,10 @@ export const ChatListItem = ({
   const handleContextMenuPress = (event: {
     nativeEvent: { index: number; name: string };
   }) => {
-    const { index } = event.nativeEvent;
-    if (index === 0) {
+    const { index: actionIndex } = event.nativeEvent;
+    if (actionIndex === 0) {
       onRename();
-    } else if (index === 1) {
+    } else if (actionIndex === 1) {
       onDelete();
     }
   };

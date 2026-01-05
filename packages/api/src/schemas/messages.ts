@@ -14,5 +14,16 @@ export const listMessagesInputSchema = z.object({
   chatId: z.uuid(),
 });
 
+/**
+ * List batch messages input schema
+ * Accepts array of chat IDs, limited to 20 max
+ */
+export const listBatchMessagesInputSchema = z.object({
+  chatIds: z.array(z.uuid()).min(1).max(20),
+});
+
 export type Message = z.infer<typeof messageSchema>;
 export type ListMessagesInput = z.infer<typeof listMessagesInputSchema>;
+export type ListBatchMessagesInput = z.infer<
+  typeof listBatchMessagesInputSchema
+>;

@@ -1,6 +1,8 @@
 import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
+import type { ViewToken } from "react-native";
 import { ScrollView, View } from "react-native";
 import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,15 @@ import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
 import { syncWithServer } from "@/hooks/use-user-preferences";
 import { rpcClient } from "@/lib/rpc-client";
+
+/** Number of chats to batch prefetch on initial load */
+const INITIAL_PREFETCH_COUNT = 15;
+
+type ChatItem = {
+  id: string;
+  title: string | null;
+  updatedAt: Date | null;
+};
 
 /**
  * Fetches user's chats from API, parses dates, and syncs last used model
@@ -62,6 +73,72 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
     queryKey: ["chats"],
     queryFn: fetchChats,
   });
+
+  // Track if initial prefetch was done
+  const initialPrefetchedRef = useRef(false);
+  // Track which chat IDs have been prefetched via visibility
+  const prefetchedIdsRef = useRef(new Set<string>());
+
+  /**
+   * Batch prefetch messages for first N chats on initial load
+   */
+  useEffect(() => {
+    if (chats.length === 0 || initialPrefetchedRef.current) {
+      return;
+    }
+    initialPrefetchedRef.current = true;
+
+    const chatIds = chats.slice(0, INITIAL_PREFETCH_COUNT).map((c) => c.id);
+    if (chatIds.length === 0) {
+      return;
+    }
+
+    // Mark initial batch as prefetched
+    for (const id of chatIds) {
+      prefetchedIdsRef.current.add(id);
+    }
+
+    // Batch fetch and populate individual query caches
+    rpcClient.messages
+      .listBatch({ chatIds })
+      .then((results) => {
+        for (const [chatId, messages] of Object.entries(results)) {
+          queryClient.setQueryData(["chat-messages", chatId], messages);
+        }
+      })
+      .catch((err) => {
+        console.error("Batch prefetch failed:", err);
+      });
+  }, [chats, queryClient]);
+
+  /**
+   * Prefetch messages for visible items beyond initial batch
+   */
+  const handleViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken<ChatItem>[] }) => {
+      for (const token of viewableItems) {
+        const chatId = token.item?.id;
+        if (!chatId || prefetchedIdsRef.current.has(chatId)) {
+          continue;
+        }
+
+        // Skip if already in cache
+        const cached = queryClient.getQueryData(["chat-messages", chatId]);
+        if (cached) {
+          prefetchedIdsRef.current.add(chatId);
+          continue;
+        }
+
+        prefetchedIdsRef.current.add(chatId);
+        queryClient.prefetchQuery({
+          queryKey: ["chat-messages", chatId],
+          queryFn: () => rpcClient.messages.list({ chatId }),
+          staleTime: 60 * 1000,
+        });
+      }
+    },
+    [queryClient]
+  );
 
   /**
    * Filter chats by title based on search query
@@ -183,10 +260,10 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
         estimatedItemSize={72}
         extraData={currentChatId}
         keyExtractor={(item) => item.id}
+        onViewableItemsChanged={handleViewableItemsChanged}
         recycleItems
         renderItem={({ item }) => (
           <ChatListItem
-            id={item.id}
             isActive={item.id === currentChatId}
             onDelete={() => handleDeleteClick(item.id)}
             onPress={() => handleChatPress(item.id)}
@@ -195,6 +272,9 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
             updatedAt={item.updatedAt}
           />
         )}
+        viewabilityConfig={{
+          itemVisiblePercentThreshold: 50,
+        }}
       />
     </View>
   );

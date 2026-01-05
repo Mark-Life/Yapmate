@@ -10,7 +10,7 @@ type QueryProviderProps = {
 
 /**
  * TanStack Query provider with AsyncStorage persistence
- * Persists chats and models, but excludes messages to avoid storage bloat
+ * Persists chats and messages for 30 days, syncs via WebSocket
  */
 export const QueryProvider = ({ children }: QueryProviderProps) => {
   const [queryClient] = useState(
@@ -19,7 +19,7 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000, // 1 minute
-            gcTime: 1000 * 60 * 60 * 24, // 24 hours for persistence
+            gcTime: 1000 * 60 * 60 * 24 * 30, // 30 days
           },
         },
       })
@@ -36,10 +36,10 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
         persister,
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
-            // Skip message queries to avoid storage bloat
-            if (query.queryKey[0] === "chat-messages") {
-              return false;
-            }
+            // // Skip message queries to avoid storage bloat
+            // if (query.queryKey[0] === "chat-messages") {
+            //   return false;
+            // }
             // Only persist successful queries
             return query.state.status === "success";
           },
@@ -50,3 +50,5 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
     </PersistQueryClientProvider>
   );
 };
+
+// TODO: move local chats to sql
