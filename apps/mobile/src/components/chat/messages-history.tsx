@@ -131,6 +131,7 @@ export const MessagesHistory = ({
       }}
       data={messages}
       estimatedItemSize={120}
+      extraData={editingMessageId}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.id}

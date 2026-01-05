@@ -477,7 +477,7 @@ export const Chat = ({
             className="flex-1 items-center justify-center pb-64"
             style={{ paddingTop: insets.top }}
           >
-            <YapmateIcon className="text-primary opacity-70" size={160} />
+            <YapmateIcon className="text-primary opacity-80" size={160} />
           </View>
         </Pressable>
       ) : (
