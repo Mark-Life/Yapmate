@@ -1,13 +1,18 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
+import { useMemo } from "react";
 import { View } from "react-native";
 import { cn } from "@/lib/utils";
 import { FilePart, TextPart } from "./message-parts";
 
 type ChatUIMessage = UIMessage;
 
+type ContextMenuAction = {
+  title: string;
+  systemIcon: string;
+};
+
 type MessageItemProps = {
   message: ChatUIMessage;
-  copiedPartId: string | null;
   isEditing: boolean;
   onCopy: (text: string, partId: string) => void;
   onCancelEdit: () => void;
@@ -22,12 +27,64 @@ type MessageItemProps = {
 };
 
 /**
+ * Action identifiers for context menu
+ */
+const ACTION_COPY = "copy";
+const ACTION_REGENERATE = "regenerate";
+const ACTION_REGENERATE_WITH_MODEL = "regenerate_with_model";
+const ACTION_EDIT = "edit";
+
+/**
+ * Builds context menu actions based on message role and status
+ */
+const buildContextMenuActions = (params: {
+  isUser: boolean;
+  canEdit: boolean;
+  canRegenerate: boolean;
+  isStreaming: boolean;
+}): { actions: ContextMenuAction[]; actionIds: string[] } => {
+  const actions: ContextMenuAction[] = [];
+  const actionIds: string[] = [];
+
+  // Copy is always available
+  actions.push({ title: "Copy", systemIcon: "doc.on.doc" });
+  actionIds.push(ACTION_COPY);
+
+  if (params.canRegenerate && !params.isStreaming) {
+    actions.push({ title: "Regenerate", systemIcon: "arrow.counterclockwise" });
+    actionIds.push(ACTION_REGENERATE);
+
+    actions.push({
+      title: "Regenerate with model...",
+      systemIcon: "arrow.triangle.2.circlepath",
+    });
+    actionIds.push(ACTION_REGENERATE_WITH_MODEL);
+  }
+
+  if (params.canEdit && !params.isStreaming) {
+    actions.push({ title: "Edit", systemIcon: "square.and.pencil" });
+    actionIds.push(ACTION_EDIT);
+  }
+
+  return { actions, actionIds };
+};
+
+/**
+ * Extracts full text content from message parts
+ */
+const getTextContent = (parts: ChatUIMessage["parts"]): string =>
+  parts
+    .filter((part) => part.type === "text")
+    .map((part) => (part as { type: "text"; text: string }).text)
+    .join("\n")
+    .trim();
+
+/**
  * Renders a single message item
- * Iterates through all parts in order, matching web app behavior
+ * Context menu is applied at the TextPart level for proper bubble styling
  */
 export const MessageItem = ({
   message,
-  copiedPartId,
   isEditing,
   onCopy,
   onCancelEdit,
@@ -39,6 +96,55 @@ export const MessageItem = ({
 }: MessageItemProps) => {
   const isUser = message.role === "user";
   const parts = message.parts ?? [];
+  const messageRole = message.role as "user" | "assistant";
+  const isStreaming = status === "streaming" || status === "submitted";
+  const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
+  const canEdit = Boolean(isUser && onEdit);
+
+  const { actions, actionIds } = useMemo(
+    () =>
+      buildContextMenuActions({
+        isUser,
+        canEdit,
+        canRegenerate,
+        isStreaming,
+      }),
+    [isUser, canEdit, canRegenerate, isStreaming]
+  );
+
+  // Key includes isStreaming to force ContextMenu remount when streaming state changes
+  const contextMenuKey = `${message.id}-${isStreaming}`;
+
+  /**
+   * Handle context menu action selection
+   */
+  const handleContextMenuPress = (event: {
+    nativeEvent: { index: number; name: string };
+  }) => {
+    const { index } = event.nativeEvent;
+    const actionId = actionIds[index];
+
+    switch (actionId) {
+      case ACTION_COPY: {
+        const textContent = getTextContent(parts);
+        if (textContent) {
+          onCopy(textContent, `${message.id}-0`);
+        }
+        break;
+      }
+      case ACTION_REGENERATE:
+        onRegenerate?.(message.id, messageRole);
+        break;
+      case ACTION_REGENERATE_WITH_MODEL:
+        onRequestModelForRegeneration?.(message.id, messageRole);
+        break;
+      case ACTION_EDIT:
+        onStartEdit(message.id);
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <View
@@ -51,8 +157,7 @@ export const MessageItem = ({
         const partId = `${message.id}-${i}`;
 
         switch (part.type) {
-          case "file": {
-            // Render file parts as separate items (like web app)
+          case "file":
             return (
               <FilePart
                 isUser={isUser}
@@ -61,28 +166,21 @@ export const MessageItem = ({
                 useAutoMargin={true}
               />
             );
-          }
-          case "text": {
+          case "text":
             return (
               <TextPart
-                isCopied={copiedPartId === partId}
+                contextMenuActions={actions}
+                contextMenuKey={contextMenuKey}
                 isEditing={isEditing}
                 isUser={isUser}
                 key={partId}
                 messageId={message.id}
-                messageRole={message.role as "user" | "assistant"}
                 onCancelEdit={onCancelEdit}
-                onCopy={onCopy}
+                onContextMenuPress={handleContextMenuPress}
                 onEdit={onEdit}
-                onRegenerate={onRegenerate}
-                onRequestModelForRegeneration={onRequestModelForRegeneration}
-                onStartEdit={onStartEdit}
                 part={part}
-                partId={partId}
-                status={status}
               />
             );
-          }
           default:
             return null;
         }

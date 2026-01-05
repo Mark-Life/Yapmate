@@ -1,15 +1,21 @@
-import type { ChatStatus, FileUIPart, UIMessage } from "ai";
+import type { FileUIPart, UIMessage } from "ai";
 import { FileIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, useRef, useState } from "react";
 import { Image, Linking, Pressable, TextInput, View } from "react-native";
+import ContextMenu from "react-native-context-menu-view";
 import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { EditActions, NormalActions } from "./message-actions";
+import { EditActions } from "./message-actions";
 
 type ChatUIMessage = UIMessage;
+
+type ContextMenuAction = {
+  title: string;
+  systemIcon: string;
+};
 
 /**
  * Renders a file attachment part in a message
@@ -69,22 +75,17 @@ export const FilePart = ({
 
 type TextPartProps = {
   part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
-  partId: string;
   isUser: boolean;
-  isCopied: boolean;
   isEditing: boolean;
   messageId: string;
-  messageRole: "user" | "assistant";
-  onCopy: (text: string, partId: string) => void;
   onCancelEdit: () => void;
   onEdit?: (messageId: string, editedText: string) => void;
-  onRegenerate?: (messageId: string, role: "user" | "assistant") => void;
-  onRequestModelForRegeneration?: (
-    messageId: string,
-    role: "user" | "assistant"
-  ) => void;
-  onStartEdit: (messageId: string) => void;
-  status: ChatStatus;
+  // Context menu props
+  contextMenuActions?: ContextMenuAction[];
+  contextMenuKey?: string;
+  onContextMenuPress?: (event: {
+    nativeEvent: { index: number; name: string };
+  }) => void;
 };
 
 /**
@@ -126,29 +127,61 @@ const MessageContent = ({
   return (
     <StreamingMarkdown
       content={textContent}
-      textClassName="text-foreground text-sm "
+      textClassName="text-foreground text-sm"
     />
   );
 };
 
 /**
- * Renders a text message part with actions
+ * Renders the message bubble content
+ */
+const MessageBubble = ({
+  isUser,
+  isEditing,
+  editedText,
+  textContent,
+  textInputRef,
+  onTextChange,
+}: {
+  isUser: boolean;
+  isEditing: boolean;
+  editedText: string;
+  textContent: string;
+  textInputRef: React.RefObject<TextInput>;
+  onTextChange: (text: string) => void;
+}) => (
+  <View
+    className={cn(
+      "w-full py-1.5",
+      isUser ? "rounded-lg bg-primary px-4" : "pb-0"
+    )}
+  >
+    <MessageContent
+      editedText={editedText}
+      isEditing={isEditing}
+      isUser={isUser}
+      onTextChange={onTextChange}
+      textContent={textContent}
+      textInputRef={textInputRef}
+    />
+  </View>
+);
+
+/**
+ * Renders a text message part
+ * Context menu wraps just the message bubble for proper styling
+ * Only shows inline edit actions (Cancel/Save) when editing
  */
 export const TextPart = ({
   part,
-  partId,
   isUser,
-  isCopied,
   isEditing,
   messageId,
-  messageRole,
-  onCopy,
   onCancelEdit,
   onEdit,
-  onRegenerate,
-  onRequestModelForRegeneration,
-  onStartEdit,
-  status,
+  contextMenuActions,
+  contextMenuKey,
+  onContextMenuPress,
 }: TextPartProps) => {
   const { colorScheme } = useColorScheme();
   const textContent = part.text?.trim();
@@ -172,10 +205,7 @@ export const TextPart = ({
     return null;
   }
 
-  const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
-  const canEdit = Boolean(isUser && onEdit);
   const hasChanges = editedText.trim() !== part.text.trim();
-  const isStreaming = status === "streaming" || status === "submitted";
 
   const handleEdit = () => {
     if (isUser && onEdit) {
@@ -189,6 +219,9 @@ export const TextPart = ({
     onCancelEdit();
   };
 
+  const showContextMenu =
+    !isEditing && contextMenuActions && onContextMenuPress;
+
   return (
     <View
       className={cn(
@@ -196,13 +229,24 @@ export const TextPart = ({
         isUser ? "max-w-[80%] items-end" : "max-w-[95%] items-start"
       )}
     >
-      <View
-        className={cn(
-          "w-full py-1.5",
-          isUser ? "mb-2 rounded-lg bg-primary px-4" : "pb-0"
-        )}
-      >
-        <MessageContent
+      {showContextMenu ? (
+        <ContextMenu
+          actions={contextMenuActions}
+          dropdownMenuMode={true}
+          key={contextMenuKey}
+          onPress={onContextMenuPress}
+        >
+          <MessageBubble
+            editedText={editedText}
+            isEditing={isEditing}
+            isUser={isUser}
+            onTextChange={setEditedText}
+            textContent={textContent}
+            textInputRef={textInputRef as React.RefObject<TextInput>}
+          />
+        </ContextMenu>
+      ) : (
+        <MessageBubble
           editedText={editedText}
           isEditing={isEditing}
           isUser={isUser}
@@ -210,14 +254,14 @@ export const TextPart = ({
           textContent={textContent}
           textInputRef={textInputRef as React.RefObject<TextInput>}
         />
-      </View>
-      <View
-        className={cn(
-          "w-full flex-row gap-3",
-          isUser ? "justify-end" : "justify-start"
-        )}
-      >
-        {isEditing ? (
+      )}
+      {isEditing ? (
+        <View
+          className={cn(
+            "mt-2 w-full flex-row gap-2",
+            isUser ? "justify-end" : "justify-start"
+          )}
+        >
           <EditActions
             hasChanges={hasChanges}
             iconColor={iconColor}
@@ -225,24 +269,8 @@ export const TextPart = ({
             onCancel={handleCancel}
             onSave={handleEdit}
           />
-        ) : (
-          <NormalActions
-            canEdit={canEdit}
-            canRegenerate={canRegenerate}
-            isCopied={isCopied}
-            isStreaming={isStreaming}
-            isUser={isUser}
-            messageId={messageId}
-            messageRole={messageRole}
-            onCopy={onCopy}
-            onRegenerate={onRegenerate}
-            onRequestModelForRegeneration={onRequestModelForRegeneration}
-            onStartEdit={onStartEdit}
-            partId={partId}
-            textContent={textContent}
-          />
-        )}
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 };

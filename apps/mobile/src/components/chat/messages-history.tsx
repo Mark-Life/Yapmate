@@ -45,17 +45,15 @@ export const MessagesHistory = ({
   const contentHeightRef = useRef(0);
   const scrollOffsetRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
   /**
    * Copies text to clipboard with haptic feedback
+   * Called from MessageItem context menu
    */
-  const handleCopy = useCallback(async (text: string, partId: string) => {
+  const handleCopy = useCallback(async (text: string, _partId: string) => {
     await Clipboard.setStringAsync(text);
     lightTap();
-    setCopiedPartId(partId);
-    setTimeout(() => setCopiedPartId(null), 1000);
   }, []);
 
   /**
@@ -131,7 +129,7 @@ export const MessagesHistory = ({
       }}
       data={messages}
       estimatedItemSize={120}
-      extraData={editingMessageId}
+      extraData={{ editingMessageId, status }}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.id}
@@ -180,7 +178,6 @@ export const MessagesHistory = ({
       ref={listRef}
       renderItem={({ item }) => (
         <MessageItem
-          copiedPartId={copiedPartId}
           isEditing={editingMessageId === item.id}
           message={item}
           onCancelEdit={() => setEditingMessageId(null)}
