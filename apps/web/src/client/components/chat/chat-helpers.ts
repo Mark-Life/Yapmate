@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
+import { getLastUsedModel } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
 
 type Model = { value: string };
@@ -82,7 +83,7 @@ type DetermineDefaultModelOptions = {
 
 /**
  * Determines the default model based on chat context
- * Uses messages array instead of making API calls
+ * Priority: initial messages → localStorage → query cache → fallback
  */
 export const determineDefaultModel = (
   options: DetermineDefaultModelOptions
@@ -95,9 +96,17 @@ export const determineDefaultModel = (
   if (initialId && initialMessages) {
     // Existing chat: find last assistant message model
     defaultModelId = getLastAssistantModel(initialMessages);
-  } else if (!initialId && queryClient) {
-    // New chat: look at last chat's messages from cache
-    defaultModelId = getLastChatModelFromCache(queryClient, models);
+  } else if (!initialId) {
+    // New chat: check localStorage first for user's last used model
+    const localModel = getLastUsedModel();
+    if (localModel && isModelAvailable(localModel, models)) {
+      return localModel;
+    }
+
+    // Then try query cache
+    if (queryClient) {
+      defaultModelId = getLastChatModelFromCache(queryClient, models);
+    }
   }
 
   // Validate model is available

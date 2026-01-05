@@ -4,7 +4,7 @@ import {
   createChat,
   deleteChat,
   getChat,
-  getUserChats,
+  getUserChatsWithLastModel,
   updateChatTitle,
 } from "@yapmate/server/routes/api/chat/store";
 import { protectedProcedure } from "../middleware";
@@ -19,10 +19,10 @@ import {
  */
 export const chats = {
   /**
-   * List all chats for the current user
+   * List all chats for the current user (includes lastUsedModel)
    */
   list: protectedProcedure.handler(
-    async ({ context }) => await getUserChats(context.userId)
+    async ({ context }) => await getUserChatsWithLastModel(context.userId)
   ),
 
   /**

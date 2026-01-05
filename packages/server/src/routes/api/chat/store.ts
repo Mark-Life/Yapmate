@@ -8,6 +8,7 @@ import {
   deleteChat as dbDeleteChat,
   getChat as dbGetChat,
   getChatsByUser as dbGetChatsByUser,
+  getChatsByUserWithLastModel as dbGetChatsByUserWithLastModel,
   touchChat as dbTouchChat,
   updateChatTitle as dbUpdateChatTitle,
   getMessagesByChatId,
@@ -38,6 +39,13 @@ export const getChat = dbGetChat;
  * @param userId - ID of the user
  */
 export const getUserChats = async (userId: string) => dbGetChatsByUser(userId);
+
+/**
+ * Gets all chats for a user with last used model
+ * @param userId - ID of the user
+ */
+export const getUserChatsWithLastModel = async (userId: string) =>
+  dbGetChatsByUserWithLastModel(userId);
 
 /**
  * Deletes a chat

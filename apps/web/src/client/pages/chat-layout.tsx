@@ -12,6 +12,7 @@ import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
+import { syncWithServer } from "../hooks/use-user-preferences";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 
@@ -35,11 +36,17 @@ const HeaderControls = () => {
 };
 
 /**
- * Fetches user's chats from API and parses dates
+ * Fetches user's chats from API, parses dates, and syncs last used model
  * Return type is inferred from the router and transformation
  */
 const fetchChats = async () => {
   const chats = await rpcClient.chats.list();
+
+  // Sync last used model from most recent chat to localStorage
+  // (first chat is most recent due to updatedAt ordering)
+  const mostRecentModel = chats[0]?.lastUsedModel ?? null;
+  syncWithServer(mostRecentModel);
+
   return chats.map((chat) => ({
     ...chat,
     updatedAt: chat.updatedAt ? new Date(chat.updatedAt) : null,

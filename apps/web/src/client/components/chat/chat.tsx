@@ -9,6 +9,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
+import {
+  getSearchEnabled,
+  setSearchEnabled as persistSearchEnabled,
+  setLastUsedModel,
+} from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
 import { DragDropZone } from "../drag-drop-zone";
 import {
@@ -35,7 +40,7 @@ export const Chat = ({
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>("");
-  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -57,6 +62,22 @@ export const Chat = ({
     });
     setModel(defaultModel);
   }, [models, model, initialId, initialMessages, queryClient]);
+
+  /**
+   * Handles model change with localStorage persistence
+   */
+  const handleModelChange = useCallback((newModel: string) => {
+    setModel(newModel);
+    setLastUsedModel(newModel);
+  }, []);
+
+  /**
+   * Handles search enabled change with localStorage persistence
+   */
+  const handleSearchEnabledChange = useCallback((enabled: boolean) => {
+    setSearchEnabled(enabled);
+    persistSearchEnabled(enabled);
+  }, []);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? crypto.randomUUID());
@@ -290,14 +311,14 @@ export const Chat = ({
         role,
         selectedModel,
         messages,
-        setModel,
+        setModel: handleModelChange,
         setMessages,
         regenerate,
         regenerateMessageIdRef,
         regenerateRoleRef,
       });
     },
-    [messages, regenerate, setMessages]
+    [messages, regenerate, setMessages, handleModelChange]
   );
 
   /**
@@ -360,8 +381,8 @@ export const Chat = ({
                 model={model}
                 onFocusChange={setIsInputFocused}
                 onInputChange={setInput}
-                onModelChange={setModel}
-                onSearchEnabledChange={setSearchEnabled}
+                onModelChange={handleModelChange}
+                onSearchEnabledChange={handleSearchEnabledChange}
                 onStop={handleStop}
                 onSubmit={handleSubmit}
                 searchEnabled={searchEnabled}

@@ -33,6 +33,57 @@ export const getChatsByUser = async (userId: string): Promise<ChatSelect[]> =>
     .where(eq(chats.userId, userId))
     .orderBy(desc(chats.updatedAt));
 
+/** Chat with last used model from most recent assistant message */
+export type ChatWithLastModel = ChatSelect & { lastUsedModel: string | null };
+
+/**
+ * Gets all chats for a user with last used model, ordered by most recently updated
+ * The lastUsedModel is the model from the most recent assistant message in each chat
+ * @param userId - ID of the user
+ */
+export const getChatsByUserWithLastModel = async (
+  userId: string
+): Promise<ChatWithLastModel[]> => {
+  // Get all user chats
+  const userChats = await getChatsByUser(userId);
+  if (userChats.length === 0) {
+    return [];
+  }
+
+  // Get last assistant model for each chat using a single query with lateral join simulation
+  const chatIds = userChats.map((c) => c.id);
+
+  // Get latest assistant message model per chat using window function approach
+  const lastModels = await db
+    .selectDistinctOn([messages.chatId], {
+      chatId: messages.chatId,
+      model: messages.model,
+    })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.role, "assistant"),
+        chatIds.length === 1 ? eq(messages.chatId, chatIds[0]) : undefined // Use filter instead for multiple
+      )
+    )
+    .orderBy(messages.chatId, desc(messages.order));
+
+  // Filter to only include chats in our list when multiple
+  const filteredModels =
+    chatIds.length === 1
+      ? lastModels
+      : lastModels.filter((m) => chatIds.includes(m.chatId));
+
+  // Create lookup map
+  const modelMap = new Map(filteredModels.map((m) => [m.chatId, m.model]));
+
+  // Merge with chats
+  return userChats.map((chat) => ({
+    ...chat,
+    lastUsedModel: modelMap.get(chat.id) ?? null,
+  }));
+};
+
 // ─── Write Operations ────────────────────────────────────────────────────────
 
 /**
