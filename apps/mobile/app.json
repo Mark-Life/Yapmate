@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/YAP-512x512.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
+      "backgroundColor": "#0d0d0d"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,7 +19,8 @@
       "icon": "./assets/yapmate-apple-2-dark.icon",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "96ZJ439B4W"
     },
     "android": {
       "adaptiveIcon": {

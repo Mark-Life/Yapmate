@@ -3,9 +3,12 @@ import type { ChatStatus, UIMessage } from "ai";
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { lightTap } from "@/lib/haptics";
 import { MessageItem } from "./message-item";
+
+const CONTENT_PADDING_BOTTOM = 140;
 
 type ChatUIMessage = UIMessage;
 
@@ -36,6 +39,7 @@ export const MessagesHistory = ({
   onRegenerate,
   onRequestModelForRegeneration,
 }: MessagesHistoryProps) => {
+  const insets = useSafeAreaInsets();
   const listRef = useRef<LegendListRef>(null);
   const layoutHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
@@ -56,12 +60,15 @@ export const MessagesHistory = ({
 
   /**
    * Scrolls to the bottom of the messages list
+   * Includes paddingBottom since contentHeight doesn't account for it
    */
   const scrollToBottom = useCallback(() => {
     if (contentHeightRef.current > 0 && layoutHeightRef.current > 0) {
       const maxOffset = Math.max(
         0,
-        contentHeightRef.current - layoutHeightRef.current
+        contentHeightRef.current +
+          CONTENT_PADDING_BOTTOM -
+          layoutHeightRef.current
       );
       listRef.current?.scrollToOffset({
         offset: maxOffset,
@@ -79,6 +86,7 @@ export const MessagesHistory = ({
 
   /**
    * Checks if user is at the bottom of the scroll view
+   * Uses contentHeight without padding - scroll offset is relative to content bounds
    */
   const checkIfAtBottom = useCallback(
     (offset: number, contentHeight: number, layoutHeight: number) => {
@@ -117,10 +125,10 @@ export const MessagesHistory = ({
     <LegendList
       className="flex-1"
       contentContainerStyle={{
-        paddingTop: 20,
-        paddingBottom: 100,
+        marginTop: insets.top + 20,
+        paddingBottom: CONTENT_PADDING_BOTTOM,
+        marginBottom: insets.bottom,
       }}
-      contentInsetAdjustmentBehavior="automatic"
       data={messages}
       estimatedItemSize={120}
       keyboardDismissMode="on-drag"
@@ -138,6 +146,7 @@ export const MessagesHistory = ({
         // Auto-scroll to bottom when content changes
         // Skip auto-scroll if user is editing a message to prevent interrupting their typing
         // Use scrollToOffset for precise positioning during streaming
+        // Add CONTENT_PADDING_BOTTOM since contentHeight doesn't include padding
         if (
           messages.length > 0 &&
           layoutHeightRef.current > 0 &&
@@ -145,7 +154,7 @@ export const MessagesHistory = ({
         ) {
           const maxOffset = Math.max(
             0,
-            contentHeight - layoutHeightRef.current
+            contentHeight + CONTENT_PADDING_BOTTOM - layoutHeightRef.current
           );
           listRef.current?.scrollToOffset({
             offset: maxOffset,
