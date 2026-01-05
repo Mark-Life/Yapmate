@@ -244,7 +244,7 @@ export const TextPart = ({
               textInputRef={textInputRef as React.RefObject<TextInput>}
             />
           }
-          // previewBackgroundColor="transparent"
+          previewBackgroundColor="transparent"
         >
           <MessageBubble
             editedText={editedText}

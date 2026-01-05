@@ -24,7 +24,6 @@ import { getChat, loadChatMessages } from "./store";
 import { executeStream, handleStreamError, handleStreamFinish } from "./stream";
 
 export const chatHandler = {
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok for now, fix later
   async POST(req: Request) {
     const userId = await getCurrentUserId(req);
     if (!userId) {
@@ -64,22 +63,22 @@ export const chatHandler = {
       return new Response("Forbidden", { status: 403 });
     }
 
-    // Check message limit (skip for regeneration/edit - those don't count as new messages)
-    if (!(regenerateMessageId || editMessageId)) {
-      const { allowed, count, limit } = await checkMessageLimit(userId);
-      if (!allowed) {
-        return new Response(
-          JSON.stringify({
-            error: "message_limit_exceeded",
-            count,
-            limit,
-          }),
-          {
-            status: 402,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
+    // Check message limit - applies to all operations (new messages, regeneration, edit)
+    // All operations consume LLM tokens and should be rate-limited
+    const { allowed, count, limit } = await checkMessageLimit(userId);
+    if (!allowed) {
+      // Rate limit exceeded - return 402 and stop processing
+      return new Response(
+        JSON.stringify({
+          error: "message_limit_exceeded",
+          count,
+          limit,
+        }),
+        {
+          status: 402,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     let fileRecords: Awaited<
