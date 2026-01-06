@@ -34,7 +34,8 @@
       "@yapmate/server/lib/*": ["./packages/server/src/lib/*"],
 
       "@yapmate/core/types": ["./packages/core/src/types/index.ts"],
-      "@yapmate/core/ai": ["./packages/core/src/ai/index.ts"]
+      "@yapmate/core/ai": ["./packages/core/src/ai/index.ts"],
+      "@yapmate/core/models/config": ["./packages/core/src/models/config.ts"]
     },
     "strictNullChecks": true
   },

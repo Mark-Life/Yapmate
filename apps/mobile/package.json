@@ -50,6 +50,7 @@
     "@tanstack/react-query-persist-client": "^5.90.14",
     "@ungap/structured-clone": "^1.3.0",
     "@yapmate/api": "workspace:*",
+    "@yapmate/core": "workspace:*",
     "ai": "^6.0.3",
     "expo": "~54.0.30",
     "expo-auth-session": "^7.0.10",

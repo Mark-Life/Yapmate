@@ -3,6 +3,7 @@
   "type": "module",
   "exports": {
     "./ai/*": "./src/ai/index.ts",
-    "./types": "./src/types/index.ts"
+    "./types": "./src/types/index.ts",
+    "./models/config": "./src/models/config.ts"
   }
 }

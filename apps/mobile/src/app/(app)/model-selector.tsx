@@ -1,4 +1,5 @@
 import { LegendList } from "@legendapp/list";
+import { TOP_MODELS } from "@yapmate/core/models/config";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -17,29 +18,60 @@ import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
 
 /**
- * Groups models by provider
+ * Groups models by provider, with top models in a "Common" group first
  */
 const groupModelsByProvider = (
   modelsList: Array<{ name: string; value: string; provider: string }>
 ) => {
+  const topModelsSet = new Set(TOP_MODELS);
+  const commonModels: Array<{ name: string; value: string; provider: string }> =
+    [];
   const grouped = new Map<string, Array<{ name: string; value: string }>>();
+
   for (const model of modelsList) {
-    const existing = grouped.get(model.provider) ?? [];
-    grouped.set(model.provider, [
-      ...existing,
-      { name: model.name, value: model.value },
-    ]);
+    if (topModelsSet.has(model.value)) {
+      commonModels.push({
+        name: model.name,
+        value: model.value,
+        provider: model.provider,
+      });
+    } else {
+      const existing = grouped.get(model.provider) ?? [];
+      grouped.set(model.provider, [
+        ...existing,
+        { name: model.name, value: model.value },
+      ]);
+    }
   }
-  return Array.from(grouped.entries()).map(([provider, items]) => ({
-    provider,
-    items,
-  }));
+
+  const result: Array<{
+    provider: string;
+    items: Array<{ name: string; value: string; provider?: string }>;
+  }> = [];
+
+  // Add Common group first if it has models
+  if (commonModels.length > 0) {
+    result.push({ provider: "common", items: commonModels });
+  }
+
+  // Add other provider groups
+  result.push(
+    ...Array.from(grouped.entries()).map(([provider, items]) => ({
+      provider,
+      items,
+    }))
+  );
+
+  return result;
 };
 
 /**
  * Formats provider name for display
  */
 const getProviderDisplayName = (provider: string): string => {
+  if (provider === "common") {
+    return "Common";
+  }
   if (provider === "google") {
     return "Google";
   }
@@ -51,7 +83,13 @@ const getProviderDisplayName = (provider: string): string => {
 
 type ListItem =
   | { type: "section"; provider: string }
-  | { type: "model"; name: string; value: string; provider: string };
+  | {
+      type: "model";
+      name: string;
+      value: string;
+      provider: string;
+      groupProvider?: string;
+    };
 
 /**
  * Flattens grouped models into a list with section headers
@@ -70,7 +108,8 @@ const flattenGroupedModels = (
         type: "model",
         name: item.name,
         value: item.value,
-        provider: group.provider,
+        provider: item.provider ?? group.provider,
+        groupProvider: group.provider,
       });
     }
   }
