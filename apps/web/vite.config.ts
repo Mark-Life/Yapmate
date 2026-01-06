@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
           main: resolve(__dirname, "src/client/index.html"),
           about: resolve(__dirname, "src/client/pages/static/about.html"),
           help: resolve(__dirname, "src/client/pages/static/help.html"),
+          policy: resolve(__dirname, "src/client/pages/static/policy.html"),
         },
       },
       target: "esnext",
