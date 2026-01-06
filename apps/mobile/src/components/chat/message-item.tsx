@@ -1,7 +1,6 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
 import { useMemo } from "react";
-import { View } from "react-native";
-import { cn } from "@/lib/utils";
+import { StyleSheet, View } from "react-native";
 import { FilePart, TextPart } from "./message-parts";
 
 type ChatUIMessage = UIMessage;
@@ -148,10 +147,10 @@ export const MessageItem = ({
 
   return (
     <View
-      className={cn(
-        "mx-4 my-2 flex-col gap-2",
-        isUser ? "items-end" : "items-start"
-      )}
+      style={[
+        styles.messageContainer,
+        isUser ? styles.itemsEnd : styles.itemsStart,
+      ]}
     >
       {parts.map((part, i) => {
         const partId = `${message.id}-${i}`;
@@ -188,3 +187,18 @@ export const MessageItem = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  messageContainer: {
+    marginHorizontal: 12,
+    marginVertical: 8,
+    flexDirection: "column",
+    gap: 8,
+  },
+  itemsEnd: {
+    alignItems: "flex-end",
+  },
+  itemsStart: {
+    alignItems: "flex-start",
+  },
+});
