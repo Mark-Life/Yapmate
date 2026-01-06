@@ -1,15 +1,14 @@
 /**
- * Stream processing utilities for chat responses
+ * Stream orchestration utilities for chat responses
+ * Coordinates AI response, chunk processing, error handling, and completion
  */
 
 import {
   getChat,
   savePartialAssistantMessage,
-  saveUsageRecord,
   updateActiveStreamId,
 } from "@yapmate/db/service";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { openrouter } from "../../../lib/openrouter";
+import type { UIMessage } from "ai";
 import { unregisterStream } from "../../../lib/redis/controller";
 import {
   getBufferedChunks,
@@ -17,6 +16,7 @@ import {
   setStreamStatus,
 } from "../../../lib/redis/stream";
 import { publishUserEvent } from "../../../lib/websocket";
+import { type AiResponseUsage, executeAiResponse } from "./ai-response";
 import { saveChatMessages } from "./store";
 import { generateAndPublishTitle } from "./title";
 
@@ -24,11 +24,7 @@ import { generateAndPublishTitle } from "./title";
  * Processes stream chunks: publishes to Redis and writes to client
  */
 export const processStreamChunks = async (
-  uiStream: ReturnType<
-    typeof streamText
-  >["toUIMessageStream"] extends () => infer R
-    ? R
-    : never,
+  uiStream: Awaited<ReturnType<typeof executeAiResponse>>["uiStream"],
   writer: Parameters<
     Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
   >[0]["writer"],
@@ -97,11 +93,11 @@ export const handleStreamError = async (
 };
 
 /**
- * Options for executing a stream
+ * Options for executing AI response with orchestration
  */
-type ExecuteStreamOptions = {
+type ExecuteAiResponseWithOrchestrationOptions = {
   modelWithSearch: string;
-  allMessages: UIMessage[];
+  messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
   streamId: string;
@@ -116,28 +112,15 @@ type ExecuteStreamOptions = {
 };
 
 /**
- * Usage data from stream execution (matches MessageMetadata format)
- * Note: cost is excluded from this type as it's only stored in usage_records table,
- * not sent to client for privacy/security reasons
- */
-type StreamUsage = {
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  cachedTokens?: number;
-  reasoningTokens?: number;
-};
-
-/**
- * Creates and executes the LLM stream
+ * Executes AI response and orchestrates chunk processing and title generation
  * @returns Usage data for the stream
  */
-export const executeStream = async (
-  options: ExecuteStreamOptions
-): Promise<StreamUsage | null> => {
+export const executeAiResponseWithOrchestration = async (
+  options: ExecuteAiResponseWithOrchestrationOptions
+): Promise<AiResponseUsage | null> => {
   const {
     modelWithSearch,
-    allMessages,
+    messages,
     abortSignal,
     chatId,
     streamId,
@@ -162,84 +145,29 @@ export const executeStream = async (
         })
       : Promise.resolve();
 
-  const result = streamText({
-    model: openrouter.chat(modelWithSearch, { usage: { include: true } }),
-    messages: convertToModelMessages(allMessages),
-    system:
-      "You are a helpful assistant that can answer questions and help with tasks",
+  // Execute AI response (creates stream)
+  const { uiStream, getUsage } = await executeAiResponse({
+    modelWithSearch,
+    messages,
     abortSignal,
-  });
-
-  // Get UI stream and process chunks
-  // We iterate over the stream ourselves, which ensures it completes
-  // even if the client disconnects (writer.write will fail silently)
-  const uiStream = result.toUIMessageStream({
-    sendSources: true,
-    sendReasoning: true,
+    chatId,
+    streamId,
+    userId,
   });
 
   // Process chunks: publish to Redis and write to client
   // This MUST complete for onFinish to fire
+  // We iterate over the stream ourselves, which ensures it completes
+  // even if the client disconnects (writer.write will fail silently)
   await processStreamChunks(uiStream, writer, streamId, chunkIndex);
 
-  // Log provider metadata (usage, pricing, etc.)
-  const [usage, finishReason, response, providerMetadata] = await Promise.all([
-    result.usage,
-    result.finishReason,
-    result.response,
-    result.providerMetadata,
-  ]);
-
-  // Extract cost from provider metadata
-  const openrouterUsage =
-    providerMetadata &&
-    typeof providerMetadata === "object" &&
-    "openrouter" in providerMetadata &&
-    providerMetadata.openrouter &&
-    typeof providerMetadata.openrouter === "object" &&
-    "usage" in providerMetadata.openrouter
-      ? (providerMetadata.openrouter.usage as { cost?: number })
-      : undefined;
-
-  // Save usage record for billing/analytics
-  try {
-    await saveUsageRecord({
-      userId,
-      chatId,
-      messageId: undefined, // Set later if needed
-      type: "chat",
-      provider: "openrouter",
-      model: modelWithSearch.replace(":online", ""),
-      inputTokens: usage.inputTokens ?? null,
-      outputTokens: usage.outputTokens ?? null,
-      totalTokens: usage.totalTokens ?? null,
-      cachedTokens: usage.cachedInputTokens ?? 0,
-      reasoningTokens: usage.reasoningTokens ?? 0,
-      costUsd: openrouterUsage?.cost?.toString() ?? null,
-      generationId: response.id,
-      finishReason: finishReason ?? null,
-    });
-  } catch (usageError) {
-    // Log but don't fail the stream if usage saving fails
-    console.error(
-      `[Stream ${streamId}] Error saving usage record:`,
-      usageError
-    );
-  }
+  // Get usage after stream is consumed (usage promise resolves when stream finishes)
+  const usage = await getUsage();
 
   // Wait for title generation - keeps stream open until title is written
   await titlePromise;
 
-  // Return usage data for message metadata (excluding cost - only sent to client)
-  // Cost is still saved to usage_records table for billing/analytics
-  return {
-    promptTokens: usage.inputTokens,
-    completionTokens: usage.outputTokens,
-    totalTokens: usage.totalTokens,
-    cachedTokens: usage.cachedInputTokens,
-    reasoningTokens: usage.reasoningTokens,
-    // cost is intentionally excluded - only stored in usage_records, not sent to client
-  };
+  return usage;
 };
 
 /**
@@ -250,7 +178,7 @@ type HandleStreamFinishOptions = {
   chatId: string;
   model: string;
   finalMessages: UIMessage[];
-  usage: StreamUsage | null;
+  usage: AiResponseUsage | null;
   userId?: string;
 };
 
@@ -270,12 +198,12 @@ export const handleStreamFinish = async (
     const isAssistant = lastMessage?.role === "assistant";
 
     // Build metadata with usage if available
-    const metadata: StreamUsage | undefined =
+    const metadata: AiResponseUsage | undefined =
       usage && isAssistant ? usage : undefined;
 
     const messageOptions: Record<
       string,
-      { model: string; metadata?: StreamUsage }
+      { model: string; metadata?: AiResponseUsage }
     > = {};
     if (lastMessageId) {
       if (isAssistant && metadata) {

@@ -21,7 +21,11 @@ import { publishUserEvent } from "../../../lib/websocket";
 import { processMessageFiles } from "./files";
 import { handleEdit, handleRegeneration } from "./messages";
 import { getChat, loadChatMessages } from "./store";
-import { executeStream, handleStreamError, handleStreamFinish } from "./stream";
+import {
+  executeAiResponseWithOrchestration,
+  handleStreamError,
+  handleStreamFinish,
+} from "./stream";
 
 export const chatHandler = {
   async POST(req: Request) {
@@ -142,14 +146,16 @@ export const chatHandler = {
       message.parts.find((p) => p.type === "text")?.text || "";
 
     // Store usage data to pass to onFinish
-    let streamUsage: Awaited<ReturnType<typeof executeStream>> = null;
+    let streamUsage: Awaited<
+      ReturnType<typeof executeAiResponseWithOrchestration>
+    > = null;
 
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
         try {
-          streamUsage = await executeStream({
+          streamUsage = await executeAiResponseWithOrchestration({
             modelWithSearch,
-            allMessages,
+            messages: allMessages,
             abortSignal: abortController.signal,
             chatId: id,
             streamId,
