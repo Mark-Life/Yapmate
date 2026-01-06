@@ -51,6 +51,33 @@ extension UIColor {
         : UIColor(white: 0.7, alpha: 1)
     }
   }
+  
+  /// Parse hex color string to UIColor
+  static func fromHex(_ hex: String) -> UIColor? {
+    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+    
+    var rgb: UInt64 = 0
+    guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+    
+    let length = hexSanitized.count
+    if length == 6 {
+      return UIColor(
+        red: CGFloat((rgb & 0xFF0000) >> 16) / 255.0,
+        green: CGFloat((rgb & 0x00FF00) >> 8) / 255.0,
+        blue: CGFloat(rgb & 0x0000FF) / 255.0,
+        alpha: 1.0
+      )
+    } else if length == 8 {
+      return UIColor(
+        red: CGFloat((rgb & 0xFF000000) >> 24) / 255.0,
+        green: CGFloat((rgb & 0x00FF0000) >> 16) / 255.0,
+        blue: CGFloat((rgb & 0x0000FF00) >> 8) / 255.0,
+        alpha: CGFloat(rgb & 0x000000FF) / 255.0
+      )
+    }
+    return nil
+  }
 }
 
 // MARK: - Markdown Segment Types
@@ -243,11 +270,15 @@ class CodeBlockView: UIView {
   private let headerBorder = UIView()
   private let languageLabel = UILabel()
   private let copyButton = UIButton(type: .system)
+  private let scrollView = UIScrollView()
   private let codeLabel = UILabel()
   private var codeText: String = ""
   private var isCopied = false
+  private let customTextColor: UIColor?
+  private var codeLabelWidthConstraint: NSLayoutConstraint?
   
-  init(code: String, language: String?) {
+  init(code: String, language: String?, customTextColor: UIColor? = nil) {
+    self.customTextColor = customTextColor
     super.init(frame: .zero)
     self.codeText = code
     setupView(language: language)
@@ -288,12 +319,20 @@ class CodeBlockView: UIView {
     copyButton.addTarget(self, action: #selector(copyTapped), for: .touchUpInside)
     headerView.addSubview(copyButton)
     
-    // Code label
+    // Horizontal scroll view for code
+    scrollView.translatesAutoresizingMaskIntoConstraints = false
+    scrollView.showsHorizontalScrollIndicator = true
+    scrollView.showsVerticalScrollIndicator = false
+    scrollView.alwaysBounceHorizontal = false
+    addSubview(scrollView)
+    
+    // Code label - no line limit, natural width for scrolling
     codeLabel.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-    codeLabel.textColor = .markdownText
+    codeLabel.textColor = customTextColor ?? .markdownText
     codeLabel.numberOfLines = 0
+    codeLabel.lineBreakMode = .byClipping // Don't wrap, allow scroll
     codeLabel.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(codeLabel)
+    scrollView.addSubview(codeLabel)
     
     NSLayoutConstraint.activate([
       // Header
@@ -318,16 +357,28 @@ class CodeBlockView: UIView {
       copyButton.widthAnchor.constraint(equalToConstant: 28),
       copyButton.heightAnchor.constraint(equalToConstant: 28),
       
-      // Code label
-      codeLabel.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 12),
-      codeLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-      codeLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-      codeLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+      // Scroll view
+      scrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 12),
+      scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+      scrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+      scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+      
+      // Code label inside scroll view - pinned to edges for scrolling
+      codeLabel.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+      codeLabel.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+      codeLabel.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+      codeLabel.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+      
+      // Height matches scroll view (no vertical scrolling)
+      codeLabel.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
     ])
   }
   
   private func setCode(_ code: String) {
     codeLabel.text = code
+    // Force layout to update scroll content size
+    setNeedsLayout()
+    layoutIfNeeded()
   }
   
   private func updateCopyButtonState(copied: Bool) {
@@ -375,9 +426,11 @@ class TextSegmentView: UIView, UITextViewDelegate {
   
   private let textView = UITextView()
   private let styler: DownStyler
+  private let customTextColor: UIColor?
   
-  init(styler: DownStyler) {
+  init(styler: DownStyler, customTextColor: UIColor? = nil) {
     self.styler = styler
+    self.customTextColor = customTextColor
     super.init(frame: .zero)
     setupView()
   }
@@ -389,6 +442,9 @@ class TextSegmentView: UIView, UITextViewDelegate {
   private func setupView() {
     textView.isEditable = false
     textView.isScrollEnabled = false
+    // Note: isSelectable must be true for text to render properly in some iOS versions
+    // We disable the selection gesture instead
+    textView.isSelectable = true
     textView.backgroundColor = .clear
     textView.textContainerInset = .zero
     textView.textContainer.lineFragmentPadding = 0
@@ -396,12 +452,28 @@ class TextSegmentView: UIView, UITextViewDelegate {
     textView.isUserInteractionEnabled = true
     textView.translatesAutoresizingMaskIntoConstraints = false
     
+    // Content hugging: prefer intrinsic size (shrink-wrap)
+    // Content compression: allow compression when needed (text will wrap)
+    textView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+    textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    
     textView.linkTextAttributes = [
       .foregroundColor: UIColor.markdownLink,
       .underlineStyle: NSUnderlineStyle.single.rawValue
     ]
     
+    // Disable text selection gesture while keeping isSelectable=true for rendering
+    for gesture in textView.gestureRecognizers ?? [] {
+      if gesture is UILongPressGestureRecognizer {
+        gesture.isEnabled = false
+      }
+    }
+    
     addSubview(textView)
+    
+    // Set content priorities on self as well
+    setContentHuggingPriority(.defaultHigh, for: .horizontal)
+    setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     
     NSLayoutConstraint.activate([
       textView.topAnchor.constraint(equalTo: topAnchor),
@@ -415,14 +487,36 @@ class TextSegmentView: UIView, UITextViewDelegate {
     let down = Down(markdownString: markdown)
     
     do {
-      let attributedString = try down.toAttributedString(styler: styler)
-      let styledString = addInlineCodeStyling(to: attributedString)
-      textView.attributedText = styledString
+      var attributedString = try down.toAttributedString(styler: styler)
+      attributedString = addInlineCodeStyling(to: attributedString)
+      
+      // Apply custom text color if provided
+      if let color = customTextColor {
+        attributedString = applyCustomTextColor(to: attributedString, color: color)
+      }
+      
+      textView.attributedText = attributedString
     } catch {
       textView.text = markdown
-      textView.textColor = .markdownText
+      textView.textColor = customTextColor ?? .markdownText
       textView.font = UIFont.systemFont(ofSize: 14)
     }
+    
+    // Force layout update - workaround for isSelectable=false quirk
+    textView.setNeedsLayout()
+    textView.layoutIfNeeded()
+    setNeedsLayout()
+  }
+  
+  /// Apply custom text color to entire attributed string
+  private func applyCustomTextColor(to attributedString: NSAttributedString, color: UIColor) -> NSAttributedString {
+    let mutable = NSMutableAttributedString(attributedString: attributedString)
+    let fullRange = NSRange(location: 0, length: mutable.length)
+    
+    // Apply color to the entire range
+    mutable.addAttribute(.foregroundColor, value: color, range: fullRange)
+    
+    return mutable
   }
   
   // MARK: - UITextViewDelegate
@@ -438,13 +532,42 @@ class TextSegmentView: UIView, UITextViewDelegate {
   }
 }
 
+// MARK: - Context Menu Action
+
+struct ContextMenuAction {
+  let title: String
+  let systemIcon: String
+  let index: Int
+}
+
 // MARK: - Native Markdown View
 
-class NativeMarkdownView: ExpoView {
+class NativeMarkdownView: ExpoView, UIContextMenuInteractionDelegate {
   
   private let stackView = UIStackView()
   private var lastReportedHeight: CGFloat = 0
+  private var lastReportedWidth: CGFloat = 0
+  private var contextMenuActions: [ContextMenuAction] = []
+  private var contextMenuInteraction: UIContextMenuInteraction?
+  private var customTextColor: UIColor?
+  private var currentContent: String = ""
+  
+  // Bubble styling
+  private var paddingH: CGFloat = 0
+  private var paddingV: CGFloat = 0
+  private var bubbleRadius: CGFloat = 0
+  private var isUserMessage: Bool = false
+  private var maxWidthPercentage: CGFloat = 95.0
+  
+  // Constraint references for dynamic padding
+  private var topConstraint: NSLayoutConstraint?
+  private var bottomConstraint: NSLayoutConstraint?
+  private var leadingConstraint: NSLayoutConstraint?
+  private var trailingConstraint: NSLayoutConstraint?
+  private var maxWidthConstraint: NSLayoutConstraint?
+  
   let onContentSizeChange = EventDispatcher()
+  let onContextMenuAction = EventDispatcher()
   
   private lazy var styler: DownStyler = {
     DownStyler(configuration: createStylerConfiguration())
@@ -456,7 +579,7 @@ class NativeMarkdownView: ExpoView {
   }
   
   private func setupView() {
-    clipsToBounds = false
+    clipsToBounds = true
     
     stackView.axis = .vertical
     stackView.spacing = 8
@@ -466,35 +589,260 @@ class NativeMarkdownView: ExpoView {
     
     addSubview(stackView)
     
+    topConstraint = stackView.topAnchor.constraint(equalTo: topAnchor, constant: paddingV)
+    bottomConstraint = stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -paddingV)
+    leadingConstraint = stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: paddingH)
+    trailingConstraint = stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -paddingH)
+    
     NSLayoutConstraint.activate([
-      stackView.topAnchor.constraint(equalTo: topAnchor),
-      stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
-      stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
-      stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+      topConstraint!,
+      bottomConstraint!,
+      leadingConstraint!,
+      trailingConstraint!
     ])
+  }
+  
+  // MARK: - Bubble Styling Setters
+  
+  func setBubbleBackgroundColor(_ colorHex: String?) {
+    if let hex = colorHex, let color = UIColor.fromHex(hex) {
+      backgroundColor = color
+    } else {
+      backgroundColor = .clear
+    }
+  }
+  
+  func setPaddingHorizontal(_ padding: CGFloat) {
+    paddingH = padding
+    leadingConstraint?.constant = padding
+    trailingConstraint?.constant = -padding
+    updateLayoutAndReportSize()
+  }
+  
+  func setPaddingVertical(_ padding: CGFloat) {
+    paddingV = padding
+    topConstraint?.constant = padding
+    bottomConstraint?.constant = -padding
+    updateLayoutAndReportSize()
+  }
+  
+  func setBorderRadius(_ radius: CGFloat) {
+    bubbleRadius = radius
+    layer.cornerRadius = radius
+  }
+  
+  func setIsUser(_ isUser: Bool) {
+    isUserMessage = isUser
+    // Re-report size with new user mode (affects width calculation)
+    lastReportedHeight = 0
+    lastReportedWidth = 0
+    reportContentSizeIfNeeded()
+  }
+  
+  func setMaxWidthPercentage(_ percentage: CGFloat?) {
+    if let percentage = percentage {
+      maxWidthPercentage = percentage
+    } else {
+      // Reset to default based on user type
+      maxWidthPercentage = isUserMessage ? 85.0 : 95.0
+    }
+    updateMaxWidthConstraint()
+  }
+  
+  private func updateMaxWidthConstraint() {
+    // Remove existing maxWidth constraint
+    maxWidthConstraint?.isActive = false
+    
+    // Find superview to constrain against
+    guard let superview = superview else {
+      // If no superview yet, we'll set it up in layoutSubviews
+      return
+    }
+    
+    // Create width constraint as percentage of superview width
+    maxWidthConstraint = widthAnchor.constraint(lessThanOrEqualTo: superview.widthAnchor, multiplier: maxWidthPercentage / 100.0)
+    maxWidthConstraint?.priority = UILayoutPriority(999) // High priority but not required
+    maxWidthConstraint?.isActive = true
+  }
+  
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    if superview != nil {
+      updateMaxWidthConstraint()
+    }
   }
   
   override func layoutSubviews() {
     super.layoutSubviews()
+    // Ensure maxWidth constraint is set up once we have a superview
+    if maxWidthConstraint == nil && superview != nil {
+      updateMaxWidthConstraint()
+    }
     reportContentSizeIfNeeded()
+  }
+  
+  private func updateAlignmentConstraints() {
+    // Always use fixed constraints on both sides
+    // Width control and alignment are handled by React Native based on reported size
+    leadingConstraint?.isActive = false
+    trailingConstraint?.isActive = false
+    
+    leadingConstraint = stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: paddingH)
+    trailingConstraint = stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -paddingH)
+    
+    NSLayoutConstraint.activate([
+      leadingConstraint!,
+      trailingConstraint!
+    ])
+    
+    updateLayoutAndReportSize()
+  }
+  
+  private func updateLayoutAndReportSize() {
+    setNeedsLayout()
+    layoutIfNeeded()
+    lastReportedHeight = 0
+    reportContentSizeIfNeeded()
+  }
+  
+  // MARK: - Text Color Setter
+  
+  func setTextColor(_ colorHex: String?) {
+    if let hex = colorHex {
+      customTextColor = UIColor.fromHex(hex)
+    } else {
+      customTextColor = nil
+    }
+    // Re-render content with new color if we have content
+    if !currentContent.isEmpty {
+      setContent(currentContent)
+    }
+  }
+  
+  // MARK: - Context Menu Actions Setter
+  
+  func setContextMenuActions(_ actions: [[String: String]]) {
+    contextMenuActions = actions.enumerated().compactMap { index, dict in
+      guard let title = dict["title"], let systemIcon = dict["systemIcon"] else {
+        return nil
+      }
+      return ContextMenuAction(title: title, systemIcon: systemIcon, index: index)
+    }
+    
+    // Add or remove context menu interaction based on whether we have actions
+    if contextMenuActions.isEmpty {
+      if let interaction = contextMenuInteraction {
+        removeInteraction(interaction)
+        contextMenuInteraction = nil
+      }
+    } else if contextMenuInteraction == nil {
+      let interaction = UIContextMenuInteraction(delegate: self)
+      addInteraction(interaction)
+      contextMenuInteraction = interaction
+    }
+  }
+  
+  // MARK: - UIContextMenuInteractionDelegate
+  
+  func contextMenuInteraction(
+    _ interaction: UIContextMenuInteraction,
+    configurationForMenuAtLocation location: CGPoint
+  ) -> UIContextMenuConfiguration? {
+    guard !contextMenuActions.isEmpty else { return nil }
+    
+    return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+      guard let self = self else { return nil }
+      
+      let menuActions = self.contextMenuActions.map { action in
+        UIAction(
+          title: action.title,
+          image: UIImage(systemName: action.systemIcon)
+        ) { [weak self] _ in
+          self?.onContextMenuAction([
+            "index": action.index,
+            "name": action.title
+          ])
+        }
+      }
+      
+      return UIMenu(title: "", children: menuActions)
+    }
   }
   
   // MARK: - Content Size Reporting
   
   private func reportContentSizeIfNeeded() {
+    // For user messages, calculate intrinsic size based on content
+    if isUserMessage {
+      reportIntrinsicContentSize()
+      return
+    }
+    
+    // For assistant messages, use bounds width
     guard bounds.width > 0 else { return }
     
-    let size = stackView.systemLayoutSizeFitting(
-      CGSize(width: bounds.width, height: UIView.layoutFittingCompressedSize.height),
+    // Calculate available width for content (minus horizontal padding)
+    let contentWidth = bounds.width - (paddingH * 2)
+    
+    let stackSize = stackView.systemLayoutSizeFitting(
+      CGSize(width: contentWidth, height: UIView.layoutFittingCompressedSize.height),
       withHorizontalFittingPriority: .required,
       verticalFittingPriority: .fittingSizeLevel
     )
     
-    if abs(size.height - lastReportedHeight) > 1 {
-      lastReportedHeight = size.height
+    // Add padding to get total size
+    let totalHeight = stackSize.height + (paddingV * 2)
+    
+    if abs(totalHeight - lastReportedHeight) > 1 {
+      lastReportedHeight = totalHeight
       onContentSizeChange([
-        "width": size.width,
-        "height": size.height
+        "width": bounds.width,
+        "height": totalHeight
+      ])
+    }
+  }
+  
+  private func reportIntrinsicContentSize() {
+    // Get screen width as max constraint
+    let screenWidth = UIScreen.main.bounds.width
+    let maxTotalWidth = screenWidth * (maxWidthPercentage / 100.0)
+    let maxContentWidth = maxTotalWidth - (paddingH * 2)
+    
+    // First, calculate the natural (intrinsic) size of the content
+    let intrinsicSize = stackView.systemLayoutSizeFitting(
+      UIView.layoutFittingCompressedSize,
+      withHorizontalFittingPriority: .fittingSizeLevel,
+      verticalFittingPriority: .fittingSizeLevel
+    )
+    
+    let finalWidth: CGFloat
+    let finalHeight: CGFloat
+    
+    // Minimum width to avoid too narrow bubbles
+    let minWidth: CGFloat = 20
+    
+    if intrinsicSize.width <= maxContentWidth {
+      // Content fits naturally - shrink wrap to content
+      finalWidth = max(intrinsicSize.width + (paddingH * 2), minWidth)
+      finalHeight = intrinsicSize.height + (paddingV * 2)
+    } else {
+      // Content exceeds max width - use max width and recalculate height
+      let constrainedSize = stackView.systemLayoutSizeFitting(
+        CGSize(width: maxContentWidth, height: UIView.layoutFittingCompressedSize.height),
+        withHorizontalFittingPriority: .required,
+        verticalFittingPriority: .fittingSizeLevel
+      )
+      finalWidth = maxTotalWidth
+      finalHeight = constrainedSize.height + (paddingV * 2)
+    }
+    
+    // Only report if changed significantly
+    if abs(finalHeight - lastReportedHeight) > 1 || abs(finalWidth - lastReportedWidth) > 1 {
+      lastReportedHeight = finalHeight
+      lastReportedWidth = finalWidth
+      onContentSizeChange([
+        "width": finalWidth,
+        "height": finalHeight
       ])
     }
   }
@@ -502,6 +850,8 @@ class NativeMarkdownView: ExpoView {
   // MARK: - Content Setter
   
   func setContent(_ markdown: String) {
+    currentContent = markdown
+    
     // Clear existing views
     stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
     
@@ -512,18 +862,19 @@ class NativeMarkdownView: ExpoView {
     for segment in segments {
       switch segment {
       case .text(let text):
-        let textView = TextSegmentView(styler: styler)
+        let textView = TextSegmentView(styler: styler, customTextColor: customTextColor)
         textView.setMarkdown(text)
         stackView.addArrangedSubview(textView)
         
       case .codeBlock(let language, let code):
-        let codeView = CodeBlockView(code: code, language: language)
+        let codeView = CodeBlockView(code: code, language: language, customTextColor: customTextColor)
         stackView.addArrangedSubview(codeView)
       }
     }
     
     // Reset and report size
     lastReportedHeight = 0
+    lastReportedWidth = 0
     DispatchQueue.main.async { [weak self] in
       self?.setNeedsLayout()
       self?.layoutIfNeeded()
