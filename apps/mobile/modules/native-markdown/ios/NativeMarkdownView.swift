@@ -52,6 +52,16 @@ extension UIColor {
     }
   }
   
+  /// Accent foreground - for code block text (contrasts with accent background)
+  /// Light: hsl(0 0% 9%), Dark: hsl(0 0% 98%)
+  static var markdownAccentForeground: UIColor {
+    UIColor { traits in
+      traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0.98, alpha: 1)  // hsl(0 0% 98%)
+        : UIColor(white: 0.09, alpha: 1)  // hsl(0 0% 9%)
+    }
+  }
+  
   /// Parse hex color string to UIColor
   static func fromHex(_ hex: String) -> UIColor? {
     var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -242,15 +252,20 @@ private func createStylerConfiguration() -> DownStylerConfiguration {
 private func addInlineCodeStyling(to attributedString: NSAttributedString) -> NSAttributedString {
   let mutable = NSMutableAttributedString(attributedString: attributedString)
   
-  mutable.enumerateAttribute(.font, in: NSRange(location: 0, length: mutable.length)) { value, range, _ in
-    guard let font = value as? UIFont else { return }
-    
-    if font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace) {
+  // Enumerate through the entire string to find all inline code ranges
+  mutable.enumerateAttributes(in: NSRange(location: 0, length: mutable.length), options: []) { attributes, range, _ in
+    // Check if this range has a monospace font (indicating code)
+    if let font = attributes[.font] as? UIFont,
+       font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace) {
       let text = (mutable.string as NSString).substring(with: range)
       let isInlineCode = !text.contains("\n")
       
       if isInlineCode {
+        // Set both background and foreground for inline code
+        // Foreground should be accentForeground to contrast with accent background
+        // This overrides any custom text color that was applied earlier
         mutable.addAttribute(.backgroundColor, value: UIColor.markdownAccent, range: range)
+        mutable.addAttribute(.foregroundColor, value: UIColor.markdownAccentForeground, range: range)
       }
     }
   }
@@ -274,11 +289,9 @@ class CodeBlockView: UIView {
   private let codeLabel = UILabel()
   private var codeText: String = ""
   private var isCopied = false
-  private let customTextColor: UIColor?
   private var codeLabelWidthConstraint: NSLayoutConstraint?
   
-  init(code: String, language: String?, customTextColor: UIColor? = nil) {
-    self.customTextColor = customTextColor
+  init(code: String, language: String?) {
     super.init(frame: .zero)
     self.codeText = code
     setupView(language: language)
@@ -327,8 +340,9 @@ class CodeBlockView: UIView {
     addSubview(scrollView)
     
     // Code label - no line limit, natural width for scrolling
+    // Always use accentForeground for code blocks (contrasts with accent background)
     codeLabel.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-    codeLabel.textColor = customTextColor ?? .markdownText
+    codeLabel.textColor = .markdownAccentForeground
     codeLabel.numberOfLines = 0
     codeLabel.lineBreakMode = .byClipping // Don't wrap, allow scroll
     codeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -488,12 +502,14 @@ class TextSegmentView: UIView, UITextViewDelegate {
     
     do {
       var attributedString = try down.toAttributedString(styler: styler)
-      attributedString = addInlineCodeStyling(to: attributedString)
       
-      // Apply custom text color if provided
+      // Apply custom text color if provided (before inline code styling)
       if let color = customTextColor {
         attributedString = applyCustomTextColor(to: attributedString, color: color)
       }
+      
+      // Apply inline code styling after custom color (so it overrides for inline code)
+      attributedString = addInlineCodeStyling(to: attributedString)
       
       textView.attributedText = attributedString
     } catch {
@@ -867,7 +883,7 @@ class NativeMarkdownView: ExpoView, UIContextMenuInteractionDelegate {
         stackView.addArrangedSubview(textView)
         
       case .codeBlock(let language, let code):
-        let codeView = CodeBlockView(code: code, language: language, customTextColor: customTextColor)
+        let codeView = CodeBlockView(code: code, language: language)
         stackView.addArrangedSubview(codeView)
       }
     }
