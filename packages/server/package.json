@@ -8,10 +8,13 @@
     "./lib/*": "./src/lib/*.ts"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^2.0.33",
+    "@langfuse/otel": "^4.5.1",
+    "@langfuse/tracing": "^4.5.1",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "@opentelemetry/sdk-node": "^0.208.0",
     "@supabase/ssr": "catalog:",
     "@supabase/supabase-js": "catalog:",
-    "@ai-sdk/groq": "^2.0.33",
-    "@openrouter/ai-sdk-provider": "^1.5.4",
     "@yapmate/core": "workspace:*",
     "@yapmate/db": "workspace:*",
     "ai": "catalog:"

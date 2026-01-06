@@ -48,9 +48,9 @@ export type AiResponseResult = {
  * Creates and executes the LLM stream
  * @returns UI stream and function to get usage data (after stream is consumed)
  */
-export const executeAiResponse = async (
+export const executeAiResponse = (
   options: ExecuteAiResponseOptions
-): Promise<AiResponseResult> => {
+): AiResponseResult => {
   const { modelWithSearch, messages, abortSignal, chatId, streamId, userId } =
     options;
 
@@ -60,6 +60,17 @@ export const executeAiResponse = async (
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
     abortSignal,
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: "chat-message",
+      metadata: {
+        langfuseTraceId: chatId,
+        langfuseUpdateParent: true,
+        sessionId: chatId,
+        userId,
+        tags: ["chat"],
+      },
+    },
   });
 
   // Get UI stream

@@ -22,11 +22,17 @@ export const truncateTitle = (text: string): string => {
   return `${trimmed.slice(0, MAX_TITLE_LENGTH)}...`;
 };
 
+type GenerateTitleContext = {
+  chatId: string;
+  userId: string;
+};
+
 /**
  * Generates a chat title from the first user message
  */
 export const generateChatTitle = async (
-  userMessage: string
+  userMessage: string,
+  context: GenerateTitleContext
 ): Promise<string> => {
   try {
     const result = await streamText({
@@ -38,6 +44,17 @@ export const generateChatTitle = async (
         },
       ],
       maxOutputTokens: 30,
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: "title-generation",
+        metadata: {
+          langfuseTraceId: context.chatId,
+          langfuseUpdateParent: false,
+          sessionId: context.chatId,
+          userId: context.userId,
+          tags: ["title-generation"],
+        },
+      },
     });
 
     const title = await result.text;
@@ -71,7 +88,7 @@ export const generateAndPublishTitle = async (
   const { chatId, streamId, userMessage, userId, writer, chunkIndex } = options;
   const userText = userMessage || "New chat";
   try {
-    const title = await generateChatTitle(userText);
+    const title = await generateChatTitle(userText, { chatId, userId });
     await updateChatTitle(chatId, title);
 
     // Publish WebSocket event to notify all clients about title update

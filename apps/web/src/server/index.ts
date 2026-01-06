@@ -3,6 +3,9 @@
  * Sets up routes and starts the server
  */
 
+// Langfuse instrumentation must be imported BEFORE any AI SDK imports
+import "@yapmate/server/lib/instrumentation";
+
 import { readdir } from "node:fs/promises";
 import { networkInterfaces } from "node:os";
 import { join, relative, sep } from "node:path";
