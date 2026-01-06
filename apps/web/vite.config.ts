@@ -80,6 +80,12 @@ export default defineConfig(({ mode }) => {
       "process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
         env.PUBLIC_SUPABASE_PUBLISHABLE_KEY
       ),
+      "process.env.PUBLIC_LANGFUSE_PUBLIC_KEY": JSON.stringify(
+        env.PUBLIC_LANGFUSE_PUBLIC_KEY
+      ),
+      "process.env.PUBLIC_LANGFUSE_BASE_URL": JSON.stringify(
+        env.PUBLIC_LANGFUSE_BASE_URL
+      ),
     },
 
     css: {

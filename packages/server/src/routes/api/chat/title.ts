@@ -3,6 +3,7 @@
  */
 
 import { streamText } from "ai";
+import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
 import { publishStreamChunk } from "../../../lib/redis/stream";
 import { publishUserEvent } from "../../../lib/websocket";
@@ -34,6 +35,24 @@ export const generateChatTitle = async (
   userMessage: string,
   context: GenerateTitleContext
 ): Promise<string> => {
+  const { chatId, userId } = context;
+
+  // Create Langfuse trace for title generation
+  // Uses same sessionId as chat for grouping in Langfuse
+  const trace = langfuse.trace({
+    name: "title-generation",
+    sessionId: chatId,
+    userId,
+    tags: ["title-generation"],
+    input: { userMessage },
+  });
+
+  const generation = trace.generation({
+    name: "generate-title",
+    model: TITLE_GENERATION_MODEL,
+    input: userMessage,
+  });
+
   try {
     const result = await streamText({
       model: openrouter.chat(TITLE_GENERATION_MODEL),
@@ -44,23 +63,38 @@ export const generateChatTitle = async (
         },
       ],
       maxOutputTokens: 30,
-      experimental_telemetry: {
-        isEnabled: true,
-        functionId: "title-generation",
-        metadata: {
-          langfuseTraceId: context.chatId,
-          langfuseUpdateParent: false,
-          sessionId: context.chatId,
-          userId: context.userId,
-          tags: ["title-generation"],
-        },
-      },
     });
 
     const title = await result.text;
+    const usage = await result.usage;
     const trimmed = title.trim().slice(0, MAX_TITLE_LENGTH);
-    return trimmed || truncateTitle(userMessage);
-  } catch {
+    const finalTitle = trimmed || truncateTitle(userMessage);
+
+    // Update Langfuse with output
+    generation.end({
+      output: finalTitle,
+      usage: {
+        input: usage.inputTokens,
+        output: usage.outputTokens,
+        total: usage.totalTokens,
+      },
+    });
+    trace.update({ output: { title: finalTitle } });
+
+    return finalTitle;
+  } catch (error) {
+    // Log error to Langfuse
+    generation.end({
+      output: null,
+      level: "ERROR",
+      statusMessage: error instanceof Error ? error.message : "Unknown error",
+    });
+    trace.update({
+      output: {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+    });
+
     return truncateTitle(userMessage);
   }
 };

@@ -1,10 +1,11 @@
 /**
  * Core AI response streaming logic
- * Handles LLM streaming and usage extraction
+ * Handles LLM streaming, Langfuse tracing, and usage extraction
  */
 
 import { saveUsageRecord } from "@yapmate/db/service";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
 
 /**
@@ -29,6 +30,7 @@ type ExecuteAiResponseOptions = {
   abortSignal: AbortSignal;
   chatId: string;
   streamId: string;
+  assistantMessageId: string;
   userId: string;
 };
 
@@ -45,14 +47,58 @@ export type AiResponseResult = {
 };
 
 /**
- * Creates and executes the LLM stream
+ * Extracts text content from UIMessage parts
+ */
+const getMessageText = (msg: UIMessage): string => {
+  const textParts = msg.parts.filter(
+    (p): p is { type: "text"; text: string } => p.type === "text" && "text" in p
+  );
+  return textParts.map((p) => p.text).join("\n\n");
+};
+
+/**
+ * Creates and executes the LLM stream with Langfuse tracing
  * @returns UI stream and function to get usage data (after stream is consumed)
  */
 export const executeAiResponse = (
   options: ExecuteAiResponseOptions
 ): AiResponseResult => {
-  const { modelWithSearch, messages, abortSignal, chatId, streamId, userId } =
-    options;
+  const {
+    modelWithSearch,
+    messages,
+    abortSignal,
+    chatId,
+    streamId,
+    assistantMessageId,
+    userId,
+  } = options;
+
+  // Create Langfuse trace with assistantMessageId as trace ID for feedback linking
+  // sessionId groups all traces in the same chat conversation
+  const trace = langfuse.trace({
+    id: assistantMessageId,
+    name: "chat-message",
+    sessionId: chatId,
+    userId,
+    tags: ["chat"],
+    input: {
+      messageCount: messages.length,
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: getMessageText(msg),
+      })),
+    },
+  });
+
+  // Create generation span for the LLM call
+  const generation = trace.generation({
+    name: "llm-response",
+    model: modelWithSearch.replace(":online", ""),
+    input: messages.map((msg) => ({
+      role: msg.role,
+      content: getMessageText(msg),
+    })),
+  });
 
   const result = streamText({
     model: openrouter.chat(modelWithSearch, { usage: { include: true } }),
@@ -60,17 +106,6 @@ export const executeAiResponse = (
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
     abortSignal,
-    experimental_telemetry: {
-      isEnabled: true,
-      functionId: "chat-message",
-      metadata: {
-        langfuseTraceId: chatId,
-        langfuseUpdateParent: true,
-        sessionId: chatId,
-        userId,
-        tags: ["chat"],
-      },
-    },
   });
 
   // Get UI stream
@@ -81,14 +116,14 @@ export const executeAiResponse = (
 
   // Return stream and function to get usage (usage resolves after stream is consumed)
   const getUsage = async (): Promise<AiResponseUsage | null> => {
-    const [usage, finishReason, response, providerMetadata] = await Promise.all(
-      [
+    const [text, usage, finishReason, response, providerMetadata] =
+      await Promise.all([
+        result.text,
         result.usage,
         result.finishReason,
         result.response,
         result.providerMetadata,
-      ]
-    );
+      ]);
 
     // Extract cost from provider metadata
     const openrouterUsage =
@@ -100,6 +135,35 @@ export const executeAiResponse = (
       "usage" in providerMetadata.openrouter
         ? (providerMetadata.openrouter.usage as { cost?: number })
         : undefined;
+
+    // Update Langfuse generation with output and usage
+    generation.end({
+      output: text,
+      usage: {
+        input: usage.inputTokens,
+        output: usage.outputTokens,
+        total: usage.totalTokens,
+      },
+      metadata: {
+        finishReason,
+        cachedTokens: usage.cachedInputTokens,
+        reasoningTokens: usage.reasoningTokens,
+        cost: openrouterUsage?.cost,
+      },
+    });
+
+    // Update trace with final output
+    trace.update({
+      output: {
+        text,
+        finishReason,
+        usage: {
+          promptTokens: usage.inputTokens,
+          completionTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+        },
+      },
+    });
 
     // Save usage record for billing/analytics
     try {
@@ -135,7 +199,6 @@ export const executeAiResponse = (
       totalTokens: usage.totalTokens,
       cachedTokens: usage.cachedInputTokens,
       reasoningTokens: usage.reasoningTokens,
-      // cost is intentionally excluded - only stored in usage_records, not sent to client
     };
   };
 

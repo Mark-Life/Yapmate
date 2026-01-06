@@ -101,6 +101,7 @@ type ExecuteAiResponseWithOrchestrationOptions = {
   abortSignal: AbortSignal;
   chatId: string;
   streamId: string;
+  assistantMessageId: string;
   userId: string;
   isFirstMessage: boolean;
   editMessageId: string | undefined;
@@ -124,6 +125,7 @@ export const executeAiResponseWithOrchestration = async (
     abortSignal,
     chatId,
     streamId,
+    assistantMessageId,
     userId,
     isFirstMessage,
     editMessageId,
@@ -146,12 +148,13 @@ export const executeAiResponseWithOrchestration = async (
       : Promise.resolve();
 
   // Execute AI response (creates stream)
-  const { uiStream, getUsage } = await executeAiResponse({
+  const { uiStream, getUsage } = executeAiResponse({
     modelWithSearch,
     messages,
     abortSignal,
     chatId,
     streamId,
+    assistantMessageId,
     userId,
   });
 

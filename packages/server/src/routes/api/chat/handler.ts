@@ -126,8 +126,10 @@ export const chatHandler = {
 
     const modelWithSearch = searchEnabled ? `${model}:online` : model;
 
-    // Generate stream ID and register abort controller
+    // Generate stream ID and assistant message ID upfront
+    // Assistant message ID is used as Langfuse trace ID for feedback linking
     const streamId = Bun.randomUUIDv7();
+    const assistantMessageId = Bun.randomUUIDv7();
     const abortController = registerStream(streamId);
 
     // Mark stream as active in DB and Redis
@@ -159,6 +161,7 @@ export const chatHandler = {
             abortSignal: abortController.signal,
             chatId: id,
             streamId,
+            assistantMessageId,
             userId,
             isFirstMessage,
             editMessageId,
@@ -171,7 +174,9 @@ export const chatHandler = {
         }
       },
       originalMessages: allMessages,
-      generateId: () => Bun.randomUUIDv7(),
+      // Use pre-generated assistantMessageId for the assistant message
+      // This ensures message.id === Langfuse traceId for feedback linking
+      generateId: () => assistantMessageId,
       onFinish: async ({ messages: finalMessages }) => {
         await handleStreamFinish({
           streamId,

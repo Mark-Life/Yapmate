@@ -24,6 +24,7 @@
     "@yapmate/server": "workspace:*",
     "ai": "catalog:",
     "bun-plugin-tailwind": "^0.1.2",
+    "langfuse": "^3.38.6",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",

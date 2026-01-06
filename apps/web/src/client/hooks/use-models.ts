@@ -54,8 +54,12 @@ const processModels = (
   // Sort: top models first, then by provider and name
   return transformed.sort((a, b) => {
     // Top models come first
-    if (a.isTopModel && !b.isTopModel) return -1;
-    if (!a.isTopModel && b.isTopModel) return 1;
+    if (a.isTopModel && !b.isTopModel) {
+      return -1;
+    }
+    if (!a.isTopModel && b.isTopModel) {
+      return 1;
+    }
 
     // Within same category, sort by provider then name
     if (a.provider !== b.provider) {
