@@ -2,6 +2,8 @@ import type { FileUIPart, UIMessage } from "ai";
 import { FileIcon } from "lucide-react-native";
 import {
   type ContentSizeEvent,
+  type ContextMenuActionEvent,
+  type ContextMenuAction as NativeContextMenuAction,
   NativeMarkdownView,
 } from "modules/native-markdown";
 import { useColorScheme } from "nativewind";
@@ -24,27 +26,71 @@ import { EditActions } from "./message-actions";
 
 type ChatUIMessage = UIMessage;
 
-/**
- * Wrapper for native markdown view with auto-sizing
- */
-const NativeMarkdownMessage = ({ content }: { content: string }) => {
-  const [height, setHeight] = useState(20);
+type NativeMarkdownMessageProps = {
+  content: string;
+  contextMenuActions?: NativeContextMenuAction[];
+  onContextMenuAction?: (event: ContextMenuActionEvent) => void;
+  textColor?: string;
+  /** Bubble styling - all handled natively */
+  backgroundColor?: string;
+  paddingHorizontal?: number;
+  paddingVertical?: number;
+  borderRadius?: number;
+  isUser?: boolean;
+};
 
-  const handleContentSizeChange = useCallback((event: ContentSizeEvent) => {
-    const newHeight = event.nativeEvent.height;
-    if (newHeight > 0) {
-      setHeight(newHeight);
-    }
-  }, []);
+/**
+ * Wrapper for native markdown view with auto-sizing and native context menu
+ */
+const NativeMarkdownMessage = ({
+  content,
+  contextMenuActions,
+  onContextMenuAction,
+  textColor,
+  backgroundColor,
+  paddingHorizontal,
+  paddingVertical,
+  borderRadius: bubbleRadius,
+  isUser = false,
+}: NativeMarkdownMessageProps) => {
+  const [height, setHeight] = useState(20);
+  const [width, setWidth] = useState<number | undefined>(undefined);
+
+  const handleContentSizeChange = useCallback(
+    (event: ContentSizeEvent) => {
+      const { height: newHeight, width: newWidth } = event.nativeEvent;
+      if (newHeight > 0) {
+        setHeight(newHeight);
+      }
+      // For user messages, use native-calculated width
+      if (isUser && newWidth > 0) {
+        setWidth(newWidth);
+      }
+    },
+    [isUser]
+  );
 
   return (
-    <View collapsable={false} style={styles.nativeMarkdownWrapper}>
-      <NativeMarkdownView
-        content={content}
-        onContentSizeChange={handleContentSizeChange}
-        style={{ height, alignSelf: "stretch" }}
-      />
-    </View>
+    <NativeMarkdownView
+      backgroundColor={backgroundColor}
+      borderRadius={bubbleRadius}
+      content={content}
+      contextMenuActions={contextMenuActions}
+      isUser={isUser}
+      onContentSizeChange={handleContentSizeChange}
+      onContextMenuAction={onContextMenuAction}
+      paddingHorizontal={paddingHorizontal}
+      paddingVertical={paddingVertical}
+      style={{
+        height,
+        alignSelf: isUser ? "flex-end" : "stretch",
+        maxWidth: "95%",
+        // For user messages, use native-calculated width (shrink to fit)
+        // For assistant, let it stretch to fill available width
+        width: isUser ? width : undefined,
+      }}
+      textColor={textColor}
+    />
   );
 };
 
@@ -85,6 +131,7 @@ export const FilePart = ({
       style={[
         styles.filePart,
         isImage ? styles.filePartImage : styles.filePartFile,
+        { borderColor: theme.border },
         useAutoMargin &&
           (isUser ? styles.marginLeftAuto : styles.marginRightAuto),
       ]}
@@ -274,9 +321,32 @@ export const TextPart = ({
   const showContextMenu =
     !isEditing && contextMenuActions && onContextMenuPress;
 
-  // Assistant messages on iOS use native markdown
-  if (!isUser && Platform.OS === "ios" && !isEditing) {
-    return <NativeMarkdownMessage content={textContent} />;
+  // iOS messages use native markdown with native context menu (when not editing)
+  if (Platform.OS === "ios" && !isEditing) {
+    if (isUser) {
+      // User message: bubble styling handled natively
+      return (
+        <NativeMarkdownMessage
+          backgroundColor={theme.primary}
+          borderRadius={radius.md}
+          content={textContent ?? ""}
+          contextMenuActions={contextMenuActions}
+          isUser={true}
+          onContextMenuAction={onContextMenuPress}
+          paddingHorizontal={12}
+          paddingVertical={6}
+          textColor={theme.primaryForeground}
+        />
+      );
+    }
+    // Assistant message: no bubble styling
+    return (
+      <NativeMarkdownMessage
+        content={textContent ?? ""}
+        contextMenuActions={contextMenuActions}
+        onContextMenuAction={onContextMenuPress}
+      />
+    );
   }
 
   const wrapperStyle = isUser ? styles.userWrapper : styles.assistantWrapper;
@@ -339,15 +409,11 @@ export const TextPart = ({
 };
 
 const styles = StyleSheet.create({
-  nativeMarkdownWrapper: {
-    flexDirection: "column",
-    alignSelf: "stretch",
-    maxWidth: "95%",
-  },
   filePart: {
     marginVertical: 4,
     overflow: "hidden",
     borderRadius: radius.lg,
+    borderWidth: 1,
   },
   filePartImage: {
     width: 192,
