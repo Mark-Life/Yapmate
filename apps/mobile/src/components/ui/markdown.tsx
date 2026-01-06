@@ -1,6 +1,7 @@
 import { marked, type Token, type Tokens } from "marked";
+import { NativeMarkdownView } from "modules/native-markdown";
 import { memo, type ReactNode, useMemo } from "react";
-import { Linking, View } from "react-native";
+import { Linking, Platform, View } from "react-native";
 import remend from "remend";
 import { cn } from "src/lib/utils";
 import { CodeBlock } from "./code-block";
@@ -12,6 +13,9 @@ type StreamingMarkdownProps = {
   /** Base text className applied to all text elements */
   textClassName?: string;
 };
+
+/** Use native iOS renderer for better streaming performance */
+const USE_NATIVE_IOS = Platform.OS === "ios";
 
 // ============================================================================
 // Inline Token Renderers
@@ -289,16 +293,28 @@ TableRenderer.displayName = "TableRenderer";
 // ============================================================================
 
 /**
- * Streaming-aware markdown renderer for React Native.
- * Uses remend to handle incomplete markdown during streaming,
- * and marked for parsing.
+ * Native iOS markdown renderer using Down library.
  */
-export const StreamingMarkdown = memo(
-  ({ content, className, textClassName }: StreamingMarkdownProps) => {
-    // Fix incomplete markdown blocks (e.g., unclosed **bold)
+const NativeStreamingMarkdown = memo(
+  ({ content, className }: Omit<StreamingMarkdownProps, "textClassName">) => {
     const fixedContent = useMemo(() => remend(content), [content]);
+    // Wrap in View with explicit layout to work with LegendList recycling
+    return (
+      <View style={{ width: "100%", minHeight: 20 }}>
+        <NativeMarkdownView content={fixedContent} />
+      </View>
+    );
+  }
+);
 
-    // Parse markdown to tokens
+NativeStreamingMarkdown.displayName = "NativeStreamingMarkdown";
+
+/**
+ * JS markdown renderer using marked + remend.
+ */
+const JSStreamingMarkdown = memo(
+  ({ content, className, textClassName }: StreamingMarkdownProps) => {
+    const fixedContent = useMemo(() => remend(content), [content]);
     const tokens = useMemo(() => {
       try {
         return marked.lexer(fixedContent, { gfm: true });
@@ -320,4 +336,13 @@ export const StreamingMarkdown = memo(
   }
 );
 
-StreamingMarkdown.displayName = "StreamingMarkdown";
+JSStreamingMarkdown.displayName = "JSStreamingMarkdown";
+
+/**
+ * Streaming-aware markdown renderer for React Native.
+ * On iOS: uses native Down library for better streaming performance.
+ * On other platforms: uses remend + marked for parsing.
+ */
+export const StreamingMarkdown = USE_NATIVE_IOS
+  ? NativeStreamingMarkdown
+  : JSStreamingMarkdown;

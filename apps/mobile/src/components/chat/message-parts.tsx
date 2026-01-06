@@ -1,16 +1,52 @@
 import type { FileUIPart, UIMessage } from "ai";
 import { FileIcon } from "lucide-react-native";
+import {
+  type ContentSizeEvent,
+  NativeMarkdownView,
+} from "modules/native-markdown";
 import { useColorScheme } from "nativewind";
-import { useEffect, useRef, useState } from "react";
-import { Image, Linking, Pressable, TextInput, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import ContextMenu from "react-native-context-menu-view";
 import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { getThemeColors, radius, type ThemeColors } from "@/lib/colors";
 import { EditActions } from "./message-actions";
 
 type ChatUIMessage = UIMessage;
+
+/**
+ * Wrapper for native markdown view with auto-sizing
+ */
+const NativeMarkdownMessage = ({ content }: { content: string }) => {
+  const [height, setHeight] = useState(20);
+
+  const handleContentSizeChange = useCallback((event: ContentSizeEvent) => {
+    const newHeight = event.nativeEvent.height;
+    if (newHeight > 0) {
+      setHeight(newHeight);
+    }
+  }, []);
+
+  return (
+    <View collapsable={false} style={styles.nativeMarkdownWrapper}>
+      <NativeMarkdownView
+        content={content}
+        onContentSizeChange={handleContentSizeChange}
+        style={{ height, alignSelf: "stretch" }}
+      />
+    </View>
+  );
+};
 
 type ContextMenuAction = {
   title: string;
@@ -29,6 +65,8 @@ export const FilePart = ({
   isUser: boolean;
   useAutoMargin?: boolean;
 }) => {
+  const { colorScheme } = useColorScheme();
+  const theme = getThemeColors(colorScheme);
   const isImage = part.mediaType?.startsWith("image/") && part.url;
 
   const handlePress = async () => {
@@ -43,26 +81,27 @@ export const FilePart = ({
 
   return (
     <Pressable
-      className={cn(
-        "my-1 overflow-hidden rounded-lg",
-        isImage ? "h-48 w-48" : "h-20 w-32",
-        useAutoMargin && (isUser ? "ml-auto" : "mr-auto")
-      )}
       onPress={handlePress}
+      style={[
+        styles.filePart,
+        isImage ? styles.filePartImage : styles.filePartFile,
+        useAutoMargin &&
+          (isUser ? styles.marginLeftAuto : styles.marginRightAuto),
+      ]}
     >
       {isImage ? (
         <Image
-          className="size-full bg-accent"
           resizeMode="cover"
           source={{ uri: part.url }}
+          style={[styles.fullSize, { backgroundColor: theme.accent }]}
         />
       ) : (
-        <View className="flex size-full items-center justify-center rounded-lg bg-muted">
-          <Icon as={FileIcon} className="size-8 text-muted-foreground" />
+        <View style={[styles.fileContainer, { backgroundColor: theme.muted }]}>
+          <Icon as={FileIcon} color={theme.mutedForeground} size={32} />
           {part.filename ? (
             <Text
-              className="mt-1 max-w-32 truncate text-muted-foreground text-xs"
               numberOfLines={1}
+              style={[styles.fileName, { color: theme.mutedForeground }]}
             >
               {part.filename}
             </Text>
@@ -80,7 +119,6 @@ type TextPartProps = {
   messageId: string;
   onCancelEdit: () => void;
   onEdit?: (messageId: string, editedText: string) => void;
-  // Context menu props
   contextMenuActions?: ContextMenuAction[];
   contextMenuKey?: string;
   onContextMenuPress?: (event: {
@@ -98,6 +136,7 @@ const MessageContent = ({
   textContent,
   textInputRef,
   onTextChange,
+  theme,
 }: {
   isEditing: boolean;
   isUser: boolean;
@@ -105,14 +144,15 @@ const MessageContent = ({
   textContent: string;
   textInputRef: React.RefObject<TextInput>;
   onTextChange: (text: string) => void;
+  theme: ThemeColors;
 }) => {
   if (isEditing) {
     return (
       <TextInput
-        className="py-1 text-primary-foreground text-sm"
         multiline
         onChangeText={onTextChange}
         ref={textInputRef}
+        style={[styles.editInput, { color: theme.primaryForeground }]}
         value={editedText}
       />
     );
@@ -120,7 +160,16 @@ const MessageContent = ({
 
   if (isUser) {
     return (
-      <Text className="text-primary-foreground text-sm">{textContent}</Text>
+      <Text style={[styles.userText, { color: theme.primaryForeground }]}>
+        {textContent}
+      </Text>
+    );
+  }
+
+  // Native iOS markdown view
+  if (Platform.OS === "ios") {
+    return (
+      <NativeMarkdownView content={textContent} style={{ minHeight: 20 }} />
     );
   }
 
@@ -142,6 +191,7 @@ const MessageBubble = ({
   textContent,
   textInputRef,
   onTextChange,
+  theme,
 }: {
   isUser: boolean;
   isEditing: boolean;
@@ -149,28 +199,29 @@ const MessageBubble = ({
   textContent: string;
   textInputRef: React.RefObject<TextInput>;
   onTextChange: (text: string) => void;
-}) => (
-  <View
-    className={cn(
-      "w-full bg-background py-1.5",
-      isUser ? "rounded-lg bg-primary px-4 text-primary-foreground" : "pb-0"
-    )}
-  >
-    <MessageContent
-      editedText={editedText}
-      isEditing={isEditing}
-      isUser={isUser}
-      onTextChange={onTextChange}
-      textContent={textContent}
-      textInputRef={textInputRef}
-    />
-  </View>
-);
+  theme: ThemeColors;
+}) => {
+  const bubbleStyle = isUser
+    ? [styles.userBubble, { backgroundColor: theme.primary }]
+    : [styles.assistantBubble, { backgroundColor: theme.background }];
+
+  return (
+    <View style={bubbleStyle}>
+      <MessageContent
+        editedText={editedText}
+        isEditing={isEditing}
+        isUser={isUser}
+        onTextChange={onTextChange}
+        textContent={textContent}
+        textInputRef={textInputRef}
+        theme={theme}
+      />
+    </View>
+  );
+};
 
 /**
- * Renders a text message part
- * Context menu wraps just the message bubble for proper styling
- * Only shows inline edit actions (Cancel/Save) when editing
+ * Renders a text message part with inline styles
  */
 export const TextPart = ({
   part,
@@ -184,10 +235,11 @@ export const TextPart = ({
   onContextMenuPress,
 }: TextPartProps) => {
   const { colorScheme } = useColorScheme();
+  const theme = getThemeColors(colorScheme);
   const textContent = part.text?.trim();
   const [editedText, setEditedText] = useState(part.text);
   const textInputRef = useRef<TextInput>(null);
-  const iconColor = colorScheme === "dark" ? "#a1a1aa" : "#71717a";
+  const iconColor = theme.mutedForeground;
 
   useEffect(() => {
     if (isEditing && textInputRef.current) {
@@ -222,13 +274,27 @@ export const TextPart = ({
   const showContextMenu =
     !isEditing && contextMenuActions && onContextMenuPress;
 
+  // Assistant messages on iOS use native markdown
+  if (!isUser && Platform.OS === "ios" && !isEditing) {
+    return <NativeMarkdownMessage content={textContent} />;
+  }
+
+  const wrapperStyle = isUser ? styles.userWrapper : styles.assistantWrapper;
+
+  const bubbleContent = (
+    <MessageBubble
+      editedText={editedText}
+      isEditing={isEditing}
+      isUser={isUser}
+      onTextChange={setEditedText}
+      textContent={textContent}
+      textInputRef={textInputRef as React.RefObject<TextInput>}
+      theme={theme}
+    />
+  );
+
   return (
-    <View
-      className={cn(
-        "flex-col gap-0",
-        isUser ? "max-w-[80%] items-end" : "max-w-[95%] items-start"
-      )}
-    >
+    <View style={wrapperStyle}>
       {showContextMenu ? (
         <ContextMenu
           actions={contextMenuActions}
@@ -242,35 +308,22 @@ export const TextPart = ({
               onTextChange={setEditedText}
               textContent={textContent}
               textInputRef={textInputRef as React.RefObject<TextInput>}
+              theme={theme}
             />
           }
           previewBackgroundColor="transparent"
         >
-          <MessageBubble
-            editedText={editedText}
-            isEditing={isEditing}
-            isUser={isUser}
-            onTextChange={setEditedText}
-            textContent={textContent}
-            textInputRef={textInputRef as React.RefObject<TextInput>}
-          />
+          {bubbleContent}
         </ContextMenu>
       ) : (
-        <MessageBubble
-          editedText={editedText}
-          isEditing={isEditing}
-          isUser={isUser}
-          onTextChange={setEditedText}
-          textContent={textContent}
-          textInputRef={textInputRef as React.RefObject<TextInput>}
-        />
+        bubbleContent
       )}
       {isEditing ? (
         <View
-          className={cn(
-            "mt-2 w-full flex-row gap-2",
-            isUser ? "justify-end" : "justify-start"
-          )}
+          style={[
+            styles.editActionsRow,
+            isUser ? styles.justifyEnd : styles.justifyStart,
+          ]}
         >
           <EditActions
             hasChanges={hasChanges}
@@ -284,3 +337,83 @@ export const TextPart = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  nativeMarkdownWrapper: {
+    flexDirection: "column",
+    alignSelf: "stretch",
+    maxWidth: "95%",
+  },
+  filePart: {
+    marginVertical: 4,
+    overflow: "hidden",
+    borderRadius: radius.lg,
+  },
+  filePartImage: {
+    width: 192,
+    height: 192,
+  },
+  filePartFile: {
+    width: 128,
+    height: 80,
+  },
+  marginLeftAuto: {
+    marginLeft: "auto",
+  },
+  marginRightAuto: {
+    marginRight: "auto",
+  },
+  fullSize: {
+    width: "100%",
+    height: "100%",
+  },
+  fileContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+  },
+  fileName: {
+    marginTop: 4,
+    fontSize: 12,
+    maxWidth: 128,
+  },
+  editInput: {
+    paddingVertical: 4,
+    fontSize: 14,
+  },
+  userText: {
+    fontSize: 14,
+  },
+  userBubble: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.lg,
+  },
+  assistantBubble: {
+    paddingVertical: 6,
+    paddingBottom: 0,
+  },
+  userWrapper: {
+    flexDirection: "column",
+    maxWidth: "80%",
+    alignItems: "flex-end",
+  },
+  assistantWrapper: {
+    flexDirection: "column",
+    maxWidth: "95%",
+    alignItems: "flex-start",
+  },
+  editActionsRow: {
+    marginTop: 8,
+    width: "100%",
+    flexDirection: "row",
+    gap: 8,
+  },
+  justifyEnd: {
+    justifyContent: "flex-end",
+  },
+  justifyStart: {
+    justifyContent: "flex-start",
+  },
+});
