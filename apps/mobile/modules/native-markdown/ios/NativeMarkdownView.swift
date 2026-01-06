@@ -62,6 +62,16 @@ extension UIColor {
     }
   }
   
+  /// Background - matches app's background token
+  /// Light: hsl(100 0% 96%), Dark: hsl(0 0% 4%)
+  static var markdownBackground: UIColor {
+    UIColor { traits in
+      traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0.04, alpha: 1)  // hsl(0 0% 4%)
+        : UIColor(white: 0.96, alpha: 1)  // hsl(100 0% 96%)
+    }
+  }
+  
   /// Parse hex color string to UIColor
   static func fromHex(_ hex: String) -> UIColor? {
     var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -95,19 +105,26 @@ extension UIColor {
 enum MarkdownSegment {
   case text(String)
   case codeBlock(language: String?, code: String)
+  case table(TableData)
 }
 
 // MARK: - Markdown Parser
 
 /**
- * Parses markdown into segments of text and code blocks.
+ * Parses markdown into segments of text, code blocks, and tables.
  */
 private func parseMarkdownSegments(_ markdown: String) -> [MarkdownSegment] {
   var segments: [MarkdownSegment] = []
   
-  // Regex to match fenced code blocks: ```language\ncode\n```
-  let pattern = "```([a-zA-Z0-9_-]*)\\n([\\s\\S]*?)```"
-  guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+  // Combined pattern for code blocks and tables
+  // Code blocks: ```language\ncode\n```
+  // Tables: lines starting with | that contain at least one separator row
+  let codePattern = "```([a-zA-Z0-9_-]*)\\n([\\s\\S]*?)```"
+  let tablePattern = "((?:^|\\n)\\|[^\\n]+\\|[^\\n]*\\n\\|[-:|\\s]+\\|[^\\n]*(?:\\n\\|[^\\n]+\\|[^\\n]*)*)"
+  
+  let combinedPattern = "(\(codePattern))|(\(tablePattern))"
+  
+  guard let regex = try? NSRegularExpression(pattern: combinedPattern, options: [.anchorsMatchLines]) else {
     return [.text(markdown)]
   }
   
@@ -117,7 +134,7 @@ private func parseMarkdownSegments(_ markdown: String) -> [MarkdownSegment] {
   var lastEnd = 0
   
   for match in matches {
-    // Text before this code block
+    // Text before this block
     if match.range.location > lastEnd {
       let textRange = NSRange(location: lastEnd, length: match.range.location - lastEnd)
       let text = nsString.substring(with: textRange)
@@ -126,26 +143,44 @@ private func parseMarkdownSegments(_ markdown: String) -> [MarkdownSegment] {
       }
     }
     
-    // Extract language and code
-    let languageRange = match.range(at: 1)
-    let codeRange = match.range(at: 2)
+    let fullMatch = nsString.substring(with: match.range)
     
-    let language = languageRange.location != NSNotFound
-      ? nsString.substring(with: languageRange)
-      : nil
-    let code = codeRange.location != NSNotFound
-      ? nsString.substring(with: codeRange)
-      : ""
-    
-    segments.append(.codeBlock(
-      language: language?.isEmpty == true ? nil : language,
-      code: code.trimmingCharacters(in: .newlines)
-    ))
+    // Check if it's a code block (starts with ```)
+    if fullMatch.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("```") {
+      // Extract language and code using sub-pattern
+      let codeRegex = try? NSRegularExpression(pattern: codePattern, options: [])
+      if let codeMatch = codeRegex?.firstMatch(in: fullMatch, options: [], range: NSRange(location: 0, length: fullMatch.count)) {
+        let fullNS = fullMatch as NSString
+        let languageRange = codeMatch.range(at: 1)
+        let codeRange = codeMatch.range(at: 2)
+        
+        let language = languageRange.location != NSNotFound
+          ? fullNS.substring(with: languageRange)
+          : nil
+        let code = codeRange.location != NSNotFound
+          ? fullNS.substring(with: codeRange)
+          : ""
+        
+        segments.append(.codeBlock(
+          language: language?.isEmpty == true ? nil : language,
+          code: code.trimmingCharacters(in: .newlines)
+        ))
+      }
+    } else if fullMatch.contains("|") {
+      // It's a table
+      let tableText = fullMatch.trimmingCharacters(in: .whitespacesAndNewlines)
+      if let tableData = parseMarkdownTable(tableText) {
+        segments.append(.table(tableData))
+      } else {
+        // Failed to parse as table, treat as text
+        segments.append(.text(fullMatch))
+      }
+    }
     
     lastEnd = match.range.location + match.range.length
   }
   
-  // Text after last code block
+  // Text after last block
   if lastEnd < nsString.length {
     let text = nsString.substring(from: lastEnd)
     if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -153,7 +188,7 @@ private func parseMarkdownSegments(_ markdown: String) -> [MarkdownSegment] {
     }
   }
   
-  // If no code blocks found, return the whole thing as text
+  // If no blocks found, return the whole thing as text
   if segments.isEmpty {
     segments.append(.text(markdown))
   }
@@ -885,6 +920,15 @@ class NativeMarkdownView: ExpoView, UIContextMenuInteractionDelegate {
       case .codeBlock(let language, let code):
         let codeView = CodeBlockView(code: code, language: language)
         stackView.addArrangedSubview(codeView)
+        
+      case .table(let tableData):
+        // Use background color for assistant messages (not user messages)
+        let tableView = TableBlockView(
+          tableData: tableData,
+          customTextColor: customTextColor,
+          useBackgroundColor: !isUserMessage
+        )
+        stackView.addArrangedSubview(tableView)
       }
     }
     
