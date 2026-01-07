@@ -15,6 +15,9 @@ export const users = pgTable("users", {
   /** User's last name */
   lastName: text(),
 
+  /** Stripe Customer ID (e.g., cus_xxx) - no FK, stripe schema is external */
+  stripeCustomerId: text(),
+
   /** Timestamp when unlimited access was granted (null = subject to limits) */
   unlimitedAccessGrantedAt: timestamp({ withTimezone: true }),
 

@@ -43,6 +43,13 @@
       "when": 1767197598981,
       "tag": "0005_famous_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1767780544732,
+      "tag": "0006_petite_komodo",
+      "breakpoints": true
     }
   ]
 }

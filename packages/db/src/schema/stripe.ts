@@ -1,0 +1,34 @@
+/**
+ * Stripe Sync Engine tables - read-only, managed by Stripe Sync Engine
+ *
+ * IMPORTANT: NOT exported from schema.ts to prevent Drizzle from managing these tables.
+ * Import directly from this file for type-safe queries:
+ *   import { stripeSubscriptions } from "./schema/stripe";
+ */
+import { boolean, pgSchema, text } from "drizzle-orm/pg-core";
+
+const stripe = pgSchema("stripe");
+
+/** Stripe subscriptions - tracks active/inactive subscription status */
+export const stripeSubscriptions = stripe.table("subscriptions", {
+  id: text().primaryKey(),
+  customer: text(),
+  status: text(),
+  /** References stripe.prices.id */
+  defaultPrice: text("default_price"),
+});
+
+/** Stripe prices (formerly plans) - links products to pricing */
+export const stripePrices = stripe.table("prices", {
+  id: text().primaryKey(),
+  /** References stripe.products.id */
+  product: text(),
+  active: boolean(),
+});
+
+/** Stripe products - maps to subscription tiers */
+export const stripeProducts = stripe.table("products", {
+  id: text().primaryKey(),
+  name: text(),
+  active: boolean(),
+});
