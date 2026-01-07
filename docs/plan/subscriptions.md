@@ -191,7 +191,7 @@ Note: Tables defined in `packages/db/src/schema/stripe.ts` for type-safe queries
 
 1. [x] Add `stripeCustomerId` field to `users` table
 2. [x] Define stripe table schemas inline for Drizzle (not exported from schema.ts)
-3. [ ] Update `checkMessageLimit` in `rate-limit.ts` with JOIN query
+3. [x] Update `checkMessageLimit` in `rate-limit.ts` with JOIN query
 4. [ ] Create Checkout Session endpoint
 5. [ ] Create return URL handler to link customer ID
 6. [ ] Add "Upgrade" button in UI
