@@ -17,6 +17,7 @@ export const TOP_MODELS = [
   "openai/gpt-5-nano",
   "openai/gpt-5-mini",
   "openai/gpt-5.2",
+  "openai/gpt-5.2-pro",
 
   // Anthropic - Latest Claude models
   "anthropic/claude-sonnet-4.5",

@@ -105,6 +105,7 @@ export const executeAiResponse = (
     messages: convertToModelMessages(messages),
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
+    maxOutputTokens: 8192,
     abortSignal,
   });
 
