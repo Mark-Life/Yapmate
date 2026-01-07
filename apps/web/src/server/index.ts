@@ -19,6 +19,8 @@ import {
   type WsClientData,
 } from "@yapmate/server/lib/websocket";
 import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
+import { checkoutHandler } from "@yapmate/server/routes/api/checkout/handler";
+import { checkoutSuccessHandler } from "@yapmate/server/routes/api/checkout/success";
 import { streamResumeHandler } from "@yapmate/server/routes/api/stream";
 import { transcribeHandler } from "@yapmate/server/routes/api/transcribe";
 import { callbackHandler } from "@yapmate/server/routes/auth/callback";
@@ -297,6 +299,7 @@ const server = serve<WsClientData>({
     "/auth/mobile": index,
     "/chat": index,
     "/chat/*": index,
+    "/checkout/*": index,
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,
@@ -358,6 +361,22 @@ const server = serve<WsClientData>({
         return preflightResponse;
       }
       const response = await transcribeHandler.POST(req);
+      return addCorsHeaders(req, response);
+    },
+    "/api/checkout": async (req: Request) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+      const response = await checkoutHandler.POST(req);
+      return addCorsHeaders(req, response);
+    },
+    "/api/checkout/session": async (req: Request) => {
+      const preflightResponse = handleCorsPreflight(req);
+      if (preflightResponse) {
+        return preflightResponse;
+      }
+      const response = await checkoutSuccessHandler.GET(req);
       return addCorsHeaders(req, response);
     },
 
