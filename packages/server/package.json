@@ -16,6 +16,7 @@
     "@yapmate/core": "workspace:*",
     "@yapmate/db": "workspace:*",
     "ai": "catalog:",
-    "langfuse": "^3.38.6"
+    "langfuse": "^3.38.6",
+    "stripe": "^20.1.2"
   }
 }
