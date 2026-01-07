@@ -5,7 +5,7 @@
  * Import directly from this file for type-safe queries:
  *   import { stripeSubscriptions } from "./schema/stripe";
  */
-import { boolean, pgSchema, text } from "drizzle-orm/pg-core";
+import { boolean, jsonb, pgSchema, text } from "drizzle-orm/pg-core";
 
 const stripe = pgSchema("stripe");
 
@@ -14,8 +14,8 @@ export const stripeSubscriptions = stripe.table("subscriptions", {
   id: text().primaryKey(),
   customer: text(),
   status: text(),
-  /** References stripe.prices.id */
-  defaultPrice: text("default_price"),
+  /** Subscription items containing price/product info */
+  items: jsonb(),
 });
 
 /** Stripe prices (formerly plans) - links products to pricing */
