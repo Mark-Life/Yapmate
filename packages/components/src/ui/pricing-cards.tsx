@@ -132,7 +132,7 @@ export const PricingCards = ({
       className={cn(
         "grid gap-4",
         compact
-          ? "grid-cols-1 sm:grid-cols-3"
+          ? "grid-cols-1 md:grid-cols-3"
           : "grid-cols-1 md:grid-cols-3"
       )}
     >

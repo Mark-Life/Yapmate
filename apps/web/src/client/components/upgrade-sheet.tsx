@@ -17,7 +17,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@yapmate/components/ui/sheet";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { getStripeBrandingColors } from "../styles/colors";
+import { useTheme } from "./theme-provider";
 
 /** Stripe publishable key from environment */
 const stripePromise = loadStripe(
@@ -43,31 +45,52 @@ export const UpgradeSheet = ({
 }: UpgradeSheetProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { theme } = useTheme();
+
+  // Get current theme (resolve 'system' to actual theme)
+  const currentTheme = useMemo<"light" | "dark">(() => {
+    if (theme === "system") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    return theme;
+  }, [theme]);
 
   /**
    * Creates checkout session and gets client secret
    */
-  const handleSelectTier = useCallback(async (priceId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
-      });
+  const handleSelectTier = useCallback(
+    async (priceId: string) => {
+      setIsLoading(true);
+      try {
+        // Get branding colors for the current theme
+        const colors = getStripeBrandingColors(currentTheme);
 
-      if (!response.ok) {
-        throw new Error("Failed to create checkout session");
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            priceId,
+            theme: currentTheme,
+            colors: { primary: colors.primary, background: colors.background },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create checkout session");
+        }
+
+        const { clientSecret: secret } = await response.json();
+        setClientSecret(secret);
+      } catch (error) {
+        console.error("Checkout error:", error);
+      } finally {
+        setIsLoading(false);
       }
-
-      const { clientSecret: secret } = await response.json();
-      setClientSecret(secret);
-    } catch (error) {
-      console.error("Checkout error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [theme]
+  );
 
   /**
    * Handle checkout completion
@@ -94,7 +117,7 @@ export const UpgradeSheet = ({
   return (
     <Sheet onOpenChange={handleOpenChange} open={open}>
       <SheetContent
-        className="w-full overflow-y-auto sm:max-w-2xl"
+        className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-5xl"
         side="right"
       >
         <SheetHeader>
