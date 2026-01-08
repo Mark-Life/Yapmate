@@ -11,27 +11,33 @@ const fetchModelsFromApi = async () => {
   return models;
 };
 
-type TransformedModel = {
+export type TransformedModel = {
   name: string;
   value: string;
   provider: string;
-  contextLimit?: number;
+  description?: string;
+  contextLimit?: number | null;
   inputLimit?: number;
   outputLimit?: number;
+  supportsTools?: boolean;
+  supportsReasoning?: boolean;
+};
+
+type ApiModel = {
+  id: string;
+  name: string;
+  description?: string;
+  contextLimit?: number | null;
+  inputLimit?: number;
+  outputLimit?: number;
+  supportsTools?: boolean;
+  supportsReasoning?: boolean;
 };
 
 /**
  * Filters and sorts models: removes banned models and prioritizes top models
  */
-const processModels = (
-  modelsData: Array<{
-    id: string;
-    name: string;
-    contextLimit?: number;
-    inputLimit?: number;
-    outputLimit?: number;
-  }>
-): TransformedModel[] => {
+const processModels = (modelsData: ApiModel[]): TransformedModel[] => {
   const bannedSet = new Set(BANNED_MODELS as readonly string[]);
   const topModelsSet = new Set(TOP_MODELS as readonly string[]);
 
@@ -44,9 +50,12 @@ const processModels = (
         name: parsed.modelName,
         value: model.id,
         provider: parsed.provider,
+        description: model.description,
         contextLimit: model.contextLimit,
         inputLimit: model.inputLimit,
         outputLimit: model.outputLimit,
+        supportsTools: model.supportsTools,
+        supportsReasoning: model.supportsReasoning,
         isTopModel: topModelsSet.has(model.id),
       };
     });

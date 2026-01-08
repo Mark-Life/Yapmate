@@ -1,84 +1,43 @@
 /**
- * Types for models.dev API response and cached data structures
+ * Types for AI models (sourced from OpenRouter API)
  */
 
 /**
- * Model cost information
+ * Model cost information (per token pricing)
  */
 export type ModelCost = {
   input: number;
   output: number;
   reasoning?: number;
-  cache_read?: number;
-  cache_write?: number;
-  input_audio?: number;
-  output_audio?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
 };
 
 /**
- * Model context and output limits
+ * Model context and token limits
  */
 export type ModelLimit = {
-  context: number;
-  input?: number;
+  context: number | null;
+  input: number;
   output: number;
 };
 
 /**
- * Model input/output modalities
- */
-export type ModelModalities = {
-  input: string[];
-  output: string[];
-};
-
-/**
- * Interleaved reasoning configuration
- */
-export type ModelInterleaved = {
-  field: "reasoning_content" | "reasoning_details";
-};
-
-/**
- * Complete model metadata from models.dev
+ * Internal model metadata used throughout the app
+ * Normalized from OpenRouter API response
  */
 export type ModelMetadata = {
   id: string;
   name: string;
-  family: string;
-  attachment: boolean;
-  reasoning: boolean;
-  tool_call: boolean;
-  structured_output?: boolean;
-  temperature?: boolean;
-  knowledge?: string;
-  release_date: string;
-  last_updated: string;
-  open_weights: boolean;
-  interleaved?: boolean | ModelInterleaved;
+  description?: string;
+  contextLength: number | null;
+  inputLimit: number;
+  outputLimit: number;
   cost: ModelCost;
-  limit: ModelLimit;
-  modalities: ModelModalities;
-  status?: "alpha" | "beta" | "deprecated";
+  supportsTools: boolean;
+  supportsStructuredOutput: boolean;
+  supportsReasoning: boolean;
 };
-
-/**
- * Provider metadata from models.dev
- */
-export type ProviderMetadata = {
-  id: string;
-  name: string;
-  npm: string;
-  env: string[];
-  doc: string;
-  api?: string;
-  models: Record<string, ModelMetadata>;
-};
-
-/**
- * Models.dev API response structure
- */
-export type ModelsDevApiResponse = Record<string, ProviderMetadata>;
 
 /**
  * Model ID format (lowercase provider/model-name)
