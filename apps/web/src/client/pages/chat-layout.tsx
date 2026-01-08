@@ -6,7 +6,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@yapmate/components/ui/sidebar";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SettingsIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
@@ -15,6 +15,7 @@ import { ChatProvider, useChatContext } from "../contexts/chat-context";
 import { syncWithServer } from "../hooks/use-user-preferences";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
+import { navigate } from "../router";
 
 /**
  * Checks URL params for upgrade intent and triggers upgrade sheet
@@ -40,21 +41,37 @@ const useUpgradeFromUrl = () => {
 };
 
 /**
- * Header controls - sidebar trigger + new chat button when collapsed
+ * Header controls - sidebar trigger + new chat button on left, settings on right
  */
 const HeaderControls = () => {
   const { navigateToNew } = useChatContext();
 
+  const handleSettingsClick = () => {
+    navigate("/settings");
+  };
+
   return (
-    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-md supports-backdrop-filter:bg-background/60">
-      <SidebarTrigger />
-      {/* {!open && ( */}
-      <Button className="size-7" onClick={navigateToNew} variant="ghost">
-        <PlusIcon className="size-4" />
-        <span className="sr-only">New Chat</span>
-      </Button>
-      {/* )} */}
-    </div>
+    <>
+      {/* Left controls */}
+      <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-md supports-backdrop-filter:bg-background/60">
+        <SidebarTrigger />
+        <Button className="size-7" onClick={navigateToNew} variant="ghost">
+          <PlusIcon className="size-4" />
+          <span className="sr-only">New Chat</span>
+        </Button>
+      </div>
+      {/* Right controls */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-md supports-backdrop-filter:bg-background/60">
+        <Button
+          className="size-7"
+          onClick={handleSettingsClick}
+          variant="ghost"
+        >
+          <SettingsIcon className="size-4" />
+          <span className="sr-only">Settings</span>
+        </Button>
+      </div>
+    </>
   );
 };
 
