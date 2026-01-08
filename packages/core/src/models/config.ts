@@ -23,8 +23,20 @@ export const TOP_MODELS = [
   "anthropic/claude-sonnet-4.5",
   "anthropic/claude-opus-4.5",
 
+  // Mistral
+  "mistralai/mistral-medium-3.1",
+  "mistralai/mistral-large-2512",
+
   // Kimi - Latest models
   "Kimi-K2-0905",
+
+  // DeepSeek
+  "deepseek/deepseek-v3.2",
+
+  // Perplexity
+  "perplexity/sonar",
+  "perplexity/sonar-deep-research",
+  "perplexity/sonar-pro-search",
 ] as const;
 
 /**
