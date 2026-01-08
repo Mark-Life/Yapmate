@@ -6,18 +6,20 @@ import { publicProcedure } from "../middleware";
  */
 export const models = {
   /**
-   * List all available models with metadata (including context limits)
+   * List all available models with metadata
    */
   list: publicProcedure.handler(async () => {
     const modelsMetadata = await getAllModelsMetadata();
-    // Return model IDs with their metadata (including limit.context)
     return {
       models: Object.entries(modelsMetadata).map(([id, metadata]) => ({
         id,
         name: metadata.name,
-        contextLimit: metadata.limit.context,
-        inputLimit: metadata.limit.input,
-        outputLimit: metadata.limit.output,
+        description: metadata.description,
+        contextLimit: metadata.contextLength,
+        inputLimit: metadata.inputLimit,
+        outputLimit: metadata.outputLimit,
+        supportsTools: metadata.supportsTools,
+        supportsReasoning: metadata.supportsReasoning,
       })),
     };
   }),
