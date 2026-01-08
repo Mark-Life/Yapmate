@@ -76,22 +76,30 @@ When user clicks "Upgrade":
 2. Set success URL: `/checkout/success?session_id={CHECKOUT_SESSION_ID}`
 3. Redirect user to Stripe Checkout
 
-### 4. Handle Return URL
+### 4. Handle Return URL ✅
 
-On `/checkout/success`:
+**Implementation**: Handled in-drawer via Stripe's `onComplete` callback (better UX - no redirect)
 
-1. Extract `session_id` from URL
-2. Call Stripe API: `stripe.checkout.sessions.retrieve(session_id)`
-3. Get `customer` ID from session
-4. Update `users.stripeCustomerId` for the user (`client_reference_id`)
+When checkout completes:
+
+1. Stripe's `onComplete` callback fires with `{ sessionId }`
+2. Call API endpoint `/api/checkout/session?session_id=...`
+3. API retrieves session, extracts customer ID and user ID
+4. Updates `users.stripeCustomerId` via `updateStripeCustomerId()`
+5. Shows loading state, then closes drawer on success
+
+The `return_url` in checkout session is kept as fallback for edge cases, but normal flow happens entirely in the drawer.
 
 ```ts
-// Pseudo-code
+// Frontend: upgrade-sheet.tsx
+const handleComplete = async (result: { sessionId: string }) => {
+  await fetch(`/api/checkout/session?session_id=${result.sessionId}`);
+  // Close drawer, refresh user data
+};
+
+// Backend: routes/api/checkout/success.ts
 const session = await stripe.checkout.sessions.retrieve(sessionId);
-await db
-  .update(users)
-  .set({ stripeCustomerId: session.customer })
-  .where(eq(users.id, session.client_reference_id));
+await updateStripeCustomerId(userId, session.customer);
 ```
 
 ### 5. Map Products to Tiers
@@ -193,8 +201,9 @@ Note: Tables defined in `packages/db/src/schema/stripe.ts` for type-safe queries
 2. [x] Define stripe table schemas inline for Drizzle (not exported from schema.ts)
 3. [x] Update `checkMessageLimit` in `rate-limit.ts` with JOIN query
 4. [x] Create Checkout Session endpoint (embedded mode)
-5. [x] Create return URL handler to link customer ID
+5. [x] Create return URL handler to link customer ID (handled in-drawer via `onComplete` callback)
 6. [x] Add "Upgrade" button in UI (web only - mobile excluded per App Store rules)
+7. [x] Implement in-drawer checkout completion flow with customer linking
 
 ---
 
