@@ -1,9 +1,14 @@
 /**
  * Subscription router - subscription and usage operations
  */
-import { checkMessageLimit } from "@yapmate/db/service";
+import { ORPCError } from "@orpc/server";
+import { checkMessageLimit, getStripeCustomerId } from "@yapmate/db/service";
+import { stripe } from "@yapmate/server/lib/stripe";
 import { protectedProcedure } from "../middleware";
-import { usageResponseSchema } from "../schemas/subscription";
+import {
+  portalSessionResponseSchema,
+  usageResponseSchema,
+} from "../schemas/subscription";
 
 /**
  * Calculates the first day of next month (when usage resets)
@@ -32,5 +37,33 @@ export const subscription = {
         limit: Number.isFinite(result.limit) ? result.limit : null,
         resetsAt: getResetDate(),
       };
+    }),
+
+  /**
+   * Creates a Stripe Customer Portal session
+   * Returns a URL to redirect the user to manage their subscription
+   */
+  createPortalSession: protectedProcedure
+    .output(portalSessionResponseSchema)
+    .handler(async ({ context }) => {
+      const stripeCustomerId = await getStripeCustomerId(context.userId);
+
+      if (!stripeCustomerId) {
+        throw new ORPCError("NOT_FOUND", {
+          message:
+            "No Stripe customer ID found. Please create a subscription first.",
+        });
+      }
+
+      // Get origin for return URL
+      const origin = new URL(context.req.url).origin;
+
+      // Create portal session
+      const session = await stripe.billingPortal.sessions.create({
+        customer: stripeCustomerId,
+        return_url: `${origin}/`,
+      });
+
+      return { url: session.url };
     }),
 };
