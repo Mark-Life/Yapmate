@@ -33,5 +33,14 @@ export const TOP_MODELS = [
  */
 export const BANNED_MODELS = [
   "openai/gpt-4o-mini",
-  "openai/gpt-5-image",
+  "openai/gpt-4o",
+  "openai/gpt-4o-mini-2024-07-18",
+  "openai/gpt-4o-2024-08-06",
+  "openai/chatgpt-4o-latest",
+  "openai/gpt-4o-2024-11-20",
+  "openai/gpt-4o-mini-search-preview",
+  "openai/gpt-4o-2024-05-13",
+  "openai/gpt-4o-search-preview",
+  "openai/gpt-4o-audio-preview",
+  "openai/gpt-4o:extended",
 ] as const;
