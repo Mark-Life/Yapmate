@@ -28,9 +28,7 @@ export const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <UserProvider>
-          <div className="flex h-full flex-1 flex-col">
-            <Router />
-          </div>
+          <Router />
           <UpdatePrompt />
           <Toaster />
         </UserProvider>
