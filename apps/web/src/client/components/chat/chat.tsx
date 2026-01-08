@@ -174,6 +174,12 @@ export const Chat = ({
         setMessages(finishedMessages);
         // Invalidate cache so navigation back to this chat fetches fresh DB data
         queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+        // Update subscription usage count (message was saved before streaming)
+        // Invalidate to ensure accuracy after stream completes
+        // React Query deduplicates rapid invalidations automatically
+        queryClient.invalidateQueries({
+          queryKey: ["subscription", "usage"],
+        });
       },
       onError: (error) => {
         // Handle 402 Payment Required (rate limit exceeded)
@@ -321,6 +327,13 @@ export const Chat = ({
     sendMessage({
       text: message.text || "Sent with attachments",
       files: message.files,
+    });
+
+    // Optimistically update subscription usage count
+    // The message is saved server-side before streaming starts
+    // Invalidate to trigger refetch (React Query deduplicates rapid invalidations)
+    queryClient.invalidateQueries({
+      queryKey: ["subscription", "usage"],
     });
 
     setInput("");
