@@ -35,6 +35,7 @@ import devIndexHtml from "../client/index.html";
 import devAboutHtml from "../client/pages/static/about.html";
 import devHelpHtml from "../client/pages/static/help.html";
 import devPolicyHtml from "../client/pages/static/policy.html";
+import devTermsHtml from "../client/pages/static/terms.html";
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
@@ -325,6 +326,12 @@ const server = serve<WsClientData>({
             headers: { "Content-Type": "text/html; charset=utf-8" },
           })
       : devPolicyHtml,
+    "/terms": isProduction
+      ? () =>
+          new Response(Bun.file("./client/pages/static/terms.html"), {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+      : devTermsHtml,
 
     // Universal link configuration files
     "/.well-known/apple-app-site-association": () => {
