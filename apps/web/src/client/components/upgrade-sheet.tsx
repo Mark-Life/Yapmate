@@ -7,6 +7,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import {
+  PRICE_IDS,
   PricingCards,
   type PricingTier,
 } from "@yapmate/components/ui/pricing-cards";
@@ -17,7 +18,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@yapmate/components/ui/sheet";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePostHog } from "../hooks/use-posthog";
 import { rpcClient } from "../lib/rpc-client";
 import { getStripeBrandingColors } from "../styles/colors";
 import { useTheme } from "./theme-provider";
@@ -58,11 +60,14 @@ export const UpgradeSheet = ({
   currentTier = null,
   onSuccess,
 }: UpgradeSheetProps) => {
+  const { capture } = usePostHog();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLinkingCustomer, setIsLinkingCustomer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
+  const selectedPriceIdRef = useRef<string | null>(null);
+  const hasTrackedOpenRef = useRef(false);
 
   // Get current theme (resolve 'system' to actual theme)
   const currentTheme = useMemo<"light" | "dark">(() => {
@@ -75,11 +80,39 @@ export const UpgradeSheet = ({
   }, [theme]);
 
   /**
+   * Track when upgrade sheet is opened
+   */
+  useEffect(() => {
+    if (open && !hasTrackedOpenRef.current) {
+      capture("upgrade_sheet_opened", {
+        current_tier: currentTier,
+      });
+      hasTrackedOpenRef.current = true;
+    } else if (!open) {
+      hasTrackedOpenRef.current = false;
+    }
+  }, [open, currentTier, capture]);
+
+  /**
+   * Helper to map priceId to tier name
+   */
+  const getTierFromPriceId = useCallback((priceId: string) => {
+    const tier = Object.entries(PRICE_IDS).find(
+      ([, id]) => id === priceId
+    )?.[0];
+    return tier ?? "unknown";
+  }, []);
+
+  /**
    * Opens Stripe Customer Portal for managing subscription
    * Used for current tier, downgrades, and canceling (free tier)
    * Portal opens in new tab, sheet closes, and app-sidebar focus listener handles refresh
    */
   const handleManageSubscription = useCallback(async () => {
+    capture("subscription_manage_clicked", {
+      location: "upgrade_sheet",
+      current_tier: currentTier,
+    });
     try {
       const { url } = await rpcClient.subscription.createPortalSession();
       // Open Stripe Customer Portal in new tab
@@ -88,6 +121,10 @@ export const UpgradeSheet = ({
       onOpenChange(false);
       // Note: Subscription refresh handled by window focus listener in app-sidebar
     } catch (err) {
+      capture("subscription_manage_error", {
+        current_tier: currentTier,
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
       console.error("Failed to open portal:", err);
       setError(
         err instanceof Error
@@ -95,7 +132,7 @@ export const UpgradeSheet = ({
           : "Failed to open subscription management portal"
       );
     }
-  }, [onOpenChange]);
+  }, [onOpenChange, currentTier, capture]);
 
   /**
    * Creates checkout session and gets client secret
@@ -103,6 +140,16 @@ export const UpgradeSheet = ({
    */
   const handleSelectTier = useCallback(
     async (priceId: string) => {
+      const selectedTier = getTierFromPriceId(priceId);
+      selectedPriceIdRef.current = priceId;
+
+      capture("tier_selected", {
+        price_id: priceId,
+        tier: selectedTier,
+        current_tier: currentTier,
+        is_upgrade: true,
+      });
+
       setIsLoading(true);
       try {
         // Get branding colors for the current theme
@@ -124,13 +171,29 @@ export const UpgradeSheet = ({
 
         const { clientSecret: secret } = await response.json();
         setClientSecret(secret);
+
+        capture("checkout_started", {
+          price_id: priceId,
+          tier: selectedTier,
+          current_tier: currentTier,
+        });
       } catch (checkoutError) {
+        capture("checkout_error", {
+          price_id: priceId,
+          tier: selectedTier,
+          current_tier: currentTier,
+          error:
+            checkoutError instanceof Error
+              ? checkoutError.message
+              : "Unknown error",
+          stage: "session_creation",
+        });
         console.error("Checkout error:", checkoutError);
       } finally {
         setIsLoading(false);
       }
     },
-    [theme]
+    [theme, currentTier, getTierFromPriceId, capture]
   );
 
   /**
@@ -141,7 +204,19 @@ export const UpgradeSheet = ({
   const handleComplete = useCallback(
     async (result?: { sessionId?: string }) => {
       const sessionId = result?.sessionId;
+      const selectedPriceId = selectedPriceIdRef.current;
+      const selectedTier = selectedPriceId
+        ? getTierFromPriceId(selectedPriceId)
+        : "unknown";
+
       if (!sessionId) {
+        capture("checkout_error", {
+          price_id: selectedPriceId,
+          tier: selectedTier,
+          current_tier: currentTier,
+          error: "Missing session information",
+          stage: "completion",
+        });
         setError("Missing session information");
         return;
       }
@@ -157,13 +232,30 @@ export const UpgradeSheet = ({
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error || "Failed to link subscription to account"
-          );
+          const errorMessage =
+            errorData.error || "Failed to link subscription to account";
+          capture("checkout_error", {
+            price_id: selectedPriceId,
+            tier: selectedTier,
+            current_tier: currentTier,
+            session_id: sessionId,
+            error: errorMessage,
+            stage: "linking",
+          });
+          throw new Error(errorMessage);
         }
+
+        // Success - track subscription completion
+        capture("checkout_completed", {
+          price_id: selectedPriceId,
+          tier: selectedTier,
+          previous_tier: currentTier,
+          session_id: sessionId,
+        });
 
         // Success - close sheet and refresh user data
         setClientSecret(null);
+        selectedPriceIdRef.current = null;
         onOpenChange(false);
         onSuccess?.();
       } catch (err) {
@@ -177,7 +269,7 @@ export const UpgradeSheet = ({
         setIsLinkingCustomer(false);
       }
     },
-    [onOpenChange, onSuccess]
+    [onOpenChange, onSuccess, currentTier, getTierFromPriceId, capture]
   );
 
   /**
@@ -186,13 +278,21 @@ export const UpgradeSheet = ({
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
+        // Track sheet closed if checkout was in progress
+        if (clientSecret) {
+          capture("upgrade_sheet_closed", {
+            had_checkout: true,
+            current_tier: currentTier,
+          });
+        }
         setClientSecret(null);
         setError(null);
         setIsLinkingCustomer(false);
+        selectedPriceIdRef.current = null;
       }
       onOpenChange(newOpen);
     },
-    [onOpenChange]
+    [onOpenChange, clientSecret, currentTier, capture]
   );
 
   /**

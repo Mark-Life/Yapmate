@@ -8,6 +8,7 @@ import {
 import { Textarea } from "@yapmate/components/ui/textarea";
 import { ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
 import { useState } from "react";
+import { usePostHog } from "../../hooks/use-posthog";
 
 export type FeedbackState = 0 | 1 | null;
 
@@ -27,10 +28,17 @@ export const FeedbackButtons = ({
   messageId,
   onFeedback,
 }: FeedbackButtonsProps) => {
+  const { capture } = usePostHog();
   const [comment, setComment] = useState("");
   const [openValue, setOpenValue] = useState<0 | 1 | null>(null);
 
   const handleSubmit = (value: 0 | 1) => {
+    capture("feedback_submitted", {
+      message_id: messageId,
+      feedback_value: value,
+      has_comment: !!comment,
+      comment_length: comment.length,
+    });
     onFeedback(messageId, value, comment || undefined);
     setOpenValue(null);
     setComment("");
