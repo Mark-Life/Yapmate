@@ -391,7 +391,7 @@ export const Chat = ({
     <PromptInputProvider initialInput={input}>
       <div
         className={cn(
-          "relative size-full h-screen transition-all",
+          "relative size-full h-full transition-all",
           isDragging && "rounded-lg border-2 border-primary border-dashed"
         )}
         ref={containerRef}

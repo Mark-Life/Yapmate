@@ -12,6 +12,7 @@
 
 body {
   @apply m-0;
+  height: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
@@ -68,6 +69,7 @@ code {
 html {
   scroll-behavior: smooth;
   color-scheme: light dark;
+  height: 100%;
 }
 
 @layer base {
@@ -159,9 +161,16 @@ html {
   }
   html {
     @apply bg-background text-foreground;
+    height: 100%;
   }
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+  }
+  #root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Model selector logos - adapt to text-foreground color */
