@@ -117,7 +117,7 @@ export const UpgradeSheet = ({
   return (
     <Sheet onOpenChange={handleOpenChange} open={open}>
       <SheetContent
-        className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-5xl"
+        className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-7xl"
         side="right"
       >
         <SheetHeader>
@@ -131,7 +131,7 @@ export const UpgradeSheet = ({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 p-4">
+        <div className="flex-1 rounded-lg p-4">
           {clientSecret ? (
             <EmbeddedCheckoutProvider
               options={{ clientSecret, onComplete: handleComplete }}

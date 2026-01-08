@@ -16,3 +16,20 @@ export const updateStripeCustomerId = async (
 ): Promise<void> => {
   await db.update(users).set({ stripeCustomerId }).where(eq(users.id, userId));
 };
+
+/**
+ * Gets user's Stripe customer ID
+ * @param userId - User ID to query
+ * @returns Stripe customer ID or null if not set
+ */
+export const getStripeCustomerId = async (
+  userId: string
+): Promise<string | null> => {
+  const result = await db
+    .select({ stripeCustomerId: users.stripeCustomerId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return result[0]?.stripeCustomerId ?? null;
+};

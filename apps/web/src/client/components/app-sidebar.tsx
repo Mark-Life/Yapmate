@@ -215,6 +215,22 @@ export const AppSidebar = ({
     }
   }, [chatToDelete, deleteChatMutation]);
 
+  /**
+   * Handle manage subscription click
+   * If user has Stripe customer ID, open portal in new tab
+   * Otherwise, open upgrade sheet
+   */
+  const handleManageSubscription = useCallback(async () => {
+    try {
+      const { url } = await rpcClient.subscription.createPortalSession();
+      // Open Stripe Customer Portal in new tab
+      window.open(url, "_blank");
+    } catch {
+      // If no customer ID found, open upgrade sheet instead
+      setUpgradeSheetOpen(true);
+    }
+  }, []);
+
   return (
     <Sidebar>
       <SidebarHeader className="border-sidebar-border border-b">
@@ -312,13 +328,7 @@ export const AppSidebar = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {/* TODO: Implement Stripe Customer Portal link */}
-              <DropdownMenuItem
-                onClick={() => {
-                  // TODO: Redirect to Stripe Customer Portal
-                  console.log("Manage subscription - not implemented yet");
-                }}
-              >
+              <DropdownMenuItem onClick={handleManageSubscription}>
                 <CreditCardIcon className="size-4" />
                 Manage Subscription
               </DropdownMenuItem>

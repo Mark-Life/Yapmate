@@ -16,3 +16,10 @@ export const usageResponseSchema = z.object({
 
 export type Tier = z.infer<typeof tierSchema>;
 export type UsageResponse = z.infer<typeof usageResponseSchema>;
+
+/** Portal session response schema */
+export const portalSessionResponseSchema = z.object({
+  url: z.string(),
+});
+
+export type PortalSessionResponse = z.infer<typeof portalSessionResponseSchema>;
