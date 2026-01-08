@@ -109,12 +109,14 @@ export const AppSidebar = ({
 
   /**
    * Fetch subscription usage data
+   * Reduced staleTime to allow reactive updates when messages are sent
+   * React Query will dedupe rapid refetches automatically
    */
   const { data: usage } = useQuery({
     queryKey: ["subscription", "usage"],
     queryFn: () => rpcClient.subscription.usage(),
     enabled: !!user,
-    staleTime: 60_000, // Cache for 1 minute
+    staleTime: 5000, // Cache for 5 seconds - allows reactive updates without excessive fetches
   });
 
   /**
