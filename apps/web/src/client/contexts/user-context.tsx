@@ -1,6 +1,7 @@
 "use client";
 
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { usePostHog } from "posthog-js/react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 
@@ -22,22 +23,35 @@ type UserProviderProps = {
 /**
  * Provides user context with Supabase auth
  * Fetches user on mount and listens to auth state changes
+ * Identifies users in PostHog when they log in
  */
 export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const posthog = usePostHog();
 
   useEffect(() => {
     const supabase = createClient();
 
     /**
      * Updates user state from Supabase auth user
+     * Identifies user in PostHog when authenticated
      */
     const updateUser = (authUser: SupabaseUser | null) => {
       if (authUser) {
         setUser({ email: authUser.email });
+        // Identify user in PostHog
+        if (posthog && authUser.id) {
+          posthog.identify(authUser.id, {
+            email: authUser.email,
+          });
+        }
       } else {
         setUser(null);
+        // Reset PostHog identification on logout
+        if (posthog) {
+          posthog.reset();
+        }
       }
       setIsLoading(false);
     };
@@ -66,7 +80,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [posthog]);
 
   return (
     <UserContext.Provider

@@ -30,6 +30,7 @@
     "langfuse": "^3.38.6",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
+    "posthog-js": "^1.315.1",
     "react": "catalog:",
     "react-dom": "catalog:",
     "sonner": "catalog:",

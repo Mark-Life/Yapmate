@@ -89,6 +89,10 @@ export default defineConfig(({ mode }) => {
       "process.env.PUBLIC_STRIPE_PUBLISHABLE_KEY": JSON.stringify(
         env.PUBLIC_STRIPE_PUBLISHABLE_KEY
       ),
+      "process.env.PUBLIC_POSTHOG_HOST": JSON.stringify(
+        env.PUBLIC_POSTHOG_HOST
+      ),
+      "process.env.PUBLIC_POSTHOG_KEY": JSON.stringify(env.PUBLIC_POSTHOG_KEY),
     },
 
     css: {

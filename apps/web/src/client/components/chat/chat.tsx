@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
+import { usePostHog } from "../../hooks/use-posthog";
 import {
   getSearchEnabled,
   setSearchEnabled as persistSearchEnabled,
@@ -38,6 +39,7 @@ export const Chat = ({
   onChatCreated,
 }: ChatProps) => {
   const queryClient = useQueryClient();
+  const { capture } = usePostHog();
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
@@ -46,6 +48,9 @@ export const Chat = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+
+  // For new chats, generate ID client-side; track if chat exists in DB
+  const [chatId] = useState(() => initialId ?? crypto.randomUUID());
 
   // Set default model on mount when models are loaded
   useEffect(() => {
@@ -66,21 +71,33 @@ export const Chat = ({
   /**
    * Handles model change with localStorage persistence
    */
-  const handleModelChange = useCallback((newModel: string) => {
-    setModel(newModel);
-    setLastUsedModel(newModel);
-  }, []);
+  const handleModelChange = useCallback(
+    (newModel: string) => {
+      capture("model_changed", {
+        previous_model: model,
+        new_model: newModel,
+        chat_id: chatId,
+      });
+      setModel(newModel);
+      setLastUsedModel(newModel);
+    },
+    [model, chatId, capture]
+  );
 
   /**
    * Handles search enabled change with localStorage persistence
    */
-  const handleSearchEnabledChange = useCallback((enabled: boolean) => {
-    setSearchEnabled(enabled);
-    persistSearchEnabled(enabled);
-  }, []);
-
-  // For new chats, generate ID client-side; track if chat exists in DB
-  const [chatId] = useState(() => initialId ?? crypto.randomUUID());
+  const handleSearchEnabledChange = useCallback(
+    (enabled: boolean) => {
+      capture("search_toggled", {
+        enabled,
+        chat_id: chatId,
+      });
+      setSearchEnabled(enabled);
+      persistSearchEnabled(enabled);
+    },
+    [chatId, capture]
+  );
   const [isNewChat, setIsNewChat] = useState(!initialId);
 
   // Mutation to create chat
@@ -172,6 +189,17 @@ export const Chat = ({
       onFinish: ({ messages: finishedMessages }) => {
         // Manually update messages state to ensure UI reflects completed stream
         setMessages(finishedMessages);
+        // Track message completion
+        const assistantMessage = finishedMessages.find(
+          (msg) => msg.role === "assistant"
+        );
+        capture("message_completed", {
+          chat_id: chatId,
+          model,
+          search_enabled: searchEnabled,
+          message_count: finishedMessages.length,
+          has_response: !!assistantMessage,
+        });
         // Invalidate cache so navigation back to this chat fetches fresh DB data
         queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
         // Update subscription usage count (message was saved before streaming)
@@ -189,6 +217,10 @@ export const Chat = ({
           "status" in error &&
           error.status === 402
         ) {
+          capture("rate_limit_exceeded", {
+            chat_id: chatId,
+            model,
+          });
           toast.error("Message limit reached", {
             description: "You've used all your free messages this month.",
             duration: 8000,
@@ -201,6 +233,11 @@ export const Chat = ({
           });
           return;
         }
+        capture("message_error", {
+          chat_id: chatId,
+          model,
+          error_type: error?.constructor?.name ?? "unknown",
+        });
         console.error("useChat error:", error);
       },
     });
@@ -213,12 +250,13 @@ export const Chat = ({
       return;
     }
 
+    capture("stream_stopped", { chat_id: chatId });
     try {
       await rpcClient.chat.stop({ chatId });
     } catch (error) {
       console.error("Stop request failed:", error);
     }
-  }, [chatId]);
+  }, [chatId, capture]);
 
   /**
    * Resumes an active stream on mount
@@ -303,6 +341,7 @@ export const Chat = ({
     // Create with placeholder - real title comes via stream
     await createChatMutation.mutateAsync({ id: chatId, title: "New chat" });
     setIsNewChat(false);
+    capture("chat_created", { chat_id: chatId });
 
     // Notify parent BEFORE URL update
     onChatCreated?.(chatId);
@@ -311,7 +350,7 @@ export const Chat = ({
     window.history.replaceState(null, "", `/chat/${chatId}`);
     // Notify context about URL change
     window.dispatchEvent(new CustomEvent("chatUrlChange"));
-  }, [isNewChat, chatId, createChatMutation, onChatCreated]);
+  }, [isNewChat, chatId, createChatMutation, onChatCreated, capture]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -322,6 +361,17 @@ export const Chat = ({
 
     // Create chat in DB on first message
     await ensureChatExists();
+
+    // Track message sent event
+    capture("message_sent", {
+      chat_id: chatId,
+      model,
+      search_enabled: searchEnabled,
+      has_text: hasText,
+      has_attachments: hasAttachments,
+      attachment_count: message.files?.length ?? 0,
+      is_new_chat: isNewChat,
+    });
 
     // Transport's prepareSendMessagesRequest handles the body
     sendMessage({
@@ -351,6 +401,12 @@ export const Chat = ({
       role?: "user" | "assistant",
       selectedModel?: string
     ) => {
+      capture("message_regenerated", {
+        chat_id: chatId,
+        message_id: messageId,
+        role,
+        model: selectedModel ?? model,
+      });
       handleRegenerateHelper({
         messageId,
         role,
@@ -363,7 +419,15 @@ export const Chat = ({
         regenerateRoleRef,
       });
     },
-    [messages, regenerate, setMessages, handleModelChange]
+    [
+      messages,
+      regenerate,
+      setMessages,
+      handleModelChange,
+      chatId,
+      model,
+      capture,
+    ]
   );
 
   /**
@@ -374,6 +438,11 @@ export const Chat = ({
    */
   const handleEdit = useCallback(
     (messageId: string, editedText: string) => {
+      capture("message_edited", {
+        chat_id: chatId,
+        message_id: messageId,
+        model,
+      });
       handleEditHelper({
         messageId,
         editedText,
@@ -384,7 +453,7 @@ export const Chat = ({
         editedTextRef,
       });
     },
-    [messages, regenerate, setMessages]
+    [messages, regenerate, setMessages, chatId, model, capture]
   );
 
   return (

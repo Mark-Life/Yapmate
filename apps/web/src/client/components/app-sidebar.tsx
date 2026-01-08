@@ -56,6 +56,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
 import { useUser } from "../contexts/user-context";
+import { usePostHog } from "../hooks/use-posthog";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 import { UpgradeSheet } from "./upgrade-sheet";
@@ -99,6 +100,7 @@ export const AppSidebar = ({
   const queryClient = useQueryClient();
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const { user } = useUser();
+  const { capture } = usePostHog();
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [chatToRename, setChatToRename] = useState<{
     id: string;
@@ -166,18 +168,20 @@ export const AppSidebar = ({
    * Handle logout
    */
   const handleLogout = useCallback(async () => {
+    capture("logout_clicked", { location: "sidebar" });
     const supabase = createClient();
     await supabase.auth.signOut({ scope: "local" });
     // Use window.location for full page navigation to ensure auth state is cleared
     window.location.href = "/login";
-  }, []);
+  }, [capture]);
 
   /**
    * Navigate to new chat
    */
   const openNewChat = useCallback(() => {
+    capture("new_chat_clicked", { location: "sidebar" });
     navigateToNew();
-  }, [navigateToNew]);
+  }, [navigateToNew, capture]);
 
   /**
    * Rename chat mutation
@@ -192,7 +196,8 @@ export const AppSidebar = ({
     }) => {
       await rpcClient.chats.update({ id: chatId, title });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      capture("chat_renamed", { chat_id: variables.chatId });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       setChatToRename(null);
       setRenameInput("");
@@ -207,6 +212,10 @@ export const AppSidebar = ({
       await rpcClient.chats.delete({ id: chatId });
     },
     onSuccess: (_, deletedChatId) => {
+      capture("chat_deleted", {
+        chat_id: deletedChatId,
+        was_active: deletedChatId === currentChatId,
+      });
       // Invalidate chats query to refresh the list
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       // Navigate away if deleted chat was active
@@ -258,15 +267,23 @@ export const AppSidebar = ({
   const handleManageSubscription = useCallback(async () => {
     try {
       const { url } = await rpcClient.subscription.createPortalSession();
+      capture("subscription_manage_clicked", {
+        action: "portal_opened",
+        current_tier: usage?.tier,
+      });
       // Track that portal was opened
       portalOpenedRef.current = Date.now();
       // Open Stripe Customer Portal in new tab
       window.open(url, "_blank");
     } catch {
+      capture("subscription_manage_clicked", {
+        action: "upgrade_sheet_opened",
+        current_tier: usage?.tier,
+      });
       // If no customer ID found, open upgrade sheet instead
       setUpgradeSheetOpen(true);
     }
-  }, []);
+  }, [capture, usage?.tier]);
 
   return (
     <Sidebar>
@@ -295,7 +312,13 @@ export const AppSidebar = ({
                             <SidebarMenuButton
                               className="w-full select-none"
                               isActive={chat.id === currentChatId}
-                              onClick={() => navigateToChat(chat.id)}
+                              onClick={() => {
+                                capture("chat_selected", {
+                                  chat_id: chat.id,
+                                  location: "sidebar",
+                                });
+                                navigateToChat(chat.id);
+                              }}
                               onMouseEnter={() => onPrefetch?.(chat.id)}
                               tooltip={chat.id}
                             >
@@ -343,7 +366,15 @@ export const AppSidebar = ({
             <UsageBadge
               count={usage.count}
               limit={usage.limit}
-              onUpgradeClick={() => setUpgradeSheetOpen(true)}
+              onUpgradeClick={() => {
+                capture("upgrade_clicked", {
+                  location: "usage_badge",
+                  current_tier: usage.tier,
+                  usage_count: usage.count,
+                  usage_limit: usage.limit,
+                });
+                setUpgradeSheetOpen(true);
+              }}
               resetsAt={usage.resetsAt}
               tier={usage.tier}
             />
