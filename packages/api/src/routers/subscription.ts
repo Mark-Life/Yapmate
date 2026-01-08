@@ -2,22 +2,17 @@
  * Subscription router - subscription and usage operations
  */
 import { ORPCError } from "@orpc/server";
-import { checkMessageLimit, getStripeCustomerId } from "@yapmate/db/service";
+import {
+  checkMessageLimit,
+  getStripeCustomerId,
+  getUserResetDate,
+} from "@yapmate/db/service";
 import { stripe } from "@yapmate/server/lib/stripe";
 import { protectedProcedure } from "../middleware";
 import {
   portalSessionResponseSchema,
   usageResponseSchema,
 } from "../schemas/subscription";
-
-/**
- * Calculates the first day of next month (when usage resets)
- */
-const getResetDate = (): string => {
-  const now = new Date();
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return nextMonth.toISOString();
-};
 
 /**
  * Subscription router - usage and subscription management
@@ -31,11 +26,12 @@ export const subscription = {
     .output(usageResponseSchema)
     .handler(async ({ context }) => {
       const result = await checkMessageLimit(context.userId);
+      const resetsAt = await getUserResetDate(context.userId);
       return {
         ...result,
         // Convert Infinity to null for JSON serialization
         limit: Number.isFinite(result.limit) ? result.limit : null,
-        resetsAt: getResetDate(),
+        resetsAt,
       };
     }),
 

@@ -5,7 +5,7 @@
  * Import directly from this file for type-safe queries:
  *   import { stripeSubscriptions } from "./schema/stripe";
  */
-import { boolean, jsonb, pgSchema, text } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgSchema, text } from "drizzle-orm/pg-core";
 
 const stripe = pgSchema("stripe");
 
@@ -16,6 +16,10 @@ export const stripeSubscriptions = stripe.table("subscriptions", {
   status: text(),
   /** Subscription items containing price/product info */
   items: jsonb(),
+  /** Unix timestamp when current billing period started */
+  currentPeriodStart: integer("current_period_start"),
+  /** Unix timestamp when current billing period ends (renewal date) */
+  currentPeriodEnd: integer("current_period_end"),
 });
 
 /** Stripe prices (formerly plans) - links products to pricing */

@@ -137,16 +137,36 @@ const handleTextStartChunk = (
   setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
 ): ResumeChunkState => {
   if (chunk.type === "text-start" && typeof chunk.id === "string") {
-    const newMessageId = crypto.randomUUID();
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: newMessageId,
-        role: "assistant",
-        parts: [{ type: "text", text: "" }],
-      } as ChatUIMessage,
-    ]);
-    return { messageId: newMessageId, text: "" };
+    let messageId: string | null = null;
+
+    setMessages((prev) => {
+      // Check if we're already processing this stream (last message is assistant with empty text)
+      const lastMessage = prev.at(-1);
+      if (
+        lastMessage?.role === "assistant" &&
+        lastMessage.parts.length === 1 &&
+        lastMessage.parts[0]?.type === "text" &&
+        lastMessage.parts[0]?.text === ""
+      ) {
+        // Already have a streaming message, reuse it
+        messageId = lastMessage.id;
+        return prev;
+      }
+
+      // Create new assistant message
+      const newMessageId = crypto.randomUUID();
+      messageId = newMessageId;
+      return [
+        ...prev,
+        {
+          id: newMessageId,
+          role: "assistant",
+          parts: [{ type: "text", text: "" }],
+        } as ChatUIMessage,
+      ];
+    });
+
+    return { messageId, text: "" };
   }
   return { messageId: null, text: "" };
 };

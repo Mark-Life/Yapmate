@@ -100,6 +100,7 @@ export const Chat = ({
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
   const editedTextRef = useRef<string | undefined>(undefined);
+  const isResumingStreamRef = useRef(false);
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
 
@@ -221,14 +222,27 @@ export const Chat = ({
       return;
     }
 
-    const isCancelled = { current: false };
+    // Don't resume if useChat is already handling a stream or if we're already resuming
+    if (
+      status === "streaming" ||
+      status === "submitted" ||
+      isResumingStreamRef.current
+    ) {
+      return;
+    }
 
-    resumeStream(chatId, setMessages, queryClient, isCancelled);
+    const isCancelled = { current: false };
+    isResumingStreamRef.current = true;
+
+    resumeStream(chatId, setMessages, queryClient, isCancelled).finally(() => {
+      isResumingStreamRef.current = false;
+    });
 
     return () => {
       isCancelled.current = true;
+      isResumingStreamRef.current = false;
     };
-  }, [chatId, isNewChat, setMessages, queryClient]);
+  }, [chatId, isNewChat, setMessages, queryClient, status]);
 
   /**
    * Listens for stream-started events from WebSocket sync
@@ -241,8 +255,21 @@ export const Chat = ({
 
     const handleStreamStarted = (event: CustomEvent<{ chatId: string }>) => {
       if (event.detail.chatId === chatId) {
+        // Don't resume if useChat is already handling a stream or if we're already resuming
+        if (
+          status === "streaming" ||
+          status === "submitted" ||
+          isResumingStreamRef.current
+        ) {
+          return;
+        }
         const isCancelled = { current: false };
-        resumeStream(chatId, setMessages, queryClient, isCancelled);
+        isResumingStreamRef.current = true;
+        resumeStream(chatId, setMessages, queryClient, isCancelled).finally(
+          () => {
+            isResumingStreamRef.current = false;
+          }
+        );
       }
     };
 
@@ -257,7 +284,7 @@ export const Chat = ({
         handleStreamStarted as EventListener
       );
     };
-  }, [chatId, isNewChat, setMessages, queryClient]);
+  }, [chatId, isNewChat, setMessages, queryClient, status]);
 
   /**
    * Creates chat in DB on first message, updates URL and sidebar
