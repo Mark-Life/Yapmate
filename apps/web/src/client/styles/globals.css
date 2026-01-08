@@ -91,7 +91,10 @@ html {
     --secondary-foreground: oklch(0.00% 0 0);
     --muted: light-dark(oklch(93.40% 0.0046 179.72), oklch(26.86% 0 0));
     --muted-foreground: light-dark(oklch(43.71% 0 0), oklch(71.53% 0 0));
-    --accent: light-dark(oklch(92.62% 0.015 192.09), oklch(26.86% 0 0));
+    --accent: light-dark(
+      oklch(0.9262 0.015 192.09),
+      oklch(0.7865 0.1167 191.56 / 12.5%)
+    );
     --accent-foreground: light-dark(oklch(20.44% 0 0), oklch(98.48% 0 0));
     --destructive: light-dark(
       oklch(54.26% 0.1899 27.12),

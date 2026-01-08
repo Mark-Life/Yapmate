@@ -6,6 +6,7 @@ import { CheckoutSuccessPage } from "./pages/checkout-success";
 import { LoginPage } from "./pages/login";
 import { MobileAuthPage } from "./pages/mobile-auth";
 import { NotFoundPage } from "./pages/not-found";
+import { SettingsLayout } from "./pages/settings/settings-layout";
 
 /**
  * Loading component shown during auth check
@@ -50,7 +51,8 @@ export const Router = () => {
       const isProtectedRoute =
         pathname === "/" ||
         pathname.startsWith("/chat") ||
-        pathname.startsWith("/checkout");
+        pathname.startsWith("/checkout") ||
+        pathname.startsWith("/settings");
       if (isProtectedRoute) {
         // Preserve current URL params as redirect parameter
         const currentSearch = window.location.search;
@@ -88,6 +90,14 @@ export const Router = () => {
       return <CheckoutSuccessPage />;
     }
     // Other checkout routes fall through to NotFound
+  }
+
+  // Settings page - requires authentication
+  if (pathname.startsWith("/settings")) {
+    if (!user) {
+      return <AuthLoading />;
+    }
+    return <SettingsLayout />;
   }
 
   // Protected routes - only render if authenticated
