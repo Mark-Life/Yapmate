@@ -1,3 +1,5 @@
+import { StaticLayout } from "./static-layout";
+
 /**
  * Hero section with title
  */
@@ -157,22 +159,8 @@ const ContentSection = () => (
  * Privacy Policy page component
  */
 export const PolicyPage = () => (
-  <div className="min-h-screen bg-background text-foreground">
-    <div className="mx-auto max-w-8xl px-4">
-      <HeroSection />
-      <ContentSection />
-    </div>
-    <footer className="border-border border-t py-8 text-center text-muted-foreground text-sm">
-      © {new Date().getFullYear()}{" "}
-      <a
-        className="transition-opacity hover:opacity-80"
-        href="https://mark-life.com"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        Mark Life Ltd
-      </a>
-      . All rights reserved.
-    </footer>
-  </div>
+  <StaticLayout>
+    <HeroSection />
+    <ContentSection />
+  </StaticLayout>
 );

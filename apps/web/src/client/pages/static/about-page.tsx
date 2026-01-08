@@ -11,8 +11,8 @@ import {
 import { useCallback } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useUser } from "../../contexts/user-context";
-
 import { ModelsExplorer } from "./models-explorer";
+import { StaticLayout } from "./static-layout";
 
 /**
  * AI provider data for the models grid
@@ -260,7 +260,7 @@ const PricingSection = () => {
   }, []);
 
   return (
-    <section className="mx-auto max-w-4xl py-16">
+    <section className="mx-auto max-w-4xl py-16" id="pricing">
       <h2 className="mb-4 text-center font-bold text-3xl">Simple Pricing</h2>
       <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
         Start free, upgrade when you need more. No hidden fees.
@@ -297,26 +297,14 @@ const CTASection = () => (
  * About/Landing page component
  */
 export const AboutPage = () => (
-  <div className="min-h-screen bg-background text-foreground">
-    <div className="mx-auto max-w-8xl px-4">
-      <HeroSection />
+  <StaticLayout>
+    <HeroSection />
+    <div id="models">
       <ModelsExplorer />
-      <FeaturesSection />
-      <PricingSection />
-      {/* <PlatformSection /> */}
-      <CTASection />
     </div>
-    <footer className="border-border border-t py-8 text-center text-muted-foreground text-sm">
-      © {new Date().getFullYear()}{" "}
-      <a
-        className="transition-opacity hover:opacity-80"
-        href="https://mark-life.com"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        Mark Life Ltd
-      </a>
-      . All rights reserved.
-    </footer>
-  </div>
+    <FeaturesSection />
+    <PricingSection />
+    {/* <PlatformSection /> */}
+    <CTASection />
+  </StaticLayout>
 );

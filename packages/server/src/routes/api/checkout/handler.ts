@@ -64,9 +64,9 @@ export const checkoutHandler = {
       allow_promotion_codes: true,
       tax_id_collection: { enabled: true },
       ...(brandingSettings && { branding_settings: brandingSettings }),
-      // consent_collection: {
-      //   terms_of_service: "required",
-      // },
+      consent_collection: {
+        terms_of_service: "required",
+      },
     });
 
     return Response.json({ clientSecret: session.client_secret });
