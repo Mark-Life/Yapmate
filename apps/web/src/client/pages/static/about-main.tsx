@@ -1,5 +1,7 @@
-import { useLayoutEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useLayoutEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { UserProvider } from "../../contexts/user-context";
 import "../../styles/globals.css";
 import { AboutPage } from "./about-page";
 
@@ -22,11 +24,31 @@ const useSystemTheme = () => {
 };
 
 /**
- * Root wrapper that applies system theme
+ * Creates a QueryClient instance with default options
+ */
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000, // 1 minute
+      },
+    },
+  });
+
+/**
+ * Root wrapper that applies system theme and providers
  */
 const Root = () => {
   useSystemTheme();
-  return <AboutPage />;
+  const [queryClient] = useState(createQueryClient);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <AboutPage />
+      </UserProvider>
+    </QueryClientProvider>
+  );
 };
 
 const container = document.getElementById("root");

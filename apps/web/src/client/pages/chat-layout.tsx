@@ -17,6 +17,29 @@ import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 
 /**
+ * Checks URL params for upgrade intent and triggers upgrade sheet
+ */
+const useUpgradeFromUrl = () => {
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const upgrade = urlParams.get("upgrade");
+    const tier = urlParams.get("tier");
+
+    if (upgrade === "true") {
+      // Dispatch event to open upgrade sheet
+      // AppSidebar listens to this event
+      window.dispatchEvent(
+        new CustomEvent("open-upgrade-sheet", { detail: { tier } })
+      );
+
+      // Clean up URL params
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, []);
+};
+
+/**
  * Header controls - sidebar trigger + new chat button when collapsed
  */
 const HeaderControls = () => {
@@ -154,6 +177,9 @@ export const ChatLayout = () => {
     queryKey: ["chats"],
     queryFn: fetchChats,
   });
+
+  // Check for upgrade URL param and trigger upgrade sheet
+  useUpgradeFromUrl();
 
   const prefetchMessages = useCallback(
     (chatId: string) => {

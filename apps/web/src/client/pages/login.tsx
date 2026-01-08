@@ -179,11 +179,16 @@ export const LoginPage = () => {
   }>({});
 
   /**
-   * Redirect authenticated users to home page
+   * Redirect authenticated users to home page or redirect URL
    */
   useEffect(() => {
     if (!isLoading && user) {
-      window.history.pushState(null, "", "/");
+      // Check for redirect parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get("redirect");
+      const redirectPath = redirect || "/";
+
+      window.history.pushState(null, "", redirectPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [isLoading, user]);
