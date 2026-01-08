@@ -22,10 +22,24 @@ import { rpcClient } from "../lib/rpc-client";
 import { getStripeBrandingColors } from "../styles/colors";
 import { useTheme } from "./theme-provider";
 
-/** Stripe publishable key from environment */
-const stripePromise = loadStripe(
-  process.env.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
-);
+/**
+ * Lazy-loaded Stripe promise
+ * Only initialized when actually needed (when checkout is shown)
+ * This prevents Stripe telemetry requests from being blocked by ad blockers
+ * when the component is imported but not used
+ */
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+
+/**
+ * Gets or creates Stripe promise lazily
+ * Only loads Stripe.js when checkout is actually needed
+ */
+const getStripePromise = () => {
+  if (!stripePromise) {
+    stripePromise = loadStripe(process.env.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
+  }
+  return stripePromise;
+};
 
 type UpgradeSheetProps = {
   open: boolean;
@@ -182,6 +196,19 @@ export const UpgradeSheet = ({
   );
 
   /**
+   * Lazy-load Stripe promise only when checkout is actually rendered
+   * This prevents Stripe from initializing and making telemetry requests
+   * until the user actually selects a tier and checkout is shown
+   */
+  const stripePromiseMemo = useMemo(() => {
+    // Only load Stripe when we have a client secret (checkout is active)
+    if (clientSecret && open) {
+      return getStripePromise();
+    }
+    return null;
+  }, [clientSecret, open]);
+
+  /**
    * Render checkout content based on current state
    */
   const renderContent = () => {
@@ -221,14 +248,14 @@ export const UpgradeSheet = ({
       );
     }
 
-    if (clientSecret) {
+    if (clientSecret && stripePromiseMemo) {
       return (
         <EmbeddedCheckoutProvider
           options={{
             clientSecret,
             onComplete: handleComplete as () => void,
           }}
-          stripe={stripePromise}
+          stripe={stripePromiseMemo}
         >
           <EmbeddedCheckout />
         </EmbeddedCheckoutProvider>
