@@ -1,4 +1,4 @@
-import { PricingCards } from "@yapmate/components/ui/pricing-cards";
+import { PRICE_IDS, PricingCards } from "@yapmate/components/ui/pricing-cards";
 import {
   Brain,
   Cloud,
@@ -8,7 +8,9 @@ import {
   Paperclip,
   Zap,
 } from "lucide-react";
+import { useCallback } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
+import { useUser } from "../../contexts/user-context";
 
 import { ModelsExplorer } from "./models-explorer";
 
@@ -86,6 +88,10 @@ const HeroSection = () => (
         <a
           className="inline-flex items-center justify-center rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = "/";
+          }}
         >
           Start Chatting
         </a>
@@ -214,15 +220,58 @@ const PlatformSection = () => (
 /**
  * Pricing section with subscription tiers
  */
-const PricingSection = () => (
-  <section className="mx-auto max-w-4xl py-16">
-    <h2 className="mb-4 text-center font-bold text-3xl">Simple Pricing</h2>
-    <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
-      Start free, upgrade when you need more. No hidden fees.
-    </p>
-    <PricingCards />
-  </section>
-);
+const PricingSection = () => {
+  const { user } = useUser();
+
+  /**
+   * Handles tier selection from pricing cards
+   * If authenticated: navigate to app with upgrade param
+   * If not authenticated: navigate to login (middleware will handle redirect)
+   */
+  const handleSelectTier = useCallback(
+    (priceId: string) => {
+      if (!user) {
+        // Not authenticated - redirect to login
+        // After login, middleware will redirect to app, but we lose the upgrade intent
+        // So we'll use a URL param that login can preserve
+        window.location.href = `/login?redirect=${encodeURIComponent("/?upgrade=true")}`;
+        return;
+      }
+
+      // Authenticated - navigate to app with upgrade param
+      // Extract tier from priceId
+      const tier = Object.entries(PRICE_IDS).find(
+        ([, id]) => id === priceId
+      )?.[0];
+      const upgradeUrl = tier
+        ? `/?upgrade=true&tier=${tier}`
+        : "/?upgrade=true";
+      window.location.href = upgradeUrl;
+    },
+    [user]
+  );
+
+  /**
+   * Handles "Get Started" click on free tier
+   * Navigates to root page - router will handle auth redirect if needed
+   */
+  const handleGetStarted = useCallback(() => {
+    window.location.href = "/";
+  }, []);
+
+  return (
+    <section className="mx-auto max-w-4xl py-16">
+      <h2 className="mb-4 text-center font-bold text-3xl">Simple Pricing</h2>
+      <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
+        Start free, upgrade when you need more. No hidden fees.
+      </p>
+      <PricingCards
+        onGetStarted={handleGetStarted}
+        onSelectTier={handleSelectTier}
+      />
+    </section>
+  );
+};
 
 /**
  * Call to action footer section

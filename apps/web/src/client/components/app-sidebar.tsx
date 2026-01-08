@@ -123,10 +123,14 @@ export const AppSidebar = ({
   });
 
   /**
-   * Listen for open-upgrade-sheet events (e.g., from rate limit toast)
+   * Listen for open-upgrade-sheet events (e.g., from rate limit toast or URL params)
    */
   useEffect(() => {
-    const handleOpenUpgradeSheet = () => setUpgradeSheetOpen(true);
+    const handleOpenUpgradeSheet = () => {
+      setUpgradeSheetOpen(true);
+      // If tier is specified in event detail, we could auto-select it
+      // For now, just open the sheet and let user select
+    };
     window.addEventListener("open-upgrade-sheet", handleOpenUpgradeSheet);
     return () => {
       window.removeEventListener("open-upgrade-sheet", handleOpenUpgradeSheet);

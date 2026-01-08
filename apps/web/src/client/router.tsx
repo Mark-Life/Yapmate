@@ -43,6 +43,7 @@ export const Router = () => {
 
   /**
    * Redirect to login if not authenticated and trying to access protected route
+   * Preserves URL params as redirect parameter
    */
   useEffect(() => {
     if (!(isLoading || user)) {
@@ -51,7 +52,13 @@ export const Router = () => {
         pathname.startsWith("/chat") ||
         pathname.startsWith("/checkout");
       if (isProtectedRoute) {
-        window.history.pushState(null, "", "/login");
+        // Preserve current URL params as redirect parameter
+        const currentSearch = window.location.search;
+        const redirectPath = currentSearch
+          ? `${pathname}${currentSearch}`
+          : pathname;
+        const loginUrl = `/login?redirect=${encodeURIComponent(redirectPath)}`;
+        window.history.pushState(null, "", loginUrl);
         setPathname("/login");
       }
     }

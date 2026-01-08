@@ -79,6 +79,8 @@ type PricingCardsProps = {
   onSelectTier?: (priceId: string) => void;
   /** Called when user wants to manage subscription (current tier, downgrades, or cancel) */
   onManageSubscription?: () => void;
+  /** Called when user clicks "Get Started" on free tier (public/unauthenticated view) */
+  onGetStarted?: () => void;
   /** Loading state for upgrade action */
   isLoading?: boolean;
   /** Compact mode for smaller containers */
@@ -93,6 +95,7 @@ export const PricingCards = ({
   currentTier = null,
   onSelectTier,
   onManageSubscription,
+  onGetStarted,
   isLoading = false,
   compact = false,
 }: PricingCardsProps) => {
@@ -125,11 +128,16 @@ export const PricingCards = ({
    * Handle tier selection
    * For upgrades: calls onSelectTier with priceId
    * For current tier, downgrades, or free: calls onManageSubscription to open portal
+   * For free tier when unauthenticated: calls onGetStarted
    */
   const handleSelect = (tierId: PricingTier) => {
     if (!currentTier) {
-      // No subscription - handle upgrade
-      if (tierId === "free" || !onSelectTier) return;
+      // No subscription - handle upgrade or get started
+      if (tierId === "free") {
+        onGetStarted?.();
+        return;
+      }
+      if (!onSelectTier) return;
       const priceId = PRICE_IDS[tierId as keyof typeof PRICE_IDS];
       if (priceId) onSelectTier(priceId);
       return;
