@@ -117,7 +117,7 @@ export const UpgradeSheet = ({
   return (
     <Sheet onOpenChange={handleOpenChange} open={open}>
       <SheetContent
-        className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-7xl"
+        className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-6xl"
         side="right"
       >
         <SheetHeader>

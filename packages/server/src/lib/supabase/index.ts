@@ -153,3 +153,76 @@ export const getCurrentUserId = async (
     return null;
   }
 };
+
+/**
+ * Gets user from Bearer token authentication
+ */
+const getUserFromBearerToken = async (
+  token: string
+): Promise<{ id: string; email?: string } | null> => {
+  const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+  const { data: claims, error: claimsError } =
+    await supabase.auth.getClaims(token);
+
+  if (claimsError) {
+    return null;
+  }
+
+  if (claims?.claims?.sub && typeof claims.claims.sub === "string") {
+    return {
+      id: claims.claims.sub,
+      email: claims.claims.email as string | undefined,
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Gets user from cookie-based authentication
+ */
+const getUserFromCookies = async (
+  req: Request
+): Promise<{ id: string; email?: string } | null> => {
+  const supabase = createClient(req);
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    return null;
+  }
+
+  if (!data?.user?.id || typeof data.user.id !== "string") {
+    return null;
+  }
+
+  return {
+    id: data.user.id,
+    email: data.user.email,
+  };
+};
+
+/**
+ * Gets current user from Supabase auth
+ * Supports both Bearer token (for mobile apps) and cookies (for web apps)
+ * Returns user object with email and other user data
+ */
+export const getCurrentUser = async (
+  req: Request
+): Promise<{ id: string; email?: string } | null> => {
+  try {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : authHeader;
+
+    if (token) {
+      const user = await getUserFromBearerToken(token);
+      return user;
+    }
+
+    const user = await getUserFromCookies(req);
+    return user;
+  } catch {
+    return null;
+  }
+};
