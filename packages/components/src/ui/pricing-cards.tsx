@@ -3,7 +3,8 @@
  * Used in public about page and in-app upgrade flow
  */
 import { cn } from "@yapmate/components/lib/utils";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, InfoIcon } from "lucide-react";
+import { Alert, AlertDescription } from "./alert";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import {
@@ -44,7 +45,7 @@ const TIERS: {
   },
   {
     id: "hobby",
-    name: "Hobby",
+    name: "Hobby Yapper",
     price: "$7",
     priceDetail: "/month",
     messages: "1,000 messages/month",
@@ -58,7 +59,7 @@ const TIERS: {
   },
   {
     id: "pro",
-    name: "Pro",
+    name: "Pro Yapper",
     price: "$15",
     priceDetail: "/month",
     messages: "3,000 messages/month",
@@ -128,15 +129,24 @@ export const PricingCards = ({
   };
 
   return (
-    <div
-      className={cn(
-        "grid gap-4",
-        compact
-          ? "grid-cols-1 md:grid-cols-3"
-          : "grid-cols-1 md:grid-cols-3"
-      )}
-    >
-      {TIERS.map((tier) => {
+    <div className="space-y-4">
+      <Alert className="text-secondary border-secondary/40">
+        <InfoIcon />
+        <AlertDescription>
+          <strong>Alpha Stage:</strong> We're in early alpha and actively
+          learning from usage patterns. Pricing may be adjusted as we gather
+          real-world data to ensure fair and sustainable plans for everyone.
+        </AlertDescription>
+      </Alert>
+      <div
+        className={cn(
+          "grid gap-4",
+          compact
+            ? "grid-cols-1 md:grid-cols-3"
+            : "grid-cols-1 md:grid-cols-3"
+        )}
+      >
+        {TIERS.map((tier) => {
         const isCurrent = tier.id === currentTier;
         const isPopular = tier.popular && !currentTier;
 
@@ -215,6 +225,7 @@ export const PricingCards = ({
           </Card>
         );
       })}
+      </div>
     </div>
   );
 };

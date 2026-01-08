@@ -27,16 +27,15 @@ const TIER_LIMITS: Record<Tier, number> = {
 };
 
 /**
- * Counts user messages in the current calendar month
+ * Counts user messages since a specific date
  * @param userId - ID of the user
- * @returns Number of user messages sent this month
+ * @param periodStart - Start date of the period to count from
+ * @returns Number of user messages sent since periodStart
  */
-export const getUserMonthlyMessageCount = async (
-  userId: string
+const getUserMessageCountSince = async (
+  userId: string,
+  periodStart: Date
 ): Promise<number> => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(messages)
@@ -45,23 +44,40 @@ export const getUserMonthlyMessageCount = async (
       and(
         eq(chats.userId, userId),
         eq(messages.role, "user"),
-        gte(messages.createdAt, startOfMonth)
+        gte(messages.createdAt, periodStart)
       )
     );
 
   return Number(result[0]?.count ?? 0);
 };
 
+/**
+ * Counts user messages in the current calendar month (for free users)
+ * @param userId - ID of the user
+ * @returns Number of user messages sent this month
+ */
+export const getUserMonthlyMessageCount = async (
+  userId: string
+): Promise<number> => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return await getUserMessageCountSince(userId, startOfMonth);
+};
+
 /** Result of getUserSubscriptionInfo query */
 interface SubscriptionInfo {
   unlimitedAccessGrantedAt: Date | null;
   productId: string | null;
+  /** Unix timestamp when current billing period ends (renewal date), null for free users */
+  currentPeriodEnd: number | null;
+  /** Unix timestamp when current billing period started, null for free users */
+  currentPeriodStart: number | null;
 }
 
 /**
  * Fetches user subscription info in a single query (user + stripe subscription JOIN)
  * @param userId - ID of the user
- * @returns User's unlimited access status and active subscription product ID
+ * @returns User's unlimited access status, active subscription product ID, and billing period info
  */
 const getUserSubscriptionInfo = async (
   userId: string
@@ -71,6 +87,8 @@ const getUserSubscriptionInfo = async (
       unlimitedAccessGrantedAt: users.unlimitedAccessGrantedAt,
       // Extract product ID from items JSONB: items->'data'->0->'price'->>'product'
       productId: sql<string>`${stripeSubscriptions.items}->'data'->0->'price'->>'product'`,
+      currentPeriodEnd: stripeSubscriptions.currentPeriodEnd,
+      currentPeriodStart: stripeSubscriptions.currentPeriodStart,
     })
     .from(users)
     .leftJoin(
@@ -93,6 +111,34 @@ const getUserSubscriptionInfo = async (
  */
 const deriveTier = (productId: string | null): Tier =>
   productId ? (PRODUCT_TIER_MAP[productId] ?? "free") : "free";
+
+/**
+ * Gets the reset date for a user based on their subscription status
+ * @param userId - ID of the user
+ * @returns ISO string of reset date (subscription renewal for paid users, first of next month for free users)
+ */
+export const getUserResetDate = async (userId: string): Promise<string> => {
+  const info = await getUserSubscriptionInfo(userId);
+
+  if (!info) {
+    // User not found - default to next month
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return nextMonth.toISOString();
+  }
+
+  // For subscribed users, use subscription renewal date
+  if (info.currentPeriodEnd !== null) {
+    // Convert Unix timestamp to Date
+    const renewalDate = new Date(info.currentPeriodEnd * 1000);
+    return renewalDate.toISOString();
+  }
+
+  // For free users, use first of next month
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return nextMonth.toISOString();
+};
 
 /**
  * Checks if user is allowed to send a message based on subscription tier
@@ -129,8 +175,18 @@ export const checkMessageLimit = async (
   const tier = deriveTier(info.productId);
   const limit = TIER_LIMITS[tier];
 
-  // Count messages this month
-  const count = await getUserMonthlyMessageCount(userId);
+  // Count messages based on subscription status
+  // For subscribed users: count from billing period start
+  // For free users: count from calendar month start
+  let count: number;
+  if (info.currentPeriodStart !== null) {
+    // Subscribed user - count from billing period start
+    const periodStart = new Date(info.currentPeriodStart * 1000);
+    count = await getUserMessageCountSince(userId, periodStart);
+  } else {
+    // Free user - count from calendar month start
+    count = await getUserMonthlyMessageCount(userId);
+  }
 
   return {
     allowed: count < limit,
