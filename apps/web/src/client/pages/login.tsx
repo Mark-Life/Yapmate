@@ -6,10 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@yapmate/components/ui/card";
-import { Input } from "@yapmate/components/ui/input";
-import { CheckCircle2, KeyRound, Loader2, Lock, Mail } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
-import { z } from "zod";
+import { EmailConfirmationView } from "../components/auth/email-confirmation-view";
+import { EmailForm } from "../components/auth/email-form";
+import { OtpForm } from "../components/auth/otp-form";
+import { PasswordForm } from "../components/auth/password-form";
+import { SuccessView } from "../components/auth/success-view";
 import { useUser } from "../contexts/user-context";
 import {
   sendMagicLink,
@@ -18,140 +21,8 @@ import {
   verifyOtp,
 } from "../lib/auth";
 
-type State = "idle" | "loading" | "success" | "error";
 type Mode = "login" | "signup";
 type AuthMethod = "password" | "magiclink";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Password validation schema with security requirements
- */
-const passwordSchema = z
-  .string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(
-    /[^a-zA-Z0-9]/,
-    "Password must contain at least one special character"
-  );
-
-/**
- * Email input field component
- */
-const EmailInput = ({
-  email,
-  error,
-  onChange,
-  disabled,
-}: {
-  email: string;
-  error?: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Input
-      autoComplete="email"
-      autoFocus
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="you@example.com"
-      required
-      type="email"
-      value={email}
-    />
-    {error ? <p className="text-destructive text-sm">{error}</p> : null}
-  </div>
-);
-
-/**
- * Password input field component
- */
-const PasswordInput = ({
-  password,
-  error,
-  onChange,
-  disabled,
-}: {
-  password: string;
-  error?: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Input
-      autoComplete={password ? "current-password" : "new-password"}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Password"
-      required
-      type="password"
-      value={password}
-    />
-    {error ? <p className="text-destructive text-sm">{error}</p> : null}
-  </div>
-);
-
-/**
- * Confirm password input field component
- */
-const ConfirmPasswordInput = ({
-  confirmPassword,
-  error,
-  onChange,
-  disabled,
-}: {
-  confirmPassword: string;
-  error?: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Input
-      autoComplete="new-password"
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Confirm password"
-      required
-      type="password"
-      value={confirmPassword}
-    />
-    {error ? <p className="text-destructive text-sm">{error}</p> : null}
-  </div>
-);
-
-/**
- * OTP input field component
- */
-const OtpInput = ({
-  otp,
-  error,
-  onChange,
-  disabled,
-}: {
-  otp: string;
-  error?: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Input
-      disabled={disabled}
-      maxLength={8}
-      onChange={(e) => {
-        const value = e.target.value.replace(/\D/g, "");
-        onChange(value);
-      }}
-      placeholder="Enter 8-digit code"
-      required
-      type="text"
-      value={otp}
-    />
-    {error ? <p className="text-destructive text-sm">{error}</p> : null}
-  </div>
-);
 
 /**
  * Login page with password and magic link authentication
@@ -163,27 +34,18 @@ export const LoginPage = () => {
   const [mode, setMode] = useState<Mode>("login");
   const [authMethod, setAuthMethod] = useState<AuthMethod>("magiclink");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
-  const [state, setState] = useState<State>("idle");
   const [isPending, setIsPending] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-    otp?: string;
-  }>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   /**
    * Redirect authenticated users to home page or redirect URL
    */
   useEffect(() => {
     if (!isLoading && user) {
-      // Check for redirect parameter in URL
       const urlParams = new URLSearchParams(window.location.search);
       const redirect = urlParams.get("redirect");
       const redirectPath = redirect || "/";
@@ -194,115 +56,27 @@ export const LoginPage = () => {
   }, [isLoading, user]);
 
   /**
-   * Validates email format
-   */
-  const validateEmail = (): boolean => {
-    const errors: { email?: string } = {};
-
-    if (!email.trim()) {
-      errors.email = "Email is required";
-    } else if (!EMAIL_REGEX.test(email)) {
-      errors.email = "Please enter a valid email address";
-    }
-
-    setFieldErrors((prev) => ({ ...prev, ...errors }));
-    return Object.keys(errors).length === 0;
-  };
-
-  /**
-   * Validates password using Zod schema
-   */
-  const validatePasswordWithZod = (): string | null => {
-    if (password.trim()) {
-      const result = passwordSchema.safeParse(password);
-      if (result.success) {
-        return null;
-      }
-      return result.error.issues[0]?.message ?? "Invalid password";
-    }
-    return "Password is required";
-  };
-
-  /**
-   * Validates confirm password matches
-   */
-  const validateConfirmPassword = (): string | null => {
-    if (!confirmPassword.trim()) {
-      return "Please confirm your password";
-    }
-    if (password !== confirmPassword) {
-      return "Passwords do not match";
-    }
-    return null;
-  };
-
-  /**
-   * Validates password requirements using Zod schema
-   */
-  const validatePassword = (): boolean => {
-    const errors: { password?: string; confirmPassword?: string } = {};
-
-    const passwordError = validatePasswordWithZod();
-    if (passwordError) {
-      errors.password = passwordError;
-    }
-
-    // For signup, validate confirm password
-    if (mode === "signup") {
-      const confirmError = validateConfirmPassword();
-      if (confirmError) {
-        errors.confirmPassword = confirmError;
-      }
-    }
-
-    setFieldErrors((prev) => ({ ...prev, ...errors }));
-    return Object.keys(errors).length === 0;
-  };
-
-  /**
-   * Validates OTP code format
-   */
-  const validateOtp = (): boolean => {
-    const errors: { otp?: string } = {};
-
-    if (!otp.trim()) {
-      errors.otp = "OTP code is required";
-    } else if (otp.length !== 8) {
-      errors.otp = "OTP code must be 8 digits";
-    }
-
-    setFieldErrors((prev) => ({ ...prev, ...errors }));
-    return Object.keys(errors).length === 0;
-  };
-
-  /**
    * Handles password-based authentication
    */
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!(validateEmail() && validatePassword())) {
-      return;
-    }
-
+  const handlePasswordSubmit = async (values: {
+    email: string;
+    password: string;
+  }) => {
     setIsPending(true);
-    setState("loading");
-    setFieldErrors({});
+    setAuthError(null);
 
     const result =
       mode === "login"
-        ? await signInWithPassword(email.trim(), password)
-        : await signUpWithPassword(email.trim(), password);
+        ? await signInWithPassword(values.email.trim(), values.password)
+        : await signUpWithPassword(values.email.trim(), values.password);
 
     if (result.success) {
-      // Check if email confirmation is required (signup with confirm email enabled)
       if (result.needsEmailConfirmation) {
         setNeedsEmailConfirmation(true);
       }
-      setState("success");
-      // Redirect will happen via useEffect when user state updates (if session exists)
+      // Redirect will happen via useEffect when user state updates
     } else {
-      setState("error");
-      setFieldErrors({ password: result.error });
+      setAuthError(result.error ?? "An error occurred");
     }
     setIsPending(false);
   };
@@ -310,24 +84,17 @@ export const LoginPage = () => {
   /**
    * Handles magic link submission
    */
-  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateEmail()) {
-      return;
-    }
-
+  const handleMagicLinkSubmit = async (emailValue: string) => {
     setIsPending(true);
-    setState("loading");
-    setFieldErrors({});
+    setAuthError(null);
+    setEmail(emailValue.trim());
 
-    const result = await sendMagicLink(email.trim());
+    const result = await sendMagicLink(emailValue.trim());
 
     if (result.success) {
-      setState("success");
-      setShowOtpInput(true);
+      setShowSuccess(true);
     } else {
-      setState("error");
-      setFieldErrors({ email: result.error });
+      setAuthError(result.error ?? "An error occurred");
     }
     setIsPending(false);
   };
@@ -335,22 +102,16 @@ export const LoginPage = () => {
   /**
    * Handles OTP verification
    */
-  const handleOtpVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateOtp()) {
-      return;
-    }
-
+  const handleOtpVerify = async (otp: string) => {
     setIsVerifyingOtp(true);
-    setFieldErrors({});
+    setAuthError(null);
 
     const result = await verifyOtp(email.trim(), otp.trim(), "email");
 
     if (result.success) {
-      setState("success");
       // Redirect will happen via useEffect when user state updates
     } else {
-      setFieldErrors({ otp: result.error });
+      setAuthError(result.error ?? "An error occurred");
     }
     setIsVerifyingOtp(false);
   };
@@ -360,81 +121,24 @@ export const LoginPage = () => {
    */
   const handleBackToEmail = () => {
     setShowOtpInput(false);
-    setOtp("");
-    setState("idle");
-    setFieldErrors((prev) => ({ ...prev, otp: undefined }));
+    setShowSuccess(false);
+    setAuthError(null);
   };
 
   /**
-   * Clears email error when user types
-   */
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    if (fieldErrors.email) {
-      setFieldErrors((prev) => ({ ...prev, email: undefined }));
-    }
-  };
-
-  /**
-   * Clears password error when user types
-   */
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    if (fieldErrors.password) {
-      setFieldErrors((prev) => ({ ...prev, password: undefined }));
-    }
-    // Clear confirm password error if passwords now match
-    if (
-      fieldErrors.confirmPassword &&
-      mode === "signup" &&
-      value === confirmPassword
-    ) {
-      setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-    }
-  };
-
-  /**
-   * Clears confirm password error when user types
-   */
-  const handleConfirmPasswordChange = (value: string) => {
-    setConfirmPassword(value);
-    if (fieldErrors.confirmPassword) {
-      setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-    }
-  };
-
-  /**
-   * Clears OTP error when user types
-   */
-  const handleOtpChange = (value: string) => {
-    setOtp(value);
-    if (fieldErrors.otp) {
-      setFieldErrors((prev) => ({ ...prev, otp: undefined }));
-    }
-  };
-
-  /**
-   * Handles switching auth method and clears confirm password
+   * Handles switching auth method
    */
   const handleAuthMethodToggle = () => {
     setAuthMethod(authMethod === "password" ? "magiclink" : "password");
-    setConfirmPassword("");
-    setFieldErrors((prev) => ({
-      ...prev,
-      confirmPassword: undefined,
-    }));
+    setAuthError(null);
   };
 
   /**
-   * Handles switching mode and clears confirm password
+   * Handles switching mode
    */
   const handleModeToggle = () => {
     setMode(mode === "login" ? "signup" : "login");
-    setConfirmPassword("");
-    setFieldErrors((prev) => ({
-      ...prev,
-      confirmPassword: undefined,
-    }));
+    setAuthError(null);
   };
 
   /**
@@ -451,188 +155,76 @@ export const LoginPage = () => {
       : "Enter your email to receive a link to sign up.";
   };
 
-  /**
-   * Gets the button text based on state and auth method
-   */
-  const getButtonText = (): string => {
-    if (isPending) {
-      return authMethod === "password" ? buttonText : "Sending...";
-    }
-    return authMethod === "password" ? buttonText : "Send login link";
-  };
-
-  /**
-   * Renders the OTP input view
-   */
-  const renderOtpView = () => (
-    <div className="flex min-h-svh items-center justify-center bg-linear-to-br from-background via-background to-accent/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
-            <KeyRound className="size-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Enter verification code</CardTitle>
-          <CardDescription className="text-base">
-            We sent an 8-digit code to{" "}
-            <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleOtpVerify}>
-            <div className="space-y-2">
-              <Input className="bg-muted" disabled type="email" value={email} />
-            </div>
-            <OtpInput
-              disabled={isVerifyingOtp}
-              error={fieldErrors.otp}
-              onChange={handleOtpChange}
-              otp={otp}
-            />
-            <div className="flex gap-3">
-              <Button
-                className="flex-1"
-                disabled={isVerifyingOtp}
-                onClick={handleBackToEmail}
-                type="button"
-                variant="outline"
-              >
-                Back
-              </Button>
-              <Button
-                className="flex-1"
-                disabled={isVerifyingOtp}
-                type="submit"
-              >
-                {isVerifyingOtp ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify OTP"
-                )}
-              </Button>
-            </div>
-            <div className="mt-4 rounded-lg bg-muted p-4">
-              <p className="text-muted-foreground text-sm">
-                💡 You can also click the link in your email to sign in
-                automatically.
-              </p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  /**
-   * Renders the success view for magic link
-   */
-  const renderSuccessView = () => (
-    <div className="flex min-h-svh items-center justify-center bg-linear-to-br from-background via-background to-accent/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
-            <CheckCircle2 className="size-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Check your email</CardTitle>
-          <CardDescription className="text-base">
-            We sent a link to{" "}
-            <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-center">
-          <p className="text-muted-foreground text-sm">
-            Click the link in your email to sign in. <br />
-            The link expires in 1 hour.
-          </p>
-          <Button
-            className="text-muted-foreground"
-            onClick={() => {
-              setState("idle");
-              setEmail("");
-              setShowOtpInput(true);
-            }}
-            variant="ghost"
-          >
-            Enter code instead
-          </Button>
-          <Button
-            className="text-muted-foreground"
-            onClick={() => {
-              setState("idle");
-              setEmail("");
-            }}
-            variant="ghost"
-          >
-            Use a different email
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  /**
-   * Renders the email confirmation required view (for password signup)
-   */
-  const renderEmailConfirmationView = () => (
-    <div className="flex min-h-svh items-center justify-center bg-linear-to-br from-background via-background to-accent/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
-            <Mail className="size-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Confirm your email</CardTitle>
-          <CardDescription className="text-base">
-            We sent a confirmation link to{" "}
-            <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-center">
-          <p className="text-muted-foreground text-sm">
-            Please check your inbox and click the link to verify your email
-            address. After confirming, you can sign in with your password.
-          </p>
-          <Button
-            className="text-muted-foreground"
-            onClick={() => {
-              setState("idle");
-              setNeedsEmailConfirmation(false);
-              setPassword("");
-              setConfirmPassword("");
-              setMode("login");
-            }}
-            variant="ghost"
-          >
-            Back to sign in
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
   // Show loading while checking auth or if already authenticated (redirecting)
   if (isLoading || user) {
     return null;
   }
 
-  // OTP input view - shown after magic link is sent
-  if (showOtpInput) {
-    return renderOtpView();
-  }
-
   // Email confirmation required (password signup with confirm email enabled)
   if (needsEmailConfirmation) {
-    return renderEmailConfirmationView();
+    return (
+      <EmailConfirmationView
+        email={email}
+        onBackToSignIn={() => {
+          setNeedsEmailConfirmation(false);
+          setMode("login");
+          setEmail("");
+        }}
+      />
+    );
   }
 
   // Success state - show confirmation (only for magic link)
-  if (state === "success" && authMethod === "magiclink") {
-    return renderSuccessView();
+  if (showSuccess && authMethod === "magiclink") {
+    return (
+      <SuccessView
+        email={email}
+        onEnterCode={() => {
+          setShowSuccess(false);
+          setShowOtpInput(true);
+        }}
+        onUseDifferentEmail={() => {
+          setShowSuccess(false);
+          setEmail("");
+        }}
+      />
+    );
+  }
+
+  // OTP input view - shown after magic link is sent
+  if (showOtpInput) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-linear-to-br from-background via-background to-accent/20 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="size-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Enter verification code</CardTitle>
+            <CardDescription className="text-base">
+              We sent an 8-digit code to{" "}
+              <span className="font-medium text-foreground">{email}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {authError ? (
+              <div className="mb-4 rounded-lg bg-destructive/10 p-3">
+                <p className="text-destructive text-sm">{authError}</p>
+              </div>
+            ) : null}
+            <OtpForm
+              email={email}
+              isPending={isVerifyingOtp}
+              onBack={handleBackToEmail}
+              onSubmit={handleOtpVerify}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Default state - login form
-  const buttonText = mode === "login" ? "Sign In" : "Sign Up";
   const toggleText =
     mode === "login" ? "Don't have an account?" : "Already have an account?";
   const toggleActionText = mode === "login" ? "Sign Up" : "Sign In";
@@ -654,49 +246,25 @@ export const LoginPage = () => {
           <CardDescription>{getCardDescription()}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            className="space-y-4"
-            onSubmit={
-              authMethod === "password"
-                ? handlePasswordSubmit
-                : handleMagicLinkSubmit
-            }
-          >
-            <EmailInput
-              disabled={isPending}
-              email={email}
-              error={fieldErrors.email}
-              onChange={handleEmailChange}
+          {authError ? (
+            <div className="mb-4 rounded-lg bg-destructive/10 p-3">
+              <p className="text-destructive text-sm">{authError}</p>
+            </div>
+          ) : null}
+          {authMethod === "password" ? (
+            <PasswordForm
+              defaultEmail={email}
+              isPending={isPending}
+              mode={mode}
+              onSubmit={handlePasswordSubmit}
             />
-            {authMethod === "password" ? (
-              <>
-                <PasswordInput
-                  disabled={isPending}
-                  error={fieldErrors.password}
-                  onChange={handlePasswordChange}
-                  password={password}
-                />
-                {mode === "signup" ? (
-                  <ConfirmPasswordInput
-                    confirmPassword={confirmPassword}
-                    disabled={isPending}
-                    error={fieldErrors.confirmPassword}
-                    onChange={handleConfirmPasswordChange}
-                  />
-                ) : null}
-              </>
-            ) : null}
-            <Button className="w-full" disabled={isPending} type="submit">
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  {getButtonText()}
-                </>
-              ) : (
-                getButtonText()
-              )}
-            </Button>
-          </form>
+          ) : (
+            <EmailForm
+              defaultEmail={email}
+              isPending={isPending}
+              onSubmit={handleMagicLinkSubmit}
+            />
+          )}
           <div className="mt-4 space-y-3">
             <Button
               className="w-full"
