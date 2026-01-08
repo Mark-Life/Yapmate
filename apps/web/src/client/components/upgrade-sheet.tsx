@@ -18,6 +18,7 @@ import {
   SheetTitle,
 } from "@yapmate/components/ui/sheet";
 import { useCallback, useMemo, useState } from "react";
+import { rpcClient } from "../lib/rpc-client";
 import { getStripeBrandingColors } from "../styles/colors";
 import { useTheme } from "./theme-provider";
 
@@ -60,7 +61,31 @@ export const UpgradeSheet = ({
   }, [theme]);
 
   /**
+   * Opens Stripe Customer Portal for managing subscription
+   * Used for current tier, downgrades, and canceling (free tier)
+   * Portal opens in new tab, sheet closes, and app-sidebar focus listener handles refresh
+   */
+  const handleManageSubscription = useCallback(async () => {
+    try {
+      const { url } = await rpcClient.subscription.createPortalSession();
+      // Open Stripe Customer Portal in new tab
+      window.open(url, "_blank");
+      // Close sheet after opening portal
+      onOpenChange(false);
+      // Note: Subscription refresh handled by window focus listener in app-sidebar
+    } catch (err) {
+      console.error("Failed to open portal:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to open subscription management portal"
+      );
+    }
+  }, [onOpenChange]);
+
+  /**
    * Creates checkout session and gets client secret
+   * Used for upgrades only
    */
   const handleSelectTier = useCallback(
     async (priceId: string) => {
@@ -215,6 +240,7 @@ export const UpgradeSheet = ({
         compact
         currentTier={currentTier}
         isLoading={isLoading}
+        onManageSubscription={handleManageSubscription}
         onSelectTier={handleSelectTier}
       />
     );
