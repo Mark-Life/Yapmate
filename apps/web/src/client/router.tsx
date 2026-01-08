@@ -2,6 +2,7 @@ import { Spinner } from "@yapmate/components/ui/spinner";
 import { useEffect, useState } from "react";
 import { useUser } from "./contexts/user-context";
 import { ChatLayout } from "./pages/chat-layout";
+import { CheckoutSuccessPage } from "./pages/checkout-success";
 import { LoginPage } from "./pages/login";
 import { MobileAuthPage } from "./pages/mobile-auth";
 import { NotFoundPage } from "./pages/not-found";
@@ -45,7 +46,10 @@ export const Router = () => {
    */
   useEffect(() => {
     if (!(isLoading || user)) {
-      const isProtectedRoute = pathname === "/" || pathname.startsWith("/chat");
+      const isProtectedRoute =
+        pathname === "/" ||
+        pathname.startsWith("/chat") ||
+        pathname.startsWith("/checkout");
       if (isProtectedRoute) {
         window.history.pushState(null, "", "/login");
         setPathname("/login");
@@ -65,6 +69,18 @@ export const Router = () => {
 
   if (pathname === "/auth/mobile") {
     return <MobileAuthPage />;
+  }
+
+  // Checkout success page - requires authentication
+  if (pathname.startsWith("/checkout")) {
+    if (!user) {
+      // Still checking or redirecting, show loading
+      return <AuthLoading />;
+    }
+    if (pathname === "/checkout/success") {
+      return <CheckoutSuccessPage />;
+    }
+    // Other checkout routes fall through to NotFound
   }
 
   // Protected routes - only render if authenticated
