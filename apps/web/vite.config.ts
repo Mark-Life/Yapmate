@@ -86,6 +86,9 @@ export default defineConfig(({ mode }) => {
       "process.env.PUBLIC_LANGFUSE_BASE_URL": JSON.stringify(
         env.PUBLIC_LANGFUSE_BASE_URL
       ),
+      "process.env.PUBLIC_STRIPE_PUBLISHABLE_KEY": JSON.stringify(
+        env.PUBLIC_STRIPE_PUBLISHABLE_KEY
+      ),
     },
 
     css: {

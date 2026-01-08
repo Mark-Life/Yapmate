@@ -1,3 +1,4 @@
+import { BANNED_MODELS, TOP_MODELS } from "@yapmate/core/models/config";
 import { parseModel } from "@yapmate/server/lib/models/models";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -19,12 +20,16 @@ type DisplayModel = {
   providerDisplay: string;
   tags: string[];
   contextLimit: number;
+  isTopModel?: boolean;
 };
 
 /**
  * Formats provider name for display (matches model-selector.tsx)
  */
 const getProviderDisplayName = (provider: string): string => {
+  if (provider === "common") {
+    return "Common";
+  }
   if (provider === "google") {
     return "Google";
   }
@@ -66,22 +71,30 @@ const formatContextLimit = (limit: number): string => {
 
 /**
  * Transforms API models to display format using parseModel for consistency
+ * Filters out banned models and marks top models for sorting
  */
-const transformModels = (models: ModelFromApi[]): DisplayModel[] =>
-  models.map((model) => {
-    const tags = extractTags(model.id);
-    // Remove tags from ID before parsing to get clean model name
-    const baseModelId = model.id.split(":")[0];
-    const { provider, modelName } = parseModel(baseModelId);
-    return {
-      id: model.id,
-      name: modelName,
-      provider,
-      providerDisplay: getProviderDisplayName(provider),
-      tags,
-      contextLimit: model.contextLimit,
-    };
-  });
+const transformModels = (models: ModelFromApi[]): DisplayModel[] => {
+  const bannedSet = new Set(BANNED_MODELS as readonly string[]);
+  const topModelsSet = new Set(TOP_MODELS as readonly string[]);
+
+  return models
+    .filter((model) => !bannedSet.has(model.id))
+    .map((model) => {
+      const tags = extractTags(model.id);
+      // Remove tags from ID before parsing to get clean model name
+      const baseModelId = model.id.split(":")[0];
+      const { provider, modelName } = parseModel(baseModelId);
+      return {
+        id: model.id,
+        name: modelName,
+        provider,
+        providerDisplay: getProviderDisplayName(provider),
+        tags,
+        contextLimit: model.contextLimit,
+        isTopModel: topModelsSet.has(model.id),
+      };
+    });
+};
 
 type ProviderGroup = {
   provider: string;
@@ -90,21 +103,56 @@ type ProviderGroup = {
 };
 
 /**
- * Groups models by provider (matches model-selector.tsx pattern)
+ * Groups models by provider, with top models in a "Common" group first
+ * Matches model-selector.tsx pattern for consistency
  */
 const groupModelsByProvider = (models: DisplayModel[]): ProviderGroup[] => {
+  const topModels: DisplayModel[] = [];
   const grouped = new Map<string, DisplayModel[]>();
 
   for (const model of models) {
-    const existing = grouped.get(model.provider) ?? [];
-    grouped.set(model.provider, [...existing, model]);
+    if (model.isTopModel) {
+      topModels.push(model);
+    } else {
+      const existing = grouped.get(model.provider) ?? [];
+      grouped.set(model.provider, [...existing, model]);
+    }
   }
 
-  return Array.from(grouped.entries()).map(([provider, providerModels]) => ({
-    provider,
-    providerDisplay: getProviderDisplayName(provider),
-    models: providerModels,
-  }));
+  const result: ProviderGroup[] = [];
+
+  // Add Common group first if it has models
+  if (topModels.length > 0) {
+    // Sort top models by provider then name
+    topModels.sort((a, b) => {
+      if (a.provider !== b.provider) {
+        return a.provider.localeCompare(b.provider);
+      }
+      return a.name.localeCompare(b.name);
+    });
+    result.push({
+      provider: "common",
+      providerDisplay: "Common",
+      models: topModels,
+    });
+  }
+
+  // Add other provider groups, sorted by provider name
+  const sortedProviders = Array.from(grouped.entries()).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+
+  for (const [provider, providerModels] of sortedProviders) {
+    // Sort models within each provider by name
+    providerModels.sort((a, b) => a.name.localeCompare(b.name));
+    result.push({
+      provider,
+      providerDisplay: getProviderDisplayName(provider),
+      models: providerModels,
+    });
+  }
+
+  return result;
 };
 
 /**

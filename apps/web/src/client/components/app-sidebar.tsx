@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@yapmate/components/ui/dropdown-menu";
 import { Input } from "@yapmate/components/ui/input";
@@ -45,12 +46,19 @@ import {
   SidebarRail,
 } from "@yapmate/components/ui/sidebar";
 import { Skeleton } from "@yapmate/components/ui/skeleton";
-import { LogOutIcon, PencilIcon, TrashIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { UsageBadge } from "@yapmate/components/ui/usage-badge";
+import {
+  CreditCardIcon,
+  LogOutIcon,
+  PencilIcon,
+  TrashIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
 import { useUser } from "../contexts/user-context";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
+import { UpgradeSheet } from "./upgrade-sheet";
 
 type Chat = {
   id: string;
@@ -97,6 +105,28 @@ export const AppSidebar = ({
     currentTitle: string;
   } | null>(null);
   const [renameInput, setRenameInput] = useState("");
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+
+  /**
+   * Fetch subscription usage data
+   */
+  const { data: usage } = useQuery({
+    queryKey: ["subscription", "usage"],
+    queryFn: () => rpcClient.subscription.usage(),
+    enabled: !!user,
+    staleTime: 60_000, // Cache for 1 minute
+  });
+
+  /**
+   * Listen for open-upgrade-sheet events (e.g., from rate limit toast)
+   */
+  useEffect(() => {
+    const handleOpenUpgradeSheet = () => setUpgradeSheetOpen(true);
+    window.addEventListener("open-upgrade-sheet", handleOpenUpgradeSheet);
+    return () => {
+      window.removeEventListener("open-upgrade-sheet", handleOpenUpgradeSheet);
+    };
+  }, []);
 
   /**
    * Handle logout
@@ -254,7 +284,19 @@ export const AppSidebar = ({
         </SidebarGroup>
       </SidebarContent>
       {user ? (
-        <SidebarFooter className="border-sidebar-border border-t">
+        <SidebarFooter className="gap-2 border-sidebar-border border-t">
+          {/* Usage badge with upgrade button */}
+          {usage ? (
+            <UsageBadge
+              count={usage.count}
+              limit={usage.limit}
+              onUpgradeClick={() => setUpgradeSheetOpen(true)}
+              resetsAt={usage.resetsAt}
+              tier={usage.tier}
+            />
+          ) : null}
+
+          {/* User dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -270,6 +312,17 @@ export const AppSidebar = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              {/* TODO: Implement Stripe Customer Portal link */}
+              <DropdownMenuItem
+                onClick={() => {
+                  // TODO: Redirect to Stripe Customer Portal
+                  console.log("Manage subscription - not implemented yet");
+                }}
+              >
+                <CreditCardIcon className="size-4" />
+                Manage Subscription
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={handleLogout}
@@ -362,6 +415,18 @@ export const AppSidebar = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upgrade sheet */}
+      <UpgradeSheet
+        currentTier={usage?.tier}
+        onOpenChange={setUpgradeSheetOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({
+            queryKey: ["subscription", "usage"],
+          });
+        }}
+        open={upgradeSheetOpen}
+      />
     </Sidebar>
   );
 };

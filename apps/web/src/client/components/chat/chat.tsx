@@ -183,9 +183,14 @@ export const Chat = ({
           error.status === 402
         ) {
           toast.error("Message limit reached", {
-            description:
-              "The app is under development. Message limit reached for this month.",
-            duration: 5000,
+            description: "You've used all your free messages this month.",
+            duration: 8000,
+            action: {
+              label: "Upgrade",
+              onClick: () => {
+                window.dispatchEvent(new CustomEvent("open-upgrade-sheet"));
+              },
+            },
           });
           return;
         }
