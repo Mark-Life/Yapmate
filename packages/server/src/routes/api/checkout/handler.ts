@@ -3,7 +3,7 @@
  * Creates embedded checkout sessions for subscription purchases
  */
 import { stripe } from "../../../lib/stripe";
-import { getCurrentUserId } from "../../../lib/supabase";
+import { getCurrentUser } from "../../../lib/supabase";
 
 /** Valid price IDs for subscription products */
 const VALID_PRICE_IDS = new Set([
@@ -16,8 +16,8 @@ const VALID_PRICE_IDS = new Set([
  */
 export const checkoutHandler = {
   async POST(req: Request) {
-    const userId = await getCurrentUserId(req);
-    if (!userId) {
+    const user = await getCurrentUser(req);
+    if (!user) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -55,7 +55,9 @@ export const checkoutHandler = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       // Links Stripe Customer to our user after checkout
-      client_reference_id: userId,
+      client_reference_id: user.id,
+      // Prefill email to ensure account sync (only if available)
+      ...(user.email && { customer_email: user.email }),
       // Stripe redirects here after payment (success or cancel)
       return_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       automatic_tax: { enabled: true },
