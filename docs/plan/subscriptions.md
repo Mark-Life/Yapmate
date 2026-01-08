@@ -45,7 +45,7 @@ User Request → JOIN users + stripe tables → Get active subscription → Deri
 
 ```ts
 // users.ts
-/** Stripe Customer ID (e.g., cus_xxx) - no FK, stripe schema is external */
+/** Stripe Customer ID (e.g., cus_xxx) - no FK, stripe schema is external */ For now, actually, only priority support and volume are differences.
 stripeCustomerId: text(),
 ```
 
@@ -194,7 +194,7 @@ Note: Tables defined in `packages/db/src/schema/stripe.ts` for type-safe queries
 3. [x] Update `checkMessageLimit` in `rate-limit.ts` with JOIN query
 4. [x] Create Checkout Session endpoint (embedded mode)
 5. [x] Create return URL handler to link customer ID
-6. [ ] Add "Upgrade" button in UI
+6. [x] Add "Upgrade" button in UI (web only - mobile excluded per App Store rules)
 
 ---
 
@@ -219,14 +219,15 @@ This catches:
 
 ## Files to Modify
 
-| File                                    | Change                                                                                             |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `packages/db/src/schema/users.ts`       | Add `stripeCustomerId` field ✅                                                                    |
-| `packages/db/src/schema/stripe.ts`      | Define stripe tables (query-only, not in schema.ts) ✅                                             |
-| `packages/db/src/service/rate-limit.ts` | Update `checkMessageLimit` to query stripe tables, derive tier, respect `unlimitedAccessGrantedAt` |
-| `packages/server/src/routes/`           | Add checkout session + return URL endpoints                                                        |
-| `apps/web/src/`                         | Upgrade button UI                                                                                  |
-| `apps/mobile/src/`                      | Upgrade button UI                                                                                  |
+| File                                    | Change                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `packages/db/src/schema/users.ts`       | Add `stripeCustomerId` field ✅                                                                       |
+| `packages/db/src/schema/stripe.ts`      | Define stripe tables (query-only, not in schema.ts) ✅                                                |
+| `packages/db/src/service/rate-limit.ts` | Update `checkMessageLimit` to query stripe tables, derive tier, respect `unlimitedAccessGrantedAt` ✅ |
+| `packages/server/src/routes/`           | Add checkout session + return URL endpoints ✅                                                        |
+| `apps/web/src/`                         | Upgrade button UI ✅                                                                                  |
+
+> **Note:** Mobile upgrade UI excluded per App Store In-App Purchase rules.
 
 ### rate-limit.ts Changes
 

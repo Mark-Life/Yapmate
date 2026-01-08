@@ -10,6 +10,8 @@
     "@ai-sdk/react": "^2.0.117",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.6.1",
     "@supabase/ssr": "catalog:",
     "@supabase/supabase-js": "catalog:",
     "@tanstack/query-sync-storage-persister": "^5.90.14",

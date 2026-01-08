@@ -31,4 +31,7 @@ export const TOP_MODELS = [
  * Models that should be excluded from the model selector
  * Add model IDs here to ban them from appearing in the list
  */
-export const BANNED_MODELS = ["openai/gpt-4o-mini"] as const;
+export const BANNED_MODELS = [
+  "openai/gpt-4o-mini",
+  "openai/gpt-5-image",
+] as const;

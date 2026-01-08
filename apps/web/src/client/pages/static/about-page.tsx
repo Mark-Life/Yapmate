@@ -1,3 +1,4 @@
+import { PricingCards } from "@yapmate/components/ui/pricing-cards";
 import {
   Brain,
   Cloud,
@@ -211,6 +212,19 @@ const PlatformSection = () => (
 );
 
 /**
+ * Pricing section with subscription tiers
+ */
+const PricingSection = () => (
+  <section className="mx-auto max-w-4xl py-16">
+    <h2 className="mb-4 text-center font-bold text-3xl">Simple Pricing</h2>
+    <p className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
+      Start free, upgrade when you need more. No hidden fees.
+    </p>
+    <PricingCards />
+  </section>
+);
+
+/**
  * Call to action footer section
  */
 const CTASection = () => (
@@ -239,6 +253,7 @@ export const AboutPage = () => (
       <HeroSection />
       <ModelsExplorer />
       <FeaturesSection />
+      <PricingSection />
       {/* <PlatformSection /> */}
       <CTASection />
     </div>
