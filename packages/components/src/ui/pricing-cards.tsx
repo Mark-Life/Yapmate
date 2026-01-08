@@ -77,6 +77,8 @@ type PricingCardsProps = {
   currentTier?: PricingTier | null;
   /** Called when user selects a tier to upgrade */
   onSelectTier?: (priceId: string) => void;
+  /** Called when user wants to manage subscription (current tier, downgrades, or cancel) */
+  onManageSubscription?: () => void;
   /** Loading state for upgrade action */
   isLoading?: boolean;
   /** Compact mode for smaller containers */
@@ -90,6 +92,7 @@ type PricingCardsProps = {
 export const PricingCards = ({
   currentTier = null,
   onSelectTier,
+  onManageSubscription,
   isLoading = false,
   compact = false,
 }: PricingCardsProps) => {
@@ -98,8 +101,8 @@ export const PricingCards = ({
    */
   const getButtonText = (tierId: PricingTier): string => {
     if (!currentTier) return tierId === "free" ? "Get Started" : "Subscribe";
-    if (tierId === currentTier) return "Current Plan";
-    if (tierId === "free") return "Free Tier";
+    if (tierId === currentTier) return "Manage";
+    if (tierId === "free") return "Downgrade to Free";
 
     // Compare tier levels
     const tierOrder: PricingTier[] = ["free", "hobby", "pro", "unlimited"];
@@ -114,18 +117,45 @@ export const PricingCards = ({
    */
   const isButtonDisabled = (tierId: PricingTier): boolean => {
     if (isLoading) return true;
-    if (!currentTier) return false;
-    // Can't select current tier or downgrade to free
-    return tierId === currentTier || tierId === "free";
+    // All buttons are enabled when user has subscription (for manage/downgrade)
+    return false;
   };
 
   /**
    * Handle tier selection
+   * For upgrades: calls onSelectTier with priceId
+   * For current tier, downgrades, or free: calls onManageSubscription to open portal
    */
   const handleSelect = (tierId: PricingTier) => {
-    if (tierId === "free" || !onSelectTier) return;
-    const priceId = PRICE_IDS[tierId as keyof typeof PRICE_IDS];
-    if (priceId) onSelectTier(priceId);
+    if (!currentTier) {
+      // No subscription - handle upgrade
+      if (tierId === "free" || !onSelectTier) return;
+      const priceId = PRICE_IDS[tierId as keyof typeof PRICE_IDS];
+      if (priceId) onSelectTier(priceId);
+      return;
+    }
+
+    // User has subscription
+    if (tierId === currentTier) {
+      // Current tier - open portal to manage
+      onManageSubscription?.();
+      return;
+    }
+
+    // Compare tier levels
+    const tierOrder: PricingTier[] = ["free", "hobby", "pro", "unlimited"];
+    const currentIndex = tierOrder.indexOf(currentTier);
+    const targetIndex = tierOrder.indexOf(tierId);
+
+    if (targetIndex > currentIndex) {
+      // Upgrade - create checkout session
+      if (!onSelectTier) return;
+      const priceId = PRICE_IDS[tierId as keyof typeof PRICE_IDS];
+      if (priceId) onSelectTier(priceId);
+    } else {
+      // Downgrade or cancel (free tier) - open portal
+      onManageSubscription?.();
+    }
   };
 
   return (

@@ -53,7 +53,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
 import { useUser } from "../contexts/user-context";
 import { rpcClient } from "../lib/rpc-client";
@@ -106,17 +106,20 @@ export const AppSidebar = ({
   } | null>(null);
   const [renameInput, setRenameInput] = useState("");
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const portalOpenedRef = useRef<number | null>(null);
 
   /**
    * Fetch subscription usage data
    * Reduced staleTime to allow reactive updates when messages are sent
    * React Query will dedupe rapid refetches automatically
+   * refetchOnWindowFocus ensures subscription updates when returning from Stripe portal
    */
   const { data: usage } = useQuery({
     queryKey: ["subscription", "usage"],
     queryFn: () => rpcClient.subscription.usage(),
     enabled: !!user,
     staleTime: 5000, // Cache for 5 seconds - allows reactive updates without excessive fetches
+    refetchOnWindowFocus: true, // Refetch when window regains focus (e.g., returning from Stripe portal)
   });
 
   /**
@@ -129,6 +132,31 @@ export const AppSidebar = ({
       window.removeEventListener("open-upgrade-sheet", handleOpenUpgradeSheet);
     };
   }, []);
+
+  /**
+   * Listen for window focus to refresh subscription when returning from Stripe portal
+   * Invalidates subscription query when window regains focus after portal was opened
+   */
+  useEffect(() => {
+    const handleFocus = () => {
+      // If portal was opened recently (within last 5 minutes), invalidate subscription
+      if (
+        portalOpenedRef.current !== null &&
+        Date.now() - portalOpenedRef.current < 5 * 60 * 1000
+      ) {
+        queryClient.invalidateQueries({
+          queryKey: ["subscription", "usage"],
+        });
+        // Reset after invalidating
+        portalOpenedRef.current = null;
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [queryClient]);
 
   /**
    * Handle logout
@@ -221,10 +249,13 @@ export const AppSidebar = ({
    * Handle manage subscription click
    * If user has Stripe customer ID, open portal in new tab
    * Otherwise, open upgrade sheet
+   * Tracks when portal is opened to refresh subscription on return
    */
   const handleManageSubscription = useCallback(async () => {
     try {
       const { url } = await rpcClient.subscription.createPortalSession();
+      // Track that portal was opened
+      portalOpenedRef.current = Date.now();
       // Open Stripe Customer Portal in new tab
       window.open(url, "_blank");
     } catch {
