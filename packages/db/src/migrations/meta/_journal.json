@@ -50,6 +50,13 @@
       "when": 1767780544732,
       "tag": "0006_petite_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1767944655477,
+      "tag": "0007_lowly_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

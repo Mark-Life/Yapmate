@@ -392,7 +392,13 @@ export const AppSidebar = ({
                     {user.email?.[0]?.toUpperCase() ?? "U"}
                   </AvatarFallback>
                 </Avatar>
-                <span className="truncate text-sm">{user.email ?? "User"}</span>
+                <span
+                  className={`truncate text-sm ${
+                    user.hideEmailInUi ? "select-none blur-sm" : ""
+                  }`}
+                >
+                  {user.email ?? "User"}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

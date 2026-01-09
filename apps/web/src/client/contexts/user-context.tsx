@@ -1,17 +1,21 @@
 "use client";
 
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePostHog } from "posthog-js/react";
 import { createContext, useContext, useEffect, useState } from "react";
+import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 
 type User = {
   email: string | undefined;
+  hideEmailInUi: boolean;
 };
 
 type UserContextValue = {
   user: User | null;
   isLoading: boolean;
+  updateHideEmailInUi: (hideEmailInUi: boolean) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
@@ -24,34 +28,93 @@ type UserProviderProps = {
  * Provides user context with Supabase auth
  * Fetches user on mount and listens to auth state changes
  * Identifies users in PostHog when they log in
+ * Fetches and manages user settings (hideEmailInUi)
  */
 export const UserProvider = ({ children }: UserProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const posthog = usePostHog();
+  const queryClient = useQueryClient();
+
+  /**
+   * Fetch user settings from API
+   */
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["userSettings", authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id) {
+        return null;
+      }
+      return await rpcClient.settings.get();
+    },
+    enabled: Boolean(authUser?.id),
+  });
+
+  /**
+   * Update hideEmailInUi setting
+   */
+  const updateHideEmailInUiMutation = useMutation({
+    mutationFn: async (hideEmailInUi: boolean) => {
+      const result = await rpcClient.settings.update({ hideEmailInUi });
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to update settings");
+      }
+    },
+    onSuccess: () => {
+      // Invalidate and refetch settings
+      queryClient.invalidateQueries({
+        queryKey: ["userSettings", authUser?.id],
+      });
+    },
+  });
+
+  /**
+   * Computed user object combining auth user and settings
+   */
+  const getUser = (): User | null => {
+    if (!authUser) {
+      return null;
+    }
+    if (settings) {
+      return {
+        email: authUser.email,
+        hideEmailInUi: settings.hideEmailInUi,
+      };
+    }
+    return {
+      email: authUser.email,
+      hideEmailInUi: false, // Default until settings load
+    };
+  };
+
+  const user = getUser();
+
+  /**
+   * Update hideEmailInUi setting
+   */
+  const updateHideEmailInUi = async (hideEmailInUi: boolean): Promise<void> => {
+    await updateHideEmailInUiMutation.mutateAsync(hideEmailInUi);
+  };
 
   useEffect(() => {
     const supabase = createClient();
 
     /**
-     * Updates user state from Supabase auth user
+     * Updates auth user state from Supabase auth user
      * Identifies user in PostHog when authenticated
      */
-    const updateUser = (authUser: SupabaseUser | null) => {
-      if (authUser) {
-        setUser({ email: authUser.email });
+    const updateAuthUser = (supabaseUser: SupabaseUser | null) => {
+      setAuthUser(supabaseUser);
+      if (supabaseUser) {
         // Identify user in PostHog
-        if (posthog && authUser.id) {
-          posthog.identify(authUser.id, {
-            email: authUser.email,
+        if (posthog && supabaseUser.id) {
+          posthog.identify(supabaseUser.id, {
+            email: supabaseUser.email,
           });
         }
-      } else {
-        setUser(null);
+      } else if (posthog) {
         // Reset PostHog identification on logout
-        if (posthog) {
-          posthog.reset();
-        }
+        posthog.reset();
       }
       setIsLoading(false);
     };
@@ -61,9 +124,9 @@ export const UserProvider = ({ children }: UserProviderProps) => {
      */
     const checkAuth = async () => {
       const {
-        data: { user: authUser },
+        data: { user: supabaseUser },
       } = await supabase.auth.getUser();
-      updateUser(authUser);
+      updateAuthUser(supabaseUser);
     };
 
     checkAuth();
@@ -74,7 +137,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      updateUser(session?.user ?? null);
+      updateAuthUser(session?.user ?? null);
     });
 
     return () => {
@@ -86,7 +149,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     <UserContext.Provider
       value={{
         user,
-        isLoading,
+        isLoading: isLoading || (authUser !== null && isLoadingSettings),
+        updateHideEmailInUi,
       }}
     >
       {children}

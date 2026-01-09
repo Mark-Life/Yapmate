@@ -3,6 +3,7 @@ import { chat } from "./routers/chat";
 import { chats } from "./routers/chats";
 import { messages } from "./routers/messages";
 import { models } from "./routers/models";
+import { settings } from "./routers/settings";
 import { subscription } from "./routers/subscription";
 
 export const router = {
@@ -11,6 +12,7 @@ export const router = {
   chats,
   messages,
   models,
+  settings,
   subscription,
 };
 
