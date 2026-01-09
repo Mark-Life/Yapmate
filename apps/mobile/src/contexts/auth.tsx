@@ -6,6 +6,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { clearQueryCache } from "@/components/query-provider";
+import { clearUserPreferences } from "@/hooks/use-user-preferences";
 import { supabase } from "@/lib/supabase";
 import { useStorageState } from "@/lib/useStorageState";
 
@@ -106,6 +108,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
   };
 
   const signOut = async (): Promise<void> => {
+    // Clear cached data before signing out to prevent cross-user data leaks
+    await Promise.all([clearQueryCache(), clearUserPreferences()]);
     const { error } = await supabase.auth.signOut();
     if (error) {
       throw error;
