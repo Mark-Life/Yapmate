@@ -6,11 +6,11 @@
     "./service": "./src/service/index.ts"
   },
   "scripts": {
-    "generate": "bun --env-file ../../.env drizzle-kit generate",
-    "generate:custom": "bun --env-file ../../.env drizzle-kit generate --custom",
-    "migrate": "bun --env-file ../../.env drizzle-kit migrate",
-    "studio": "bun --env-file ../../.env drizzle-kit studio",
-    "pull": "bun --env-file ../../.env drizzle-kit pull"
+    "generate": "bun --env-file ../../.env.local drizzle-kit generate",
+    "generate:custom": "bun --env-file ../../.env.local drizzle-kit generate --custom",
+    "migrate": "bun --env-file ../../.env.local drizzle-kit migrate",
+    "studio": "bun --env-file ../../.env.local drizzle-kit studio",
+    "pull": "bun --env-file ../../.env.local drizzle-kit pull"
   },
   "dependencies": {
     "@yapmate/server": "workspace:*",
