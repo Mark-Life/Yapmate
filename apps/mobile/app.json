@@ -40,8 +40,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to use your camera"
+          "photosPermission": "Select photos from your library to share with the AI in your chat conversations.",
+          "cameraPermission": "Take photos to share with the AI in your chat conversations."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Record voice messages and convert them to text for your chat conversations."
         }
       ],
       [
