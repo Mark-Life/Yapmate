@@ -1,6 +1,12 @@
+import { deleteUserAccount } from "@yapmate/db/service";
 import { createClient } from "@yapmate/server/lib/supabase";
-import { publicProcedure } from "../middleware";
-import { magicLinkInputSchema, magicLinkResponseSchema } from "../schemas/auth";
+import { protectedProcedure, publicProcedure } from "../middleware";
+import {
+  deleteAccountInputSchema,
+  deleteAccountResponseSchema,
+  magicLinkInputSchema,
+  magicLinkResponseSchema,
+} from "../schemas/auth";
 
 /**
  * Auth router - authentication operations
@@ -25,5 +31,33 @@ export const auth = {
         return { success: false, error: error.message };
       }
       return { success: true };
+    }),
+
+  /**
+   * Delete user account
+   * Requires email confirmation and authentication
+   * Hard deletes all user data except Stripe records (kept for legal/bookkeeping)
+   */
+  deleteAccount: protectedProcedure
+    .input(deleteAccountInputSchema)
+    .output(deleteAccountResponseSchema)
+    .handler(async ({ input, context }) => {
+      if (!context.userId) {
+        return {
+          success: false,
+          error: "Authentication required",
+        };
+      }
+
+      try {
+        await deleteUserAccount(context.userId, input.email);
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to delete account",
+        };
+      }
     }),
 };

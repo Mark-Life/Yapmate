@@ -4,6 +4,7 @@
  */
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "./admin-client";
 import { createClient } from "./index";
 
 const BUCKET_NAME = "user-files";
@@ -136,5 +137,27 @@ export const deleteFile = async (
 
   if (error) {
     throw new Error(`Failed to delete file: ${error.message}`);
+  }
+};
+
+/**
+ * Deletes files from storage using admin client
+ * Used for account deletion when user context is not available
+ * @param storagePaths - Array of paths in storage bucket
+ */
+export const deleteFilesAdmin = async (
+  storagePaths: string[]
+): Promise<void> => {
+  if (storagePaths.length === 0) {
+    return;
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .remove(storagePaths);
+
+  if (error) {
+    throw new Error(`Failed to delete files: ${error.message}`);
   }
 };
