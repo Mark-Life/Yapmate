@@ -255,7 +255,7 @@ export const Chat = ({
         ) {
           Alert.alert(
             "Message limit reached",
-            "The app is under development. Message limit reached for this month."
+            "You've reached your free monthly message limit. Your allowance will reset next month."
           );
           return;
         }
