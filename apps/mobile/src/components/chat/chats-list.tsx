@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import type { ViewToken } from "react-native";
 import { ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,7 +65,7 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   const { closeDrawer } = useDrawer();
   const queryClient = useQueryClient();
   const router = useRouter();
-
+  const insets = useSafeAreaInsets();
   const {
     data: chats = [],
     isPending,
@@ -255,7 +256,11 @@ export const ChatsList = ({ searchQuery = "" }: ChatsListProps) => {
   return (
     <View className="flex-1">
       <LegendList
-        contentContainerStyle={{ padding: 8, paddingBottom: 80 }}
+        contentContainerStyle={{
+          padding: 8,
+          paddingBottom: 80,
+          marginTop: insets.top + 48,
+        }}
         data={filteredChats}
         estimatedItemSize={72}
         extraData={currentChatId}

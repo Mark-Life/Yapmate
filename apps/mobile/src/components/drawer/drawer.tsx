@@ -1,9 +1,12 @@
 import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
+import { BlurView } from "expo-blur";
 import { GlassView } from "expo-glass-effect";
-import { Plus, Search } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { Plus, Search, Settings } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useState } from "react";
-import { Keyboard, Platform, Pressable, View } from "react-native";
+import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
@@ -12,7 +15,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsList } from "@/components/chat/chats-list";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button as UIButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { useChatContext } from "@/contexts/chat-context";
 import { DRAWER_WIDTH, useDrawer } from "@/contexts/drawer-context";
+import { useUser } from "@/contexts/user-context";
 import { lightTap } from "@/lib/haptics";
 
 /** Edge zone width for detecting swipe-to-open gesture */
@@ -138,7 +141,9 @@ export const Drawer = () => {
   const { colorScheme } = useColorScheme();
   const { position, closeDrawer } = useDrawer();
   const { session, signOut } = useSession();
+  const { user } = useUser();
   const { navigateToNew } = useChatContext();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -159,6 +164,14 @@ export const Drawer = () => {
     navigateToNew();
     closeDrawer();
   }, [navigateToNew, closeDrawer]);
+
+  /**
+   * Handle settings navigation
+   */
+  const handleSettings = useCallback(() => {
+    lightTap();
+    router.push("/settings");
+  }, [router]);
 
   /**
    * Track keyboard height for absolutely positioned buttons
@@ -201,48 +214,109 @@ export const Drawer = () => {
         }`}
         style={drawerStyle}
       >
-        <View className="flex-1 flex-col" style={{ paddingTop: insets.top }}>
-          {session?.user ? (
-            <View className="border-border border-b pb-1">
-              <Host>
-                <ContextMenu activationMethod="longPress">
-                  <ContextMenu.Items>
-                    {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
-                    <Button
-                      onPress={handleLogout}
-                      role="destructive"
-                      systemImage="rectangle.portrait.and.arrow.right"
-                    >
-                      Log out
-                    </Button>
-                  </ContextMenu.Items>
-                  <ContextMenu.Trigger>
-                    <UIButton
-                      className="w-full justify-start gap-2 bg-background px-2"
-                      variant="ghost"
-                    >
-                      <Avatar
-                        alt={session.user.email ?? "User avatar"}
-                        className="size-8"
-                      >
-                        <AvatarFallback className="bg-accent text-primary text-xs">
-                          <Text>
-                            {session.user.email?.[0]?.toUpperCase() ?? "U"}
-                          </Text>
-                        </AvatarFallback>
-                      </Avatar>
-                      <Text className="truncate text-sm" numberOfLines={1}>
-                        {session.user.email ?? "User"}
-                      </Text>
-                    </UIButton>
-                  </ContextMenu.Trigger>
-                </ContextMenu>
-              </Host>
-            </View>
-          ) : null}
+        <View className="flex-1 flex-col">
           <View className="flex-1">
             <ChatsList searchQuery={searchQuery} />
+            <LinearGradient
+              colors={
+                colorScheme === "dark"
+                  ? ["#0a0a0a", "rgba(10, 10, 10, 0.8)", "rgba(10, 10, 10, 0)"]
+                  : [
+                      "#f5f5f5",
+                      "rgba(245, 245, 245, 0.8)",
+                      "rgba(245, 245, 245, 0)",
+                    ]
+              }
+              locations={[0, 0.5, 1]}
+              pointerEvents="none"
+              style={styles.fadeOverlayTop}
+            />
+            <LinearGradient
+              colors={
+                colorScheme === "dark"
+                  ? ["rgba(10, 10, 10, 0)", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
+                  : [
+                      "rgba(245, 245, 245, 0)",
+                      "rgba(245, 245, 245, 0.8)",
+                      "#f5f5f5",
+                    ]
+              }
+              locations={[0, 0.5, 1]}
+              pointerEvents="none"
+              style={styles.fadeOverlayBottom}
+            />
           </View>
+          {/* Settings and email overlay at top */}
+          {session?.user ? (
+            <View
+              className="absolute right-0 left-0 flex-row items-center gap-2 px-2"
+              style={{ top: insets.top }}
+            >
+              <GlassView
+                glassEffectStyle={"clear"}
+                isInteractive={true}
+                style={{
+                  borderRadius: 32,
+                  padding: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <UIButton
+                  className="size-10"
+                  onPress={handleSettings}
+                  variant="ghost"
+                >
+                  <Icon as={Settings} className="text-foreground" size={20} />
+                </UIButton>
+              </GlassView>
+              <View className="flex-1">
+                <Host>
+                  <ContextMenu activationMethod="singlePress">
+                    <ContextMenu.Items>
+                      {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
+                      <Button
+                        onPress={handleLogout}
+                        role="destructive"
+                        systemImage="rectangle.portrait.and.arrow.right"
+                      >
+                        Log out
+                      </Button>
+                    </ContextMenu.Items>
+                    <ContextMenu.Trigger>
+                      <GlassView
+                        glassEffectStyle={"clear"}
+                        isInteractive={true}
+                        style={{
+                          borderRadius: 32,
+                          padding: 0,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <UIButton
+                          className="w-full justify-start gap-2 overflow-hidden rounded-full"
+                          variant="ghost"
+                        >
+                          <Text className="flex-1 text-sm" numberOfLines={1}>
+                            {user?.hideEmailInUi
+                              ? "redacted@email.com"
+                              : (session.user.email ?? "User")}
+                          </Text>
+                          {user?.hideEmailInUi ? (
+                            <BlurView
+                              className="absolute inset-0 rounded-full"
+                              intensity={30}
+                              style={{ borderRadius: 32 }}
+                              tint={colorScheme === "dark" ? "dark" : "light"}
+                            />
+                          ) : null}
+                        </UIButton>
+                      </GlassView>
+                    </ContextMenu.Trigger>
+                  </ContextMenu>
+                </Host>
+              </View>
+            </View>
+          ) : null}
           {/* New Chat button and Search input overlay at bottom */}
           <View
             className="absolute right-0 left-0 flex-row items-center gap-2 px-4"
@@ -297,3 +371,20 @@ export const Drawer = () => {
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  fadeOverlayTop: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 120,
+  },
+  fadeOverlayBottom: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 100,
+  },
+});
