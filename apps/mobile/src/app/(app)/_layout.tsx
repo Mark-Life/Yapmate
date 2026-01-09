@@ -5,6 +5,7 @@ import { AnimatedContent, Drawer } from "@/components/drawer/drawer";
 import { HeaderControls } from "@/components/header-controls";
 import { ChatProvider, useChatContext } from "@/contexts/chat-context";
 import { DrawerProvider } from "@/contexts/drawer-context";
+import { UserProvider } from "@/contexts/user-context";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
 import { generateWebSocketUrl } from "@/lib/api-url";
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
@@ -88,6 +89,30 @@ const AppLayoutInner = () => {
                   },
                 }}
               />
+              <Stack.Screen
+                name="settings"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.45],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
+              <Stack.Screen
+                name="delete-account"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.55],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
             </Stack>
           </View>
         </AnimatedContent>
@@ -103,7 +128,9 @@ const AppLayoutInner = () => {
 export default function AppLayout() {
   return (
     <ChatProvider>
-      <AppLayoutInner />
+      <UserProvider>
+        <AppLayoutInner />
+      </UserProvider>
     </ChatProvider>
   );
 }
