@@ -1,6 +1,7 @@
 import { PostHogProvider } from "posthog-js/react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./layout";
+import { posthogOptions } from "./posthog-config";
 
 const container = document.getElementById("root");
 if (!container) {
@@ -14,11 +15,6 @@ if (!process.env.PUBLIC_POSTHOG_KEY) {
   throw new Error("PUBLIC_POSTHOG_KEY is not set");
 }
 
-const options = {
-  api_host: process.env.PUBLIC_POSTHOG_HOST,
-  defaults: "2025-11-30",
-} as const;
-
 // Store root instance to persist across HMR updates
 let root: Root | undefined = (window as { __reactRoot?: Root }).__reactRoot;
 
@@ -28,7 +24,10 @@ if (!root) {
 }
 
 root.render(
-  <PostHogProvider apiKey={process.env.PUBLIC_POSTHOG_KEY} options={options}>
+  <PostHogProvider
+    apiKey={process.env.PUBLIC_POSTHOG_KEY}
+    options={posthogOptions}
+  >
     <App />
   </PostHogProvider>
 );
