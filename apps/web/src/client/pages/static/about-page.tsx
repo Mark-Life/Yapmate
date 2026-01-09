@@ -12,6 +12,7 @@ import { useCallback } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useUser } from "../../contexts/user-context";
 import { ModelsExplorer } from "./models-explorer";
+import { RoadmapSection } from "./roadmap-section";
 import { StaticLayout } from "./static-layout";
 
 /**
@@ -303,6 +304,7 @@ export const AboutPage = () => (
       <ModelsExplorer />
     </div>
     <FeaturesSection />
+    <RoadmapSection />
     <PricingSection />
     {/* <PlatformSection /> */}
     <CTASection />
