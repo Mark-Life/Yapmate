@@ -3,7 +3,7 @@
  */
 import { ORPCError } from "@orpc/server";
 import {
-  checkMessageLimit,
+  checkGenerationLimit,
   getStripeCustomerId,
   getUserResetDate,
 } from "@yapmate/db/service";
@@ -20,12 +20,12 @@ import {
 export const subscription = {
   /**
    * Get current user's subscription usage
-   * Returns tier, message count, limit, and reset date
+   * Returns tier, generation count, limit, and reset date
    */
   usage: protectedProcedure
     .output(usageResponseSchema)
     .handler(async ({ context }) => {
-      const result = await checkMessageLimit(context.userId);
+      const result = await checkGenerationLimit(context.userId);
       const resetsAt = await getUserResetDate(context.userId);
       return {
         ...result,

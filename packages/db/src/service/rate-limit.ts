@@ -1,5 +1,5 @@
 /**
- * Rate limiting service - checks message limits per user based on subscription tier
+ * Rate limiting service - checks generation limits per user based on subscription tier
  */
 
 import { and, eq, gte, sql } from "drizzle-orm";
@@ -17,7 +17,7 @@ const PRODUCT_TIER_MAP: Record<string, Tier> = {
   prod_TkMjaoy0j7h6GN: "pro", // $15/mo - Pro Yapper
 };
 
-/** Message limits per tier */
+/** Generation limits per tier */
 const TIER_LIMITS: Record<Tier, number> = {
   free: 20,
   hobby: 1000,
@@ -140,11 +140,11 @@ export const getUserResetDate = async (userId: string): Promise<string> => {
 };
 
 /**
- * Checks if user is allowed to send a message based on subscription tier
+ * Checks if user is allowed to generate based on subscription tier
  * @param userId - ID of the user
  * @returns Object with allowed status, current count, limit, and tier
  */
-export const checkMessageLimit = async (
+export const checkGenerationLimit = async (
   userId: string
 ): Promise<{
   allowed: boolean;

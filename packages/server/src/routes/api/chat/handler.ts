@@ -4,7 +4,7 @@
  */
 
 import {
-  checkMessageLimit,
+  checkGenerationLimit,
   saveMessage as saveMessageService,
   updateActiveStreamId,
   uploadFilesInBackground,
@@ -67,14 +67,14 @@ export const chatHandler = {
       return new Response("Forbidden", { status: 403 });
     }
 
-    // Check message limit - applies to all operations (new messages, regeneration, edit)
+    // Check generation limit - applies to all operations (new messages, regeneration, edit)
     // All operations consume LLM tokens and should be rate-limited
-    const { allowed, count, limit } = await checkMessageLimit(userId);
+    const { allowed, count, limit } = await checkGenerationLimit(userId);
     if (!allowed) {
       // Rate limit exceeded - return 402 and stop processing
       return new Response(
         JSON.stringify({
-          error: "message_limit_exceeded",
+          error: "generation_limit_exceeded",
           count,
           limit,
         }),

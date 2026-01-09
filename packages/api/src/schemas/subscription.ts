@@ -7,7 +7,7 @@ export const tierSchema = z.enum(["free", "hobby", "pro", "unlimited"]);
 export const usageResponseSchema = z.object({
   tier: tierSchema,
   count: z.number(),
-  /** Message limit (null = unlimited) */
+  /** Generation limit (null = unlimited) */
   limit: z.number().nullable(),
   allowed: z.boolean(),
   /** First day of next month (when usage resets) */

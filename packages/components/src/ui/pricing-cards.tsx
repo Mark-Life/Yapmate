@@ -31,7 +31,7 @@ const TIERS: {
   name: string;
   price: string;
   priceDetail: string;
-  messages: string;
+  generations: string;
   features: string[];
   popular?: boolean;
 }[] = [
@@ -40,7 +40,7 @@ const TIERS: {
     name: "Free",
     price: "$0",
     priceDetail: "forever",
-    messages: "20 messages/month",
+    generations: "20 generations/month",
     features: ["All AI models", "Web & iOS apps", "Chat history sync"],
   },
   {
@@ -48,7 +48,7 @@ const TIERS: {
     name: "Hobby Yapper",
     price: "$7",
     priceDetail: "/month",
-    messages: "1,000 messages/month",
+    generations: "1,000 generations/month",
     features: [
       "All AI models",
       "Web & iOS apps",
@@ -62,7 +62,7 @@ const TIERS: {
     name: "Pro Yapper",
     price: "$15",
     priceDetail: "/month",
-    messages: "3,000 messages/month",
+    generations: "3,000 generations/month",
     features: [
       "All AI models",
       "Web & iOS apps",
@@ -235,7 +235,7 @@ export const PricingCards = ({
                   compact ? "text-sm" : "text-base"
                 )}
               >
-                {tier.messages}
+                {tier.generations}
               </p>
               <ul className="space-y-2">
                 {tier.features.map((feature) => (

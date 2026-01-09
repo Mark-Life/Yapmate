@@ -1,5 +1,5 @@
 /**
- * Usage badge component - displays subscription tier and message usage
+ * Usage badge component - displays subscription tier and generation usage
  * Used in sidebar footer to show current plan status
  */
 import { cn } from "@yapmate/components/lib/utils";
@@ -39,7 +39,7 @@ const getProgressColor = (percentage: number): string => {
 type UsageBadgeProps = {
   tier: Tier;
   count: number;
-  /** Message limit (null = unlimited) */
+  /** Generation limit (null = unlimited) */
   limit: number | null;
   resetsAt: string;
   onUpgradeClick?: () => void;
@@ -87,14 +87,14 @@ export const UsageBadge = ({
 
       {/* Usage stats */}
       {isUnlimited ? (
-        <p className="text-muted-foreground text-xs">Unlimited messages</p>
+        <p className="text-muted-foreground text-xs">Unlimited generations</p>
       ) : (
         <>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">
               <span className="font-medium text-foreground">{count}</span>
               {" / "}
-              {(limit ?? 0).toLocaleString()} messages
+              {(limit ?? 0).toLocaleString()} generations
             </span>
             <span className="text-muted-foreground">
               Resets {formatResetDate(resetsAt)}
