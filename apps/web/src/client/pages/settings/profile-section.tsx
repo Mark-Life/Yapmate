@@ -89,9 +89,10 @@ const SettingsSection = ({
  * Contains email, privacy, password, and account deletion settings
  */
 export const ProfileSection = () => {
-  const { user } = useUser();
+  const { user, updateHideEmailInUi } = useUser();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailConfirmation, setEmailConfirmation] = useState("");
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
 
   /**
    * Delete account mutation
@@ -138,8 +139,32 @@ export const ProfileSection = () => {
     deleteAccountMutation.mutate(emailConfirmation);
   };
 
+  /**
+   * Handles hide email toggle
+   */
+  const handleToggleHideEmail = async (checked: boolean) => {
+    setIsUpdatingSettings(true);
+    try {
+      await updateHideEmailInUi(checked);
+      toast.success(
+        checked
+          ? "Email is now hidden in the UI"
+          : "Email is now visible in the UI"
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update privacy setting"
+      );
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
   const isEmailMatch = emailConfirmation === user?.email;
   const isDeleting = deleteAccountMutation.isPending;
+  const hideEmailInUi = user?.hideEmailInUi ?? false;
 
   return (
     <div className="flex flex-col gap-8">
@@ -151,7 +176,9 @@ export const ProfileSection = () => {
         >
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              className="sm:max-w-xs"
+              className={`sm:max-w-xs ${
+                hideEmailInUi ? "select-none blur-sm transition-all" : ""
+              }`}
               defaultValue={user?.email ?? ""}
               disabled
               placeholder="email@example.com"
@@ -181,7 +208,11 @@ export const ProfileSection = () => {
           description="Hide your email address from being displayed in the app"
           label="Hide email in UI"
         >
-          <Switch disabled />
+          <Switch
+            checked={hideEmailInUi}
+            disabled={isUpdatingSettings}
+            onCheckedChange={handleToggleHideEmail}
+          />
         </SettingsRow>
       </SettingsSection>
 
@@ -231,13 +262,18 @@ export const ProfileSection = () => {
               <br />
               <br />
               To confirm, please type your email address:{" "}
-              <strong>{user?.email}</strong>
+              <strong className={hideEmailInUi ? "select-none blur-sm" : ""}>
+                {user?.email}
+              </strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="email-confirmation">Email</Label>
               <Input
+                className={
+                  hideEmailInUi ? "select-none blur-sm transition-all" : ""
+                }
                 id="email-confirmation"
                 onChange={(e) => setEmailConfirmation(e.target.value)}
                 placeholder={user?.email ?? ""}

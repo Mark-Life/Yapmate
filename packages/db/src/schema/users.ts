@@ -2,7 +2,7 @@
  * Users table - reference to Supabase Auth users
  * We store minimal info here, auth is handled by Supabase
  */
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { timestamps } from "./columns.helpers";
 
 export const users = pgTable("users", {
@@ -20,6 +20,9 @@ export const users = pgTable("users", {
 
   /** Timestamp when unlimited access was granted (null = subject to limits) */
   unlimitedAccessGrantedAt: timestamp({ withTimezone: true }),
+
+  /** Whether to blur/hide email in UI (privacy mode) */
+  hideEmailInUi: boolean().default(false).notNull(),
 
   ...timestamps,
 });

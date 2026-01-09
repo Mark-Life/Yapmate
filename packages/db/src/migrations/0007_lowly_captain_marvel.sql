@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "hideEmailInUi" boolean DEFAULT false NOT NULL;

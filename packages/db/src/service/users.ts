@@ -120,3 +120,43 @@ export const deleteUserAccount = async (
   // Note: Stripe records (stripe_customers, stripe_subscriptions, etc.) are NOT deleted
   // These are kept for legal/bookkeeping purposes as required by law
 };
+
+/**
+ * Gets user settings
+ * @param userId - User ID to query
+ * @returns User settings object with hideEmailInUi
+ */
+export const getUserSettings = async (
+  userId: string
+): Promise<{
+  hideEmailInUi: boolean;
+}> => {
+  const result = await db
+    .select({ hideEmailInUi: users.hideEmailInUi })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!result[0]) {
+    throw new Error("User not found");
+  }
+
+  return {
+    hideEmailInUi: result[0].hideEmailInUi,
+  };
+};
+
+/**
+ * Updates user settings
+ * @param userId - User ID to update
+ * @param settings - Settings object with hideEmailInUi
+ */
+export const updateUserSettings = async (
+  userId: string,
+  settings: { hideEmailInUi: boolean }
+): Promise<void> => {
+  await db
+    .update(users)
+    .set({ hideEmailInUi: settings.hideEmailInUi })
+    .where(eq(users.id, userId));
+};
