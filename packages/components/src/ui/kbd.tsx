@@ -1,5 +1,5 @@
 import { cn } from "@yapmate/components/lib/utils";
-
+import type * as React from "react";
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd

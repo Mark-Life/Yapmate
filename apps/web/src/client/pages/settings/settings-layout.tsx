@@ -32,7 +32,7 @@ const NavButton = ({
 }) => (
   <button
     className={cn(
-      "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
       isActive
         ? "bg-accent text-accent-foreground"
         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -78,7 +78,7 @@ export const SettingsLayout = () => {
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="mx-auto grid h-14 max-w-4xl grid-cols-[auto_1fr_auto] items-center px-4">
+        <div className="relative mx-auto flex h-14 max-w-4xl items-center px-4">
           <Button
             className="gap-2"
             onClick={handleBackToChats}
@@ -87,16 +87,17 @@ export const SettingsLayout = () => {
           >
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <h1 className="text-center font-semibold">Settings</h1>
-          <div />
+          <h1 className="absolute left-1/2 -translate-x-1/2 font-semibold">
+            Settings
+          </h1>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="mx-auto flex w-full max-w-4xl flex-1 gap-8 px-4 py-8">
-        {/* Sidebar navigation */}
-        <nav className="w-48 shrink-0">
-          <ul className="flex flex-col gap-1">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6 md:flex-row md:gap-8 md:py-8">
+        {/* Navigation - horizontal on mobile, sidebar on desktop */}
+        <nav className="shrink-0 md:w-48">
+          <ul className="flex gap-1 overflow-x-auto md:flex-col">
             {NAV_ITEMS.map((item) => (
               <li key={item.id}>
                 <NavButton
@@ -110,7 +111,7 @@ export const SettingsLayout = () => {
         </nav>
 
         {/* Content area */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <SectionContent section={activeSection} />
         </div>
       </main>

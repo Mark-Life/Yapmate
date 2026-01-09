@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 import { Icon } from "src/components/ui/icon";
 import { TextClassContext } from "src/components/ui/text";
 import { toggleVariants } from "src/components/ui/toggle";
-import { cn } from "src/lib/utils";
+import { cn } from "@/lib/utils";
 
 const ToggleGroupContext = React.createContext<VariantProps<
   typeof toggleVariants

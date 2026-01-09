@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { useMemo } from "react";
 import { Label } from "@yapmate/components/ui/label";
 import { Separator } from "@yapmate/components/ui/separator";
+import type * as React from "react";
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (
