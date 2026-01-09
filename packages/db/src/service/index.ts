@@ -4,6 +4,7 @@
  */
 
 export * from "./chats";
+export * from "./feedback";
 export * from "./file-upload";
 export * from "./files";
 export * from "./mapping";
