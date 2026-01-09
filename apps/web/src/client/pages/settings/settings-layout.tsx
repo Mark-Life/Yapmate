@@ -124,8 +124,8 @@ export const SettingsLayout = () => {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="relative mx-auto flex h-14 max-w-4xl items-center px-4">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+        <div className="relative mx-auto flex h-12 max-w-4xl items-center px-4">
           <Button
             className="gap-2"
             onClick={handleBackToChats}
@@ -141,25 +141,27 @@ export const SettingsLayout = () => {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6 md:flex-row md:gap-8 md:py-8">
-        {/* Navigation - horizontal on mobile, sidebar on desktop */}
-        <nav className="shrink-0 md:w-48">
-          <ul className="flex gap-1 overflow-x-auto md:flex-col">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.id}>
-                <NavButton
-                  isActive={activeSection === item.id}
-                  item={item}
-                  onClick={() => handleSectionClick(item.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-6">
+        <div className="flex min-h-96 flex-col gap-4 rounded-lg border bg-card md:flex-row md:gap-0">
+          {/* Navigation - horizontal on mobile, sidebar on desktop */}
+          <nav className="shrink-0 border-b p-4 md:w-48 md:border-r md:border-b-0">
+            <ul className="flex gap-1 overflow-x-auto md:flex-col">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.id}>
+                  <NavButton
+                    isActive={activeSection === item.id}
+                    item={item}
+                    onClick={() => handleSectionClick(item.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* Content area */}
-        <div className="min-w-0 flex-1">
-          <SectionContent section={activeSection} />
+          {/* Content area */}
+          <div className="min-w-0 flex-1 p-6">
+            <SectionContent section={activeSection} />
+          </div>
         </div>
       </main>
     </div>
