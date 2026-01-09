@@ -1,11 +1,27 @@
 import { cn } from "@yapmate/components/lib/utils";
 import { Button } from "@yapmate/components/ui/button";
 import { ArrowLeftIcon, SparklesIcon, UserIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { navigate } from "../../router";
 import { ProfileSection } from "./profile-section";
 
 type SettingsSection = "profile" | "models";
+
+const VALID_SECTIONS: SettingsSection[] = ["profile", "models"];
+const SETTINGS_PATH_REGEX = /^\/settings\/([^/]+)/;
+
+/**
+ * Extracts settings section from URL path
+ * Returns "profile" as default if path is invalid
+ */
+const getSectionFromPath = (pathname: string): SettingsSection => {
+  const match = pathname.match(SETTINGS_PATH_REGEX);
+  const section = match?.[1];
+  if (section && VALID_SECTIONS.includes(section as SettingsSection)) {
+    return section as SettingsSection;
+  }
+  return "profile";
+};
 
 type NavItem = {
   id: SettingsSection;
@@ -32,7 +48,7 @@ const NavButton = ({
 }) => (
   <button
     className={cn(
-      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors md:w-full",
       isActive
         ? "bg-accent text-accent-foreground"
         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -65,13 +81,44 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
 
 /**
  * Settings page layout with vertical navigation sidebar
+ * URL-driven section selection: /settings/profile, /settings/models
  */
 export const SettingsLayout = () => {
-  const [activeSection, setActiveSection] =
-    useState<SettingsSection>("profile");
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
+    getSectionFromPath(window.location.pathname)
+  );
+
+  // Redirect /settings to /settings/profile and sync state with URL
+  useEffect(() => {
+    const pathname = window.location.pathname;
+
+    // Redirect bare /settings to /settings/profile
+    if (pathname === "/settings" || pathname === "/settings/") {
+      navigate("/settings/profile");
+      return;
+    }
+
+    // Sync section from URL
+    setActiveSection(getSectionFromPath(pathname));
+  }, []);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveSection(getSectionFromPath(window.location.pathname));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const handleBackToChats = () => {
     navigate("/");
+  };
+
+  const handleSectionClick = (sectionId: SettingsSection) => {
+    navigate(`/settings/${sectionId}`);
+    setActiveSection(sectionId);
   };
 
   return (
@@ -103,7 +150,7 @@ export const SettingsLayout = () => {
                 <NavButton
                   isActive={activeSection === item.id}
                   item={item}
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => handleSectionClick(item.id)}
                 />
               </li>
             ))}
