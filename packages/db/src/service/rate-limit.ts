@@ -4,9 +4,8 @@
 
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "../client";
-import { chats } from "../schema/chats";
-import { messages } from "../schema/messages";
 import { stripeSubscriptions } from "../schema/stripe";
+import { usageRecords } from "../schema/usage";
 import { users } from "../schema/users";
 
 /** Subscription tier types */
@@ -27,24 +26,24 @@ const TIER_LIMITS: Record<Tier, number> = {
 };
 
 /**
- * Counts user messages since a specific date
+ * Counts user chat usage since a specific date
+ * Uses usage_records table (persists after chat deletion)
  * @param userId - ID of the user
  * @param periodStart - Start date of the period to count from
- * @returns Number of user messages sent since periodStart
+ * @returns Number of chat API calls since periodStart
  */
-const getUserMessageCountSince = async (
+const getUserUsageCountSince = async (
   userId: string,
   periodStart: Date
 ): Promise<number> => {
   const result = await db
     .select({ count: sql<number>`count(*)` })
-    .from(messages)
-    .innerJoin(chats, eq(messages.chatId, chats.id))
+    .from(usageRecords)
     .where(
       and(
-        eq(chats.userId, userId),
-        eq(messages.role, "user"),
-        gte(messages.createdAt, periodStart)
+        eq(usageRecords.userId, userId),
+        eq(usageRecords.type, "chat"),
+        gte(usageRecords.createdAt, periodStart)
       )
     );
 
@@ -52,16 +51,16 @@ const getUserMessageCountSince = async (
 };
 
 /**
- * Counts user messages in the current calendar month (for free users)
+ * Counts user chat usage in the current calendar month (for free users)
  * @param userId - ID of the user
- * @returns Number of user messages sent this month
+ * @returns Number of chat API calls this month
  */
-export const getUserMonthlyMessageCount = async (
+export const getUserMonthlyUsageCount = async (
   userId: string
 ): Promise<number> => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  return await getUserMessageCountSince(userId, startOfMonth);
+  return await getUserUsageCountSince(userId, startOfMonth);
 };
 
 /** Result of getUserSubscriptionInfo query */
@@ -175,17 +174,17 @@ export const checkMessageLimit = async (
   const tier = deriveTier(info.productId);
   const limit = TIER_LIMITS[tier];
 
-  // Count messages based on subscription status
+  // Count usage based on subscription status
   // For subscribed users: count from billing period start
   // For free users: count from calendar month start
   let count: number;
   if (info.currentPeriodStart !== null) {
     // Subscribed user - count from billing period start
     const periodStart = new Date(info.currentPeriodStart * 1000);
-    count = await getUserMessageCountSince(userId, periodStart);
+    count = await getUserUsageCountSince(userId, periodStart);
   } else {
     // Free user - count from calendar month start
-    count = await getUserMonthlyMessageCount(userId);
+    count = await getUserMonthlyUsageCount(userId);
   }
 
   return {
