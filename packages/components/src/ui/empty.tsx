@@ -1,5 +1,6 @@
 import { cn } from "@yapmate/components/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (

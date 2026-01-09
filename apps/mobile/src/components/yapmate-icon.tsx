@@ -1,6 +1,6 @@
 import { cssInterop } from "nativewind";
 import Svg, { Path, type SvgProps } from "react-native-svg";
-import { cn } from "src/lib/utils";
+import { cn } from "@/lib/utils";
 
 type YapmateIconProps = Omit<SvgProps, "width" | "height"> & {
   size?: number;

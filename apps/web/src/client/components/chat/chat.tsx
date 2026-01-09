@@ -16,6 +16,7 @@ import {
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
+import { generateUUID } from "../../lib/uuid";
 import { DragDropZone } from "../drag-drop-zone";
 import {
   createChat,
@@ -47,10 +48,10 @@ export const Chat = ({
   const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
-  const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+  const FALLBACK_MODEL = "moonshotai/kimi-k2-0905";
 
   // For new chats, generate ID client-side; track if chat exists in DB
-  const [chatId] = useState(() => initialId ?? crypto.randomUUID());
+  const [chatId] = useState(() => initialId ?? generateUUID());
 
   // Set default model on mount when models are loaded
   useEffect(() => {

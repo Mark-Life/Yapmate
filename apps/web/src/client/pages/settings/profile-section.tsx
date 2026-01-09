@@ -57,7 +57,7 @@ const SettingsRow = ({
   description?: string;
   children: ReactNode;
 }) => (
-  <div className="flex items-center justify-between gap-4">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
     <div className="flex flex-col gap-0.5">
       <Label className="font-medium text-sm">{label}</Label>
       {description ? (
@@ -149,15 +149,15 @@ export const ProfileSection = () => {
           description="Your email address for account communications"
           label="Email"
         >
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              className="max-w-xs"
+              className="sm:max-w-xs"
               defaultValue={user?.email ?? ""}
               disabled
               placeholder="email@example.com"
               type="email"
             />
-            <Button disabled variant="outline">
+            <Button className="w-full sm:w-auto" disabled variant="outline">
               Change
             </Button>
           </div>
