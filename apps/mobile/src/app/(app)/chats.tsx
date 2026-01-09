@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { useChatContext } from "@/contexts/chat-context";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { syncWithServer } from "@/hooks/use-user-preferences";
 import { rpcClient } from "@/lib/rpc-client";
 
@@ -49,6 +50,7 @@ export default function ChatsScreen() {
   const { currentChatId, navigateToChat, navigateToNew } = useChatContext();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { capture } = useAnalytics();
   const {
     data: chats = [],
     isPending,
@@ -62,6 +64,7 @@ export default function ChatsScreen() {
    * Prefetch messages when hovering/pressing a chat
    */
   const handleChatPress = (chatId: string) => {
+    capture(AnalyticsEvents.CHAT_OPENED);
     navigateToChat(chatId);
     // Prefetch messages for better UX
     queryClient.prefetchQuery({

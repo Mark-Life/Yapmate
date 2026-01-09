@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { generateAPIUrl } from "@/lib/api-url";
 import { lightTap } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +25,34 @@ type TranscribeButtonProps = {
   onTranscriptionChange?: (text: string) => void;
   className?: string;
   disabled?: boolean;
+};
+
+/**
+ * Sends audio to transcription API and returns text
+ */
+const transcribeAudio = async (
+  uri: string
+): Promise<{ text: string } | null> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const formData = new FormData();
+  const audioFile = { uri, type: "audio/m4a", name: "recording.m4a" };
+  formData.append("audio", audioFile as unknown as Blob);
+
+  const response = await fetch(generateAPIUrl("/api/transcribe"), {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Transcription failed");
+  }
+
+  return response.json();
 };
 
 /**
@@ -38,6 +67,7 @@ export const TranscribeButton = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const rotation = useSharedValue(0);
+  const { capture } = useAnalytics();
 
   /**
    * Cleanup function to stop recording
@@ -122,11 +152,12 @@ export const TranscribeButton = ({
 
       recordingRef.current = recording;
       setIsRecording(true);
+      capture(AnalyticsEvents.VOICE_RECORDING_STARTED);
     } catch (error) {
       console.error("Failed to start recording:", error);
       setIsRecording(false);
     }
-  }, []);
+  }, [capture]);
 
   /**
    * Stop recording and transcribe
@@ -141,7 +172,6 @@ export const TranscribeButton = ({
       setIsRecording(false);
       setIsTranscribing(true);
 
-      // Stop and get URI
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
@@ -150,51 +180,22 @@ export const TranscribeButton = ({
         throw new Error("No recording URI available");
       }
 
-      // Get session token for authentication
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const result = await transcribeAudio(uri);
 
-      // Create FormData with audio file
-      // React Native FormData requires a specific format
-      const formData = new FormData();
-      const audioFile: {
-        uri: string;
-        type: string;
-        name: string;
-      } = {
-        uri,
-        type: "audio/m4a",
-        name: "recording.m4a",
-      };
-      formData.append("audio", audioFile as unknown as Blob);
-
-      // Send to transcription API
-      const response = await fetch(generateAPIUrl("/api/transcribe"), {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Transcription failed");
-      }
-
-      const { text } = await response.json();
-
-      if (text) {
-        onTranscriptionChange?.(text);
+      if (result?.text) {
+        onTranscriptionChange?.(result.text);
+        capture(AnalyticsEvents.VOICE_TRANSCRIPTION_COMPLETED);
       }
     } catch (error) {
       console.error("Transcription error:", error);
+      capture(AnalyticsEvents.VOICE_TRANSCRIPTION_FAILED, {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setIsTranscribing(false);
       await cleanup();
     }
-  }, [onTranscriptionChange, cleanup]);
+  }, [onTranscriptionChange, cleanup, capture]);
 
   /**
    * Toggle recording state

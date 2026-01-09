@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ImageIcon } from "lucide-react-native";
 import { Button as UIButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import type { AttachmentsContext } from "@/hooks/use-attachments";
 import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ type AttachmentPickerProps = {
  * Component for picking attachments from camera, photo library, or documents
  */
 export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
+  const { capture } = useAnalytics();
+
   /**
    * Requests camera permissions and opens camera
    */
@@ -37,6 +40,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        capture(AnalyticsEvents.ATTACHMENT_ADDED, { type: "camera" });
         attachments.add(
           asset.uri,
           asset.mimeType ?? "image/jpeg",
@@ -71,6 +75,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
 
       if (!result.canceled && result.assets) {
         for (const asset of result.assets) {
+          capture(AnalyticsEvents.ATTACHMENT_ADDED, { type: "library" });
           attachments.add(
             asset.uri,
             asset.mimeType ?? "image/jpeg",
@@ -97,6 +102,7 @@ export const AttachmentPicker = ({ attachments }: AttachmentPickerProps) => {
 
       if (!result.canceled && result.assets) {
         for (const asset of result.assets) {
+          capture(AnalyticsEvents.ATTACHMENT_ADDED, { type: "document" });
           attachments.add(
             asset.uri,
             asset.mimeType ?? "application/octet-stream",

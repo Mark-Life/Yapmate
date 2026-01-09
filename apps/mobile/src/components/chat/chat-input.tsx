@@ -9,6 +9,7 @@ import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import type { AttachmentsContext } from "@/hooks/use-attachments";
 import { lightTap } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export const ChatInput = ({
   const [_, setIsFocused] = useState(false);
   const { colorScheme } = useColorScheme();
   const textareaRef = useRef<TextInput>(null);
+  const { capture } = useAnalytics();
 
   /**
    * Focus input when it's a new chat
@@ -153,6 +155,9 @@ export const ChatInput = ({
             className="transition-all duration-200"
             onPress={() => {
               lightTap();
+              capture(AnalyticsEvents.SEARCH_TOGGLED, {
+                enabled: !searchEnabled,
+              });
               onSearchEnabledChange(!searchEnabled);
             }}
             size="icon"

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
 import { rpcClient } from "@/lib/rpc-client";
 
@@ -28,6 +29,7 @@ export default function RenameChatScreen() {
   }>();
   const [renameInput, setRenameInput] = useState(currentTitle ?? "");
   const inputRef = useRef<TextInput>(null);
+  const { capture } = useAnalytics();
 
   /**
    * Rename chat mutation
@@ -40,6 +42,7 @@ export default function RenameChatScreen() {
       await rpcClient.chats.update({ id: chatId, title });
     },
     onSuccess: () => {
+      capture(AnalyticsEvents.CHAT_RENAMED);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       router.back();
     },
