@@ -1,5 +1,5 @@
-import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
+import { posthog } from "@/lib/posthog";
 
 /**
  * Event names for analytics tracking
@@ -92,10 +92,9 @@ type EventProperties = {
 /**
  * Custom hook for PostHog analytics tracking
  * Provides typed event tracking functions
+ * Note: Uses direct posthog client (no Provider) due to React 19 incompatibility
  */
 export const useAnalytics = () => {
-  const posthog = usePostHog();
-
   /**
    * Captures a typed event with optional properties
    */
@@ -109,7 +108,7 @@ export const useAnalytics = () => {
       const properties = args[0];
       posthog.capture(eventName, properties);
     },
-    [posthog]
+    []
   );
 
   /**
@@ -122,7 +121,7 @@ export const useAnalytics = () => {
     ) => {
       posthog.identify(userId, properties);
     },
-    [posthog]
+    []
   );
 
   /**
@@ -130,7 +129,7 @@ export const useAnalytics = () => {
    */
   const reset = useCallback(() => {
     posthog.reset();
-  }, [posthog]);
+  }, []);
 
   return {
     capture,
