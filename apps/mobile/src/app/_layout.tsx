@@ -4,7 +4,6 @@ import { PortalHost } from "@rn-primitives/portal";
 import { Stack, usePathname, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
-import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,32 +24,24 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView className="flex-1">
-      <PostHogProvider
-        autocapture={{
-          captureTouches: true,
-          captureScreens: false, // Manual tracking for expo-router
-        }}
-        client={posthog}
-      >
-        <SessionProvider>
-          <QueryProvider>
-            <SplashScreenController />
-            <AuthLinkingHandler />
-            <UserPreferencesInitializer />
-            <PostHogIdentify />
-            <PostHogScreenTracker />
-            <SafeAreaProvider>
-              <View
-                className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
-              >
-                <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-                <RootNavigator />
-                <PortalHost />
-              </View>
-            </SafeAreaProvider>
-          </QueryProvider>
-        </SessionProvider>
-      </PostHogProvider>
+      <SessionProvider>
+        <QueryProvider>
+          <SplashScreenController />
+          <AuthLinkingHandler />
+          <UserPreferencesInitializer />
+          <PostHogIdentify />
+          <PostHogScreenTracker />
+          <SafeAreaProvider>
+            <View
+              className={`flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
+            >
+              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              <RootNavigator />
+              <PortalHost />
+            </View>
+          </SafeAreaProvider>
+        </QueryProvider>
+      </SessionProvider>
     </GestureHandlerRootView>
   );
 }
@@ -98,10 +89,10 @@ function UserPreferencesInitializer() {
 /**
  * Identifies users in PostHog when they sign in
  * Resets PostHog on sign out to clear user data
+ * Note: Using direct posthog client (no Provider) due to React 19 incompatibility
  */
 function PostHogIdentify() {
   const { session } = useSession();
-  const ph = usePostHog();
   const prevUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -110,16 +101,16 @@ function PostHogIdentify() {
     // User signed in
     if (userId && userId !== prevUserId.current) {
       const email = session?.user?.email;
-      ph.identify(userId, email ? { email } : undefined);
+      posthog.identify(userId, email ? { email } : undefined);
     }
 
     // User signed out
     if (!userId && prevUserId.current) {
-      ph.reset();
+      posthog.reset();
     }
 
     prevUserId.current = userId;
-  }, [session, ph]);
+  }, [session]);
 
   return null;
 }
@@ -127,17 +118,17 @@ function PostHogIdentify() {
 /**
  * Tracks screen views for expo-router
  * Required for @react-navigation/native v7+
+ * Note: Using direct posthog client (no Provider) due to React 19 incompatibility
  */
 function PostHogScreenTracker() {
   const pathname = usePathname();
   const segments = useSegments();
-  const ph = usePostHog();
 
   useEffect(() => {
     if (pathname) {
-      ph.screen(pathname, { segments });
+      posthog.screen(pathname, { segments });
     }
-  }, [pathname, segments, ph]);
+  }, [pathname, segments]);
 
   return null;
 }
