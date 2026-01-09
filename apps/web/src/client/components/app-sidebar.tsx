@@ -51,6 +51,7 @@ import {
   CreditCardIcon,
   LogOutIcon,
   PencilIcon,
+  SettingsIcon,
   TrashIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -59,6 +60,7 @@ import { useUser } from "../contexts/user-context";
 import { usePostHog } from "../hooks/use-posthog";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
+import { navigate } from "../router";
 import { UpgradeSheet } from "./upgrade-sheet";
 
 type Chat = {
@@ -402,6 +404,10 @@ export const AppSidebar = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <SettingsIcon className="size-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleManageSubscription}>
                 <CreditCardIcon className="size-4" />
                 Manage Subscription
