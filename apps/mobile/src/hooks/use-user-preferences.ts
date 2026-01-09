@@ -109,3 +109,13 @@ export const syncWithServer = async (
  * Returns whether preferences have been initialized
  */
 export const isPreferencesInitialized = (): boolean => isInitialized;
+
+/**
+ * Clears all user preferences from cache and storage
+ * Call this on logout to reset state for next user
+ */
+export const clearUserPreferences = async (): Promise<void> => {
+  cachedPreferences = { ...DEFAULT_PREFERENCES };
+  isInitialized = false;
+  await AsyncStorage.removeItem(STORAGE_KEY);
+};
