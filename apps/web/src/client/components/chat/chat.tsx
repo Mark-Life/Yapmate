@@ -48,7 +48,7 @@ export const Chat = ({
   const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
-  const FALLBACK_MODEL = "moonshotai/kimi-k2-0905";
+  const FALLBACK_MODEL = "google/gemini-2.5-flash";
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? generateUUID());
