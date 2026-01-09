@@ -36,6 +36,13 @@ export const getFilesByIds = (fileIds: string[]): Promise<FileSelect[]> => {
 };
 
 /**
+ * Gets all files for a user
+ * @param userId - ID of the user
+ */
+export const getFilesByUserId = async (userId: string): Promise<FileSelect[]> =>
+  db.select().from(files).where(eq(files.userId, userId));
+
+/**
  * Gets accessible URL for a file (signed URL or dataUrl fallback)
  * @param req - Request object for Bun cookie access
  * @param file - File record from database
