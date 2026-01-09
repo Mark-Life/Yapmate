@@ -271,7 +271,7 @@ export const Drawer = () => {
               </GlassView>
               <View className="flex-1">
                 <Host>
-                  <ContextMenu activationMethod="singlePress">
+                  <ContextMenu activationMethod="longPress">
                     <ContextMenu.Items>
                       {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
                       <Button

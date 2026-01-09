@@ -151,7 +151,6 @@ export default function ChatsScreen() {
           recycleItems
           renderItem={({ item }) => (
             <ChatListItem
-              id={item.id}
               isActive={item.id === currentChatId}
               onDelete={() => handleDeleteClick(item.id)}
               onPress={() => handleChatPress(item.id)}
