@@ -6,11 +6,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@yapmate/components/ui/sidebar";
-import { PlusIcon } from "lucide-react";
+import { MessageCircleQuestionIcon, PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
+import { FeedbackDialog } from "../components/feedback-dialog";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
 import { syncWithServer } from "../hooks/use-user-preferences";
 import { rpcClient } from "../lib/rpc-client";
@@ -40,19 +41,31 @@ const useUpgradeFromUrl = () => {
 };
 
 /**
- * Header controls - sidebar trigger + new chat button
+ * Header controls - sidebar trigger + feedback button + new chat button
  */
 const HeaderControls = () => {
   const { navigateToNew } = useChatContext();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
-    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
-      <SidebarTrigger />
-      <Button className="size-7" onClick={navigateToNew} variant="ghost">
-        <PlusIcon className="size-4" />
-        <span className="sr-only">New Chat</span>
-      </Button>
-    </div>
+    <>
+      <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
+        <SidebarTrigger />
+        <Button
+          className="size-7"
+          onClick={() => setFeedbackOpen(true)}
+          variant="ghost"
+        >
+          <MessageCircleQuestionIcon className="size-4" />
+          <span className="sr-only">Send Feedback</span>
+        </Button>
+        <Button className="size-7" onClick={navigateToNew} variant="ghost">
+          <PlusIcon className="size-4" />
+          <span className="sr-only">New Chat</span>
+        </Button>
+      </div>
+      <FeedbackDialog onOpenChange={setFeedbackOpen} open={feedbackOpen} />
+    </>
   );
 };
 
