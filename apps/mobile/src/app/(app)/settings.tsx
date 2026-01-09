@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useUser } from "@/contexts/user-context";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
 
 /**
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user, updateHideEmailInUi } = useUser();
   const [isUpdating, setIsUpdating] = useState(false);
+  const { capture } = useAnalytics();
 
   const hideEmailInUi = user?.hideEmailInUi ?? false;
 
@@ -49,6 +51,7 @@ export default function SettingsScreen() {
    */
   const handleToggleHideEmail = async (checked: boolean) => {
     lightTap();
+    capture(AnalyticsEvents.HIDE_EMAIL_TOGGLED, { enabled: checked });
     setIsUpdating(true);
     try {
       await updateHideEmailInUi(checked);
@@ -62,6 +65,7 @@ export default function SettingsScreen() {
    */
   const handleDeleteAccount = () => {
     lightTap();
+    capture(AnalyticsEvents.DELETE_ACCOUNT_INITIATED);
     router.push("/delete-account");
   };
 

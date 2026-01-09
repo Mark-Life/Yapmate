@@ -1,6 +1,7 @@
 import type { ChatStatus, FileUIPart, UIMessage } from "ai";
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { FilePart, TextPart } from "./message-parts";
 
 type ChatUIMessage = UIMessage;
@@ -99,6 +100,7 @@ export const MessageItem = ({
   const isStreaming = status === "streaming" || status === "submitted";
   const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
   const canEdit = Boolean(isUser && onEdit);
+  const { capture } = useAnalytics();
 
   const { actions, actionIds } = useMemo(
     () =>
@@ -127,17 +129,21 @@ export const MessageItem = ({
       case ACTION_COPY: {
         const textContent = getTextContent(parts);
         if (textContent) {
+          capture(AnalyticsEvents.MESSAGE_COPIED);
           onCopy(textContent, `${message.id}-0`);
         }
         break;
       }
       case ACTION_REGENERATE:
+        capture(AnalyticsEvents.MESSAGE_REGENERATED, { model: "current" });
         onRegenerate?.(message.id, messageRole);
         break;
       case ACTION_REGENERATE_WITH_MODEL:
+        // Note: actual model selection tracked in model-selector
         onRequestModelForRegeneration?.(message.id, messageRole);
         break;
       case ACTION_EDIT:
+        capture(AnalyticsEvents.MESSAGE_EDITED);
         onStartEdit(message.id);
         break;
       default:

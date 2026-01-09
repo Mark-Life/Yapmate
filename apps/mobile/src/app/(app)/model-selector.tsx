@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useModels } from "@/hooks/use-models";
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
@@ -146,6 +147,7 @@ export default function ModelSelectorScreen() {
   const { models, loading } = useModels();
   const [search, setSearch] = useState("");
   const inputRef = useRef<TextInput>(null);
+  const { capture } = useAnalytics();
 
   const currentModel = currentModelParam ?? "";
 
@@ -168,6 +170,10 @@ export default function ModelSelectorScreen() {
    */
   const handleSelect = (value: string) => {
     lightTap();
+    capture(AnalyticsEvents.MODEL_CHANGED, {
+      model: value,
+      previous_model: currentModel || undefined,
+    });
     // Dispatch event to notify Chat component
     eventTarget.dispatchEvent(
       createCustomEvent("model-selected", { model: value })

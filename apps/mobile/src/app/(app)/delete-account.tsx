@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { useUser } from "@/contexts/user-context";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
 import { rpcClient } from "@/lib/rpc-client";
 
@@ -20,6 +21,7 @@ export default function DeleteAccountScreen() {
   const { signOut, session } = useSession();
   const { user } = useUser();
   const [emailConfirmation, setEmailConfirmation] = useState("");
+  const { capture } = useAnalytics();
 
   const userEmail = session?.user?.email ?? "";
   const hideEmailInUi = user?.hideEmailInUi ?? false;
@@ -39,8 +41,14 @@ export default function DeleteAccountScreen() {
       }
     },
     onSuccess: async () => {
+      capture(AnalyticsEvents.ACCOUNT_DELETED);
       await signOut();
       router.push("/");
+    },
+    onError: (error) => {
+      capture(AnalyticsEvents.ACCOUNT_DELETE_FAILED, {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     },
   });
 

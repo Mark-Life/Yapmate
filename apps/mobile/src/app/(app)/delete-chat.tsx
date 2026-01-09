@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useChatContext } from "@/contexts/chat-context";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
 import { rpcClient } from "@/lib/rpc-client";
 
@@ -19,6 +20,7 @@ export default function DeleteChatScreen() {
   const { chatId } = useLocalSearchParams<{
     chatId: string;
   }>();
+  const { capture } = useAnalytics();
 
   /**
    * Delete chat mutation
@@ -31,6 +33,7 @@ export default function DeleteChatScreen() {
       await rpcClient.chats.delete({ id: chatId });
     },
     onSuccess: () => {
+      capture(AnalyticsEvents.CHAT_DELETED);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       if (chatId === currentChatId) {
         navigateToNew();

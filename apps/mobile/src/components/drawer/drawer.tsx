@@ -23,6 +23,7 @@ import { useSession } from "@/contexts/auth";
 import { useChatContext } from "@/contexts/chat-context";
 import { DRAWER_WIDTH, useDrawer } from "@/contexts/drawer-context";
 import { useUser } from "@/contexts/user-context";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
 
 /** Edge zone width for detecting swipe-to-open gesture */
@@ -147,23 +148,26 @@ export const Drawer = () => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const { capture } = useAnalytics();
 
   /**
    * Handle logout
    */
   const handleLogout = useCallback(async () => {
     lightTap();
+    capture(AnalyticsEvents.USER_SIGNED_OUT);
     await signOut();
     closeDrawer();
-  }, [signOut, closeDrawer]);
+  }, [signOut, closeDrawer, capture]);
 
   /**
    * Handle new chat creation and close drawer
    */
   const handleNewChat = useCallback(() => {
+    capture(AnalyticsEvents.CHAT_CREATED);
     navigateToNew();
     closeDrawer();
-  }, [navigateToNew, closeDrawer]);
+  }, [navigateToNew, closeDrawer, capture]);
 
   /**
    * Handle settings navigation

@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useModels } from "@/hooks/use-models";
 import {
@@ -70,6 +71,7 @@ export const Chat = ({
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
   const { models } = useModels();
   const attachments = useAttachments();
+  const { capture } = useAnalytics();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
   // Determine default model based on context
@@ -253,12 +255,18 @@ export const Chat = ({
           "status" in error &&
           error.status === 402
         ) {
+          capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
+            error: "rate_limit_exceeded",
+          });
           Alert.alert(
             "Message limit reached",
             "You've reached your free monthly message limit. Your allowance will reset next month."
           );
           return;
         }
+        capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
         console.error("useChat error:", error);
       },
     });
@@ -358,11 +366,12 @@ export const Chat = ({
     }
 
     try {
+      capture(AnalyticsEvents.STREAM_STOPPED);
       await rpcClient.chat.stop({ chatId });
     } catch (error) {
       console.error("Stop request failed:", error);
     }
-  }, [chatId]);
+  }, [chatId, capture]);
 
   /**
    * Creates chat in DB on first message
@@ -414,6 +423,13 @@ export const Chat = ({
     if (!(hasText || hasAttachments)) {
       return;
     }
+
+    // Track message sent
+    capture(AnalyticsEvents.MESSAGE_SENT, {
+      model,
+      has_attachments: hasAttachments,
+      search_enabled: searchEnabled,
+    });
 
     // Create chat in DB on first message
     await ensureChatExists();
