@@ -29,7 +29,13 @@ import {
 } from "@yapmate/components/ui/tooltip";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
-import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
+import {
+  BrainIcon,
+  EllipsisIcon,
+  GlobeIcon,
+  ImageIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
@@ -37,6 +43,7 @@ import { usePostHog } from "../../hooks/use-posthog";
 import type { ReasoningEffort } from "../../hooks/use-user-preferences";
 import { ModelSelectorCombobox } from "../model-selector";
 import { TokenUsageIndicator } from "./token-usage-indicator";
+import { ToolSelector } from "./tool-selector";
 
 /** Labels for reasoning effort levels */
 const REASONING_LABELS: Record<ReasoningEffort, string> = {
@@ -92,6 +99,7 @@ export const ChatInput = ({
   const hasAttachments = attachments.files.length > 0;
   const previousFileCountRef = useRef(attachments.files.length);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+  const [toolSelectorOpen, setToolSelectorOpen] = useState(false);
 
   /**
    * Track file attachments when they're added
@@ -192,6 +200,15 @@ export const ChatInput = ({
     { enableOnFormTags: true }
   );
 
+  useHotkeys(
+    HOTKEYS.openToolSelector,
+    (e) => {
+      e.preventDefault();
+      setToolSelectorOpen(true);
+    },
+    { enableOnFormTags: true }
+  );
+
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"
@@ -240,6 +257,11 @@ export const ChatInput = ({
             }}
             onOpenChange={setModelSelectorOpen}
             open={modelSelectorOpen}
+          />
+          <ToolSelector
+            chatId={chatId}
+            onOpenChange={setToolSelectorOpen}
+            open={toolSelectorOpen}
           />
           {/* Desktop: show all buttons */}
           <div className="hidden items-center gap-1 md:flex">
@@ -369,6 +391,10 @@ export const ChatInput = ({
                 >
                   <GlobeIcon className="mr-2 size-4" />
                   {searchEnabled ? "Disable search" : "Enable search"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setToolSelectorOpen(true)}>
+                  <WrenchIcon className="mr-2 size-4" />
+                  MCP Tools
                 </DropdownMenuItem>
                 {supportsReasoning ? (
                   <DropdownMenuItem

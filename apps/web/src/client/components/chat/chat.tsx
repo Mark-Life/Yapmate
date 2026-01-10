@@ -241,6 +241,24 @@ export const Chat = ({
           // Refresh sidebar to show new title
           queryClient.invalidateQueries({ queryKey: ["chats"] });
         }
+        // TODO: fix typecasting
+        // Handle MCP connection errors (custom data type)
+        const part = dataPart as { type: string; data?: unknown };
+        if (part.type === "data-mcp-error" && part.data) {
+          const { errors } = part.data as {
+            errors: Array<{
+              serverId: string;
+              serverName: string;
+              error: string;
+            }>;
+          };
+          for (const err of errors) {
+            toast.error(`MCP Error: ${err.serverName}`, {
+              description: err.error,
+              duration: 8000,
+            });
+          }
+        }
       },
       onFinish: ({ messages: finishedMessages }) => {
         // Manually update messages state to ensure UI reflects completed stream

@@ -4,6 +4,13 @@
 
 Enable users to configure their own MCP servers and select specific tools per-chat. This allows users to extend AI capabilities with custom tooling from HTTP/SSE MCP servers.
 
+## Status
+
+**Backend**: ✅ Complete (Phases 1-4)  
+**Settings UI**: ✅ Complete (Phase 5)  
+**Chat UI**: ✅ Complete (Phase 6)  
+**Testing & Polish**: ⏳ Pending (Phase 7)
+
 ## Architecture Decisions
 
 | Decision       | Choice            | Rationale                                  |
@@ -109,39 +116,54 @@ The service uses Supabase Vault's PostgreSQL functions:
 
 ### Drizzle Schema
 
+**Location**: `packages/db/src/schema/mcp.ts`
+
+The schema includes all three tables with relations, type exports, and Zod validation schemas co-located in a single file.
+
 ```typescript
 // packages/db/src/schema/mcp.ts
 
+import { relations } from "drizzle-orm";
 import {
+  boolean,
+  index,
+  jsonb,
   pgTable,
   text,
-  uuid,
-  boolean,
   timestamp,
-  jsonb,
   uniqueIndex,
-  index,
+  uuid,
 } from "drizzle-orm/pg-core";
+import {
+  createInsertSchema,
+  createSelectSchema,
+  createUpdateSchema,
+} from "drizzle-zod";
+import { z } from "zod";
+import { chats } from "./chats";
+import { timestamps } from "./columns.helpers";
+import { users } from "./users";
+
+/** Transport types for MCP connections */
+export type McpTransportType = "http" | "sse";
+
+/** Authentication types for MCP servers */
+export type McpAuthType = "bearer" | "api-key" | "none";
 
 export const mcpServers = pgTable(
   "mcp_servers",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id").notNull(),
-    name: text("name").notNull(),
-    url: text("url").notNull(),
-    transportType: text("transport_type").notNull().$type<"http" | "sse">(),
-    authType: text("auth_type")
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
       .notNull()
-      .$type<"bearer" | "api-key" | "none">(),
-    authHeaderName: text("auth_header_name"),
-    enabled: boolean("enabled").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    url: text().notNull(),
+    transportType: text().$type<McpTransportType>().notNull(),
+    authType: text().$type<McpAuthType>().notNull(),
+    authHeaderName: text(),
+    enabled: boolean().notNull().default(true),
+    ...timestamps,
   },
   (table) => [
     uniqueIndex("mcp_servers_user_name_idx").on(table.userId, table.name),
@@ -149,20 +171,27 @@ export const mcpServers = pgTable(
   ]
 );
 
+export const mcpServersRelations = relations(mcpServers, ({ one, many }) => ({
+  user: one(users, {
+    fields: [mcpServers.userId],
+    references: [users.id],
+  }),
+  tools: many(mcpTools),
+  chatTools: many(chatMcpTools),
+}));
+
 export const mcpTools = pgTable(
   "mcp_tools",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    mcpServerId: uuid("mcp_server_id")
+    id: uuid().primaryKey().defaultRandom(),
+    mcpServerId: uuid()
       .notNull()
       .references(() => mcpServers.id, { onDelete: "cascade" }),
-    toolName: text("tool_name").notNull(),
-    displayName: text("display_name").notNull(),
-    description: text("description"),
-    inputSchema: jsonb("input_schema").notNull(),
-    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    toolName: text().notNull(),
+    displayName: text().notNull(),
+    description: text(),
+    inputSchema: jsonb().notNull(),
+    lastSyncedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("mcp_tools_server_tool_idx").on(
@@ -173,19 +202,26 @@ export const mcpTools = pgTable(
   ]
 );
 
+export const mcpToolsRelations = relations(mcpTools, ({ one }) => ({
+  server: one(mcpServers, {
+    fields: [mcpTools.mcpServerId],
+    references: [mcpServers.id],
+  }),
+}));
+
 export const chatMcpTools = pgTable(
   "chat_mcp_tools",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    chatId: uuid("chat_id").notNull(),
-    mcpServerId: uuid("mcp_server_id")
+    id: uuid().primaryKey().defaultRandom(),
+    chatId: uuid()
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    mcpServerId: uuid()
       .notNull()
       .references(() => mcpServers.id, { onDelete: "cascade" }),
-    toolName: text("tool_name").notNull(), // specific tool name or "*" for all
-    enabled: boolean("enabled").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    toolName: text().notNull(), // specific name or "*" for all
+    enabled: boolean().notNull().default(true),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("chat_mcp_tools_unique_idx").on(
@@ -196,12 +232,86 @@ export const chatMcpTools = pgTable(
     index("chat_mcp_tools_chat_id_idx").on(table.chatId),
   ]
 );
+
+export const chatMcpToolsRelations = relations(chatMcpTools, ({ one }) => ({
+  chat: one(chats, {
+    fields: [chatMcpTools.chatId],
+    references: [chats.id],
+  }),
+  server: one(mcpServers, {
+    fields: [chatMcpTools.mcpServerId],
+    references: [mcpServers.id],
+  }),
+}));
+
+/** Insert/Select types exported for each table */
+export type McpServerInsert = typeof mcpServers.$inferInsert;
+export type McpServerSelect = typeof mcpServers.$inferSelect;
+export type McpToolInsert = typeof mcpTools.$inferInsert;
+export type McpToolSelect = typeof mcpTools.$inferSelect;
+export type ChatMcpToolInsert = typeof chatMcpTools.$inferInsert;
+export type ChatMcpToolSelect = typeof chatMcpTools.$inferSelect;
+
+// Zod schemas (co-located in same file)
+export const mcpServerSelectSchema = createSelectSchema(mcpServers);
+export const mcpServerInsertSchema = createInsertSchema(mcpServers);
+export const mcpServerUpdateSchema = createUpdateSchema(mcpServers);
+
+export const addMcpServerInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  url: z.url(),
+  transportType: z.enum(["http", "sse"]),
+  authType: z.enum(["bearer", "api-key", "none"]),
+  authHeaderName: z.string().optional(),
+  apiKey: z.string().optional(),
+});
+
+export const updateMcpServerInputSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(100).optional(),
+  url: z.string().url().optional(),
+  transportType: z.enum(["http", "sse"]).optional(),
+  authType: z.enum(["bearer", "api-key", "none"]).optional(),
+  authHeaderName: z.string().optional(),
+  apiKey: z.string().optional(),
+});
+
+export const testMcpServerInputSchema = z.object({
+  url: z.url(),
+  transportType: z.enum(["http", "sse"]),
+  authType: z.enum(["bearer", "api-key", "none"]),
+  authHeaderName: z.string().optional(),
+  apiKey: z.string().optional(),
+});
+
+export const chatToolSelectionSchema = z.object({
+  mcpServerId: z.uuid(),
+  toolName: z.string(), // specific name or "*" for all
+  enabled: z.boolean().default(true),
+});
+
+export const setChatToolSelectionsInputSchema = z.object({
+  chatId: z.uuid(),
+  selections: z.array(chatToolSelectionSchema),
+});
+
+export const addChatToolInputSchema = z.object({
+  chatId: z.uuid(),
+  mcpServerId: z.uuid(),
+  toolName: z.string(),
+});
+
+export const removeChatToolInputSchema = z.object({
+  chatId: z.uuid(),
+  mcpServerId: z.uuid(),
+  toolName: z.string(),
+});
 ```
 
 ### Service Types
 
 ```typescript
-// packages/server/src/services/mcp/types.ts
+// packages/server/src/lib/mcp/types.ts
 
 /** MCP server configuration (without secrets) */
 export type McpServerConfig = {
@@ -264,17 +374,22 @@ export type McpConnectionTestResult = {
 ### File Structure
 
 ```
-packages/server/src/services/mcp/
-├── index.ts              # Public exports
-├── types.ts              # Type definitions
-├── mcp-server.service.ts # CRUD for MCP server configs
-├── mcp-vault.service.ts  # Supabase Vault operations
-├── mcp-tools.service.ts  # Tool discovery & caching
-├── mcp-client.service.ts # MCP client creation & tool fetching
-└── mcp-chat.service.ts   # Per-chat tool selection & runtime
+packages/server/src/lib/mcp/
+├── index.ts    # Public exports
+├── types.ts     # Type definitions
+├── server.ts    # CRUD for MCP server configs
+├── tools.ts     # Tool discovery & caching (includes fetchAndSyncMcpTools)
+├── client.ts   # MCP client creation & tool fetching
+└── chat.ts      # Per-chat tool selection & runtime
+
+packages/api/src/routers/
+└── mcp.ts       # oRPC router for MCP operations
+
+packages/db/src/schema/
+└── mcp.ts       # Drizzle schema + Zod validation schemas
 ```
 
-### 1. `mcp-server.service.ts`
+### 1. `server.ts`
 
 CRUD operations for MCP server configurations.
 
@@ -302,63 +417,17 @@ export const deleteMcpServer = async (userId: string, serverId: string): Promise
 export const toggleMcpServer = async (userId: string, serverId: string, enabled: boolean): Promise<void>
 ```
 
-### 2. `mcp-vault.service.ts`
+### 2. Vault Operations
 
-Secure API key storage using Supabase Vault. This service wraps the vault functions from `@yapmate/db/service`.
+Secure API key storage using Supabase Vault. Vault functions are implemented directly in `packages/db/src/service/vault.ts` and used throughout the MCP service layer.
 
-**Note**: The core vault service is implemented in `packages/db/src/service/vault.ts` with MCP-specific functions already available. This service layer provides a thin wrapper if needed for server-specific logic.
+**Note**: No separate `vault.ts` wrapper file needed - vault functions are imported directly from `@yapmate/db/service`:
 
-```typescript
-import {
-  getMcpSecret as getMcpSecretFromVault,
-  setMcpSecret as setMcpSecretInVault,
-  deleteMcpSecret as deleteMcpSecretFromVault,
-  SecretNotFoundError,
-} from "@yapmate/db/service";
+- `getMcpSecret(userId, serverId)` - Retrieves API key
+- `setMcpSecret(userId, serverId, apiKey)` - Stores API key
+- `deleteMcpSecret(userId, serverId)` - Deletes API key
 
-/** Store API key in vault */
-export const storeMcpSecret = async (
-  userId: string,
-  serverId: string,
-  apiKey: string
-): Promise<void> => {
-  await setMcpSecretInVault(userId, serverId, apiKey);
-};
-
-/** Get API key from vault */
-export const getMcpSecret = async (
-  userId: string,
-  serverId: string
-): Promise<string | null> => {
-  try {
-    return await getMcpSecretFromVault(userId, serverId);
-  } catch (error) {
-    if (error instanceof SecretNotFoundError) {
-      return null;
-    }
-    throw error;
-  }
-};
-
-/** Delete API key from vault */
-export const deleteMcpSecret = async (
-  userId: string,
-  serverId: string
-): Promise<void> => {
-  await deleteMcpSecretFromVault(userId, serverId);
-};
-
-/** Update API key in vault (same as store - creates or updates) */
-export const updateMcpSecret = async (
-  userId: string,
-  serverId: string,
-  apiKey: string
-): Promise<void> => {
-  await setMcpSecretInVault(userId, serverId, apiKey);
-};
-```
-
-### 3. `mcp-tools.service.ts`
+### 3. `tools.ts`
 
 Tool discovery and caching.
 
@@ -367,13 +436,27 @@ Tool discovery and caching.
 export const getCachedTools = async (serverId: string): Promise<McpToolMeta[]>
 
 /** Sync tools from MCP server (fetch & cache) */
-export const syncMcpTools = async (serverId: string): Promise<McpToolMeta[]>
+export const syncMcpTools = async (
+  serverId: string,
+  tools: Array<{
+    toolName: string;
+    displayName: string;
+    description?: string;
+    inputSchema: Record<string, unknown>;
+  }>
+): Promise<McpToolMeta[]>
+
+/** Fetch tools from MCP server and sync to cache */
+export const fetchAndSyncMcpTools = async (
+  userId: string,
+  serverId: string
+): Promise<McpToolMeta[]>
 
 /** Clear cached tools for a server */
 export const clearCachedTools = async (serverId: string): Promise<void>
 ```
 
-### 4. `mcp-client.service.ts`
+### 4. `client.ts`
 
 MCP client lifecycle and tool fetching.
 
@@ -397,7 +480,7 @@ export const fetchMcpTools = async (
 ): Promise<Record<string, unknown>> // AI SDK tool format
 ```
 
-### 5. `mcp-chat.service.ts`
+### 5. `chat.ts`
 
 Per-chat tool selection and runtime tool resolution.
 
@@ -440,112 +523,58 @@ export const resolveChatMcpTools = async (
 
 ---
 
-## API Endpoints (tRPC)
+## API Endpoints (oRPC)
 
 ### Router Structure
 
-```typescript
-// packages/server/src/routes/mcp/index.ts
+**Location**: `packages/api/src/routers/mcp.ts`
 
-export const mcpRouter = router({
+All schemas are imported directly from `@yapmate/db/schema` (no separate schemas file).
+
+```typescript
+// packages/api/src/routers/mcp.ts
+
+export const mcp = {
   // MCP Server CRUD
-  servers: router({
-    list: protectedProcedure.query(/* ... */),
-    get: protectedProcedure
-      .input(z.object({ id: z.string() }))
-      .query(/* ... */),
-    create: protectedProcedure.input(addMcpServerSchema).mutation(/* ... */),
-    update: protectedProcedure.input(updateMcpServerSchema).mutation(/* ... */),
-    delete: protectedProcedure
-      .input(z.object({ id: z.string() }))
-      .mutation(/* ... */),
-    toggle: protectedProcedure
-      .input(z.object({ id: z.string(), enabled: z.boolean() }))
-      .mutation(/* ... */),
-    test: protectedProcedure.input(testMcpServerSchema).mutation(/* ... */),
-  }),
+  servers: {
+    list: protectedProcedure.output(...).handler(...),
+    get: protectedProcedure.input(...).output(...).handler(...),
+    create: protectedProcedure.input(...).output(...).handler(...),
+    update: protectedProcedure.input(...).output(...).handler(...),
+    delete: protectedProcedure.input(...).output(...).handler(...),
+    toggle: protectedProcedure.input(...).output(...).handler(...),
+    test: protectedProcedure.input(...).output(...).handler(...),
+  },
 
   // Tool Discovery
-  tools: router({
-    list: protectedProcedure
-      .input(z.object({ serverId: z.string() }))
-      .query(/* ... */),
-    sync: protectedProcedure
-      .input(z.object({ serverId: z.string() }))
-      .mutation(/* ... */),
-  }),
+  tools: {
+    list: protectedProcedure.input(...).output(...).handler(...),
+    sync: protectedProcedure.input(...).output(...).handler(...),
+  },
 
   // Chat Tool Selection
-  chat: router({
-    getSelections: protectedProcedure
-      .input(z.object({ chatId: z.string() }))
-      .query(/* ... */),
-    setSelections: protectedProcedure
-      .input(setChatSelectionsSchema)
-      .mutation(/* ... */),
-    addTool: protectedProcedure.input(addChatToolSchema).mutation(/* ... */),
-    removeTool: protectedProcedure
-      .input(removeChatToolSchema)
-      .mutation(/* ... */),
-  }),
-});
+  chat: {
+    getSelections: protectedProcedure.input(...).output(...).handler(...),
+    setSelections: protectedProcedure.input(...).output(...).handler(...),
+    addTool: protectedProcedure.input(...).output(...).handler(...),
+    removeTool: protectedProcedure.input(...).output(...).handler(...),
+  },
+};
 ```
 
 ### Validation Schemas
 
-```typescript
-// packages/server/src/routes/mcp/schemas.ts
+All schemas are defined in `packages/db/src/schema/mcp.ts` and imported directly:
 
-export const addMcpServerSchema = z.object({
-  name: z.string().min(1).max(100),
-  url: z.string().url(),
-  transportType: z.enum(["http", "sse"]),
-  authType: z.enum(["bearer", "api-key", "none"]),
-  authHeaderName: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-
-export const updateMcpServerSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1).max(100).optional(),
-  url: z.string().url().optional(),
-  transportType: z.enum(["http", "sse"]).optional(),
-  authType: z.enum(["bearer", "api-key", "none"]).optional(),
-  authHeaderName: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-
-export const testMcpServerSchema = z.object({
-  url: z.string().url(),
-  transportType: z.enum(["http", "sse"]),
-  authType: z.enum(["bearer", "api-key", "none"]),
-  authHeaderName: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-
-export const setChatSelectionsSchema = z.object({
-  chatId: z.string().uuid(),
-  selections: z.array(
-    z.object({
-      mcpServerId: z.string().uuid(),
-      toolName: z.string(), // "*" for all tools
-      enabled: z.boolean().default(true),
-    })
-  ),
-});
-
-export const addChatToolSchema = z.object({
-  chatId: z.string().uuid(),
-  mcpServerId: z.string().uuid(),
-  toolName: z.string(),
-});
-
-export const removeChatToolSchema = z.object({
-  chatId: z.string().uuid(),
-  mcpServerId: z.string().uuid(),
-  toolName: z.string(),
-});
-```
+- `addMcpServerInputSchema` - Create server input
+- `updateMcpServerInputSchema` - Update server input
+- `testMcpServerInputSchema` - Test connection input
+- `setChatToolSelectionsInputSchema` - Set chat tool selections
+- `addChatToolInputSchema` - Add single tool to chat
+- `removeChatToolInputSchema` - Remove tool from chat
+- `chatToolSelectionSchema` - Single tool selection
+- `mcpServerSelectSchema` - Server output schema
+- `mcpToolSelectSchema` - Tool output schema
 
 ---
 
@@ -588,7 +617,7 @@ export const executeAiResponse = async (
 ```typescript
 // In chat route handler
 
-import { resolveChatMcpTools } from "../services/mcp";
+import { resolveChatMcpTools } from "../../lib/mcp";
 
 // Before calling executeAiResponse:
 const {
@@ -617,9 +646,19 @@ const originalStream = uiStream;
 
 ## UI Components
 
-### 1. Settings: MCP Servers List
+### 1. Settings: MCP Servers List ✅ COMPLETE
 
-**Location:** `apps/web/src/client/pages/settings/mcp-servers.tsx`
+**Location:** `apps/web/src/client/pages/settings/mcp-servers-section.tsx`
+
+**Implementation Notes:**
+
+- Displays all configured MCP servers in a card grid layout
+- Shows server name, URL, transport type badge, tool count, and last sync time
+- Toggle switch to enable/disable servers
+- Sync button to refresh tools from server
+- Edit and Delete actions for each server
+- Empty state when no servers are configured
+- Loading states and error handling with toast notifications
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -640,9 +679,21 @@ const originalStream = uiStream;
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Settings: Add/Edit MCP Server Dialog
+### 2. Settings: Add/Edit MCP Server Dialog ✅ COMPLETE
 
-**Location:** `apps/web/src/client/components/mcp/mcp-server-dialog.tsx`
+**Location:** `apps/web/src/client/pages/settings/mcp-server-dialog.tsx`
+
+**Implementation Notes:**
+
+- Form fields: Name, URL, Transport type (HTTP/SSE), Auth type (None/Bearer/API Key)
+- Conditional auth header name field for API Key auth type
+- Password input for API keys (never shows existing keys when editing)
+- "Test Connection" button with real-time feedback
+- Test result display showing success/error, tool count, and available tools list
+- Form validation with error messages
+- Loading states for test and save operations
+- Supports both create and edit modes
+- Extracted `TestResultDisplay` component for better code organization
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -677,15 +728,25 @@ const originalStream = uiStream;
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Chat: Tool Selector Popover
+### 3. Chat: Tool Selector Popover ✅ COMPLETE
 
 **Location:** `apps/web/src/client/components/chat/tool-selector.tsx`
 
-Shown in chat input area, allows selecting tools for current chat.
+**Implementation Notes:**
+
+- Shown in chat input toolbar (desktop and mobile)
+- Wrench icon button with badge showing selected count
+- Popover with search input and hierarchical server/tools view
+- Server-level checkbox selects all tools (uses `*` wildcard)
+- Individual tool checkboxes with descriptions
+- Loading states, empty states for no servers/tools/matches
+- Disabled when no chatId (new chat not yet created)
+- Hotkey: `mod+alt+p` to open
+- Uses existing `mcp.chat.*` API endpoints for persistence
 
 ```
 ┌──────────────────────────────────────────────┐
-│ 🔧 Tools (3 selected)                   [▼]  │
+│ 🔧 Tools (3)                            [▼]  │
 └──────────────────────────────────────────────┘
         │
         ▼
@@ -703,18 +764,22 @@ Shown in chat input area, allows selecting tools for current chat.
 │   ├─ ☐ search-repos                          │
 │   └─ ☐ get-file-contents                     │
 ├──────────────────────────────────────────────┤
-│ [Select All]  [Deselect All]                 │
+│ Selected tools will be available to the AI   │
 └──────────────────────────────────────────────┘
 ```
 
-### 4. Chat: MCP Error Toast
+### 4. Chat: MCP Error Toast ✅ COMPLETE
 
-When MCP server connection fails, show toast notification.
+**Implementation Notes:**
+
+- Handled in `chat.tsx` via `onData` callback
+- Listens for `data-mcp-error` stream chunks from backend
+- Displays toast with server name and error message (8s duration)
+- Multiple errors shown as separate toasts
 
 ```
 ┌──────────────────────────────────────────────┐
-│ ⚠️ MCP Connection Error                      │
-│ Failed to connect to "GitHub MCP":           │
+│ ⚠️ MCP Error: GitHub MCP                     │
 │ Connection timeout                           │
 │                                   [Dismiss]  │
 └──────────────────────────────────────────────┘
@@ -724,57 +789,97 @@ When MCP server connection fails, show toast notification.
 
 ## Implementation Phases
 
-### Phase 1: Data Layer (Est: 1-2 days)
+### Phase 1: Data Layer ✅ COMPLETE
 
-- [ ] Create Drizzle schema for `mcp_servers`, `mcp_tools`, `chat_mcp_tools`
-- [ ] Run migrations
+- [x] Create Drizzle schema for `mcp_servers`, `mcp_tools`, `chat_mcp_tools` - **COMPLETE**
+- [ ] Run migrations - **PENDING** (schema ready, migrations need to be generated and run)
 - [x] Implement vault service (`packages/db/src/service/vault.ts`) - **COMPLETE**
   - Core functions: `createSecret`, `getSecret`, `deleteSecret`
   - MCP-specific functions: `getMcpSecret`, `setMcpSecret`, `deleteMcpSecret`
-- [ ] Implement `mcp-vault.service.ts` (thin wrapper around vault service)
-- [ ] Implement `mcp-server.service.ts` (CRUD operations)
-- [ ] Write tests for data layer
+- [x] Implement `server.ts` (CRUD operations) - **COMPLETE**
+- [x] Implement `tools.ts` (discovery & caching) - **COMPLETE**
+  - Includes `fetchAndSyncMcpTools` helper for fetching and caching tools
+- [ ] Write tests for data layer - **PENDING**
 
-### Phase 2: MCP Client Integration (Est: 1-2 days)
+### Phase 2: MCP Client Integration ✅ COMPLETE
 
-- [ ] Install `@ai-sdk/mcp` package
-- [ ] Implement `mcp-client.service.ts` (client creation, tool fetching)
-- [ ] Implement `mcp-tools.service.ts` (discovery & caching)
-- [ ] Implement connection testing
+- [x] Install `@ai-sdk/mcp` package
+- [x] Implement `client.ts` (client creation, tool fetching) - **COMPLETE**
+  - `createMcpClientFromConfig` - Creates MCP client from server config
+  - `testMcpConnection` - Tests connection and returns available tools
+  - `fetchMcpTools` - Fetches tools from client (with optional filtering)
+- [x] Implement `tools.ts` (discovery & caching) - **COMPLETE**
+  - `getCachedTools` - Gets cached tools
+  - `syncMcpTools` - Syncs provided tools to cache
+  - `fetchAndSyncMcpTools` - Fetches from server and syncs to cache
+  - `clearCachedTools` - Clears cached tools
+- [x] Implement connection testing - **COMPLETE**
 - [ ] Write tests for MCP client operations
 
-### Phase 3: API Layer (Est: 1 day)
+### Phase 3: API Layer ✅ COMPLETE
 
-- [ ] Create tRPC router for MCP operations
-- [ ] Implement all endpoints (servers CRUD, tools, chat selections)
-- [ ] Add validation schemas
+- [x] Create oRPC router for MCP operations (`packages/api/src/routers/mcp.ts`) - **COMPLETE**
+- [x] Implement all endpoints (servers CRUD, tools, chat selections) - **COMPLETE**
+  - `mcp.servers.list` - List user's MCP servers
+  - `mcp.servers.get` - Get single server
+  - `mcp.servers.create` - Create new server
+  - `mcp.servers.update` - Update server config
+  - `mcp.servers.delete` - Delete server
+  - `mcp.servers.toggle` - Toggle enabled/disabled
+  - `mcp.servers.test` - Test connection (without saving)
+  - `mcp.tools.list` - List cached tools for server
+  - `mcp.tools.sync` - Fetch and sync tools from server
+  - `mcp.chat.getSelections` - Get tool selections for chat
+  - `mcp.chat.setSelections` - Set tool selections (replaces existing)
+  - `mcp.chat.addTool` - Add tool selection to chat
+  - `mcp.chat.removeTool` - Remove tool selection from chat
+- [x] Add validation schemas - **COMPLETE** (imported from `@yapmate/db/schema`)
+- [x] Integrated into main router (`packages/api/src/router.ts`) - **COMPLETE**
 - [ ] Write API tests
 
-### Phase 4: Chat Integration (Est: 1 day)
+### Phase 4: Chat Integration ✅ COMPLETE
 
-- [ ] Implement `mcp-chat.service.ts` (runtime tool resolution)
-- [ ] Modify `ai-response.ts` to accept MCP tools
-- [ ] Modify chat route handler to resolve and inject tools
-- [ ] Handle MCP errors in response stream
+- [x] Implement `chat.ts` (runtime tool resolution) - **COMPLETE**
+  - `getChatToolSelections` - Get selections for chat
+  - `setChatToolSelections` - Set selections (replaces existing)
+  - `addChatToolSelection` - Add single selection
+  - `removeChatToolSelection` - Remove selection
+  - `resolveChatMcpTools` - Resolve tools for chat request (creates clients, fetches tools, returns merged tools + errors)
+- [x] Modify `ai-response.ts` to accept MCP tools - **COMPLETE**
+- [x] Modify chat route handler to resolve and inject tools - **COMPLETE**
+- [x] Handle MCP errors in response stream - **COMPLETE** (sent as `data-mcp-error` chunks)
+- [x] Close MCP clients after stream finishes - **COMPLETE** (in finally block)
 - [ ] Test end-to-end chat with MCP tools
 
-### Phase 5: Settings UI (Est: 1-2 days)
+### Phase 5: Settings UI ✅ COMPLETE
 
-- [ ] Create MCP servers list page
-- [ ] Create Add/Edit MCP server dialog
-- [ ] Implement connection testing UI
-- [ ] Implement tool sync UI
-- [ ] Add to settings navigation
+- [x] Create MCP servers list page - **COMPLETE** (`apps/web/src/client/pages/settings/mcp-servers-section.tsx`)
+- [x] Create Add/Edit MCP server dialog - **COMPLETE** (`apps/web/src/client/pages/settings/mcp-server-dialog.tsx`)
+- [x] Implement connection testing UI - **COMPLETE** (integrated into dialog with real-time feedback)
+- [x] Implement tool sync UI - **COMPLETE** (sync button on each server card)
+- [x] Add to settings navigation - **COMPLETE** (added "MCP Servers" section to settings layout)
 
-### Phase 6: Chat UI (Est: 1-2 days)
+### Phase 6: Chat UI ✅ COMPLETE
 
-- [ ] Create tool selector popover component
-- [ ] Integrate into chat input area
-- [ ] Implement tool selection persistence
-- [ ] Show MCP errors as toasts
-- [ ] Show active tools indicator
+- [x] Create tool selector popover component - **COMPLETE** (`apps/web/src/client/components/chat/tool-selector.tsx`)
+  - Hierarchical view with servers and tools
+  - Server-level checkbox (selects all tools via `*` wildcard)
+  - Individual tool checkboxes
+  - Search/filter functionality
+  - Loading states and empty states
+- [x] Integrate into chat input area - **COMPLETE** (modified `chat-input.tsx`)
+  - Added ToolSelector component to toolbar (desktop & mobile)
+  - Added hotkey `mod+alt+p` for quick access
+- [x] Implement tool selection persistence - **COMPLETE**
+  - Uses `mcp.chat.addTool`, `mcp.chat.removeTool`, `mcp.chat.getSelections` APIs
+  - Selections stored per-chat in `chat_mcp_tools` table
+- [x] Show MCP errors as toasts - **COMPLETE** (modified `chat.tsx`)
+  - Handles `data-mcp-error` stream chunks
+  - Displays toast for each failed MCP server connection
+- [x] Show active tools indicator - **COMPLETE**
+  - Badge showing count of selected tools on the wrench icon
 
-### Phase 7: Polish & Testing (Est: 1 day)
+### Phase 7: Polish & Testing
 
 - [ ] End-to-end testing with real MCP servers
 - [ ] Error handling edge cases

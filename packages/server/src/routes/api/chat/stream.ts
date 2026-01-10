@@ -3,12 +3,14 @@
  * Coordinates AI response, chunk processing, error handling, and completion
  */
 
+import type { MCPClient } from "@ai-sdk/mcp";
 import {
   getChat,
   savePartialAssistantMessage,
   updateActiveStreamId,
 } from "@yapmate/db/service";
 import type { UIMessage } from "ai";
+import { resolveChatMcpTools } from "../../../lib/mcp";
 import { unregisterStream } from "../../../lib/redis/controller";
 import {
   getBufferedChunks,
@@ -142,6 +144,49 @@ export const executeAiResponseWithOrchestration = async (
     chunkIndex,
   } = options;
 
+  // Resolve MCP tools for this chat
+  let mcpClients: MCPClient[] = [];
+  let mcpTools: Record<string, unknown> = {};
+  let mcpErrors: Array<{
+    serverId: string;
+    serverName: string;
+    error: string;
+  }> = [];
+
+  try {
+    const mcpResult = await resolveChatMcpTools(userId, chatId);
+    mcpTools = mcpResult.tools;
+    mcpClients = mcpResult.clients;
+    mcpErrors = mcpResult.errors;
+
+    // Send MCP errors as custom chunks if any
+    if (mcpErrors.length > 0) {
+      const errorChunk = {
+        type: "data-mcp-error" as const,
+        data: {
+          errors: mcpErrors,
+        },
+      };
+      await publishStreamChunk(streamId, {
+        type: errorChunk.type,
+        data: errorChunk.data,
+        index: chunkIndex.current,
+      });
+      chunkIndex.current += 1;
+      try {
+        writer.write(errorChunk);
+      } catch {
+        // Client disconnected, continue
+      }
+    }
+  } catch (mcpResolveError) {
+    console.error(
+      `[Stream ${streamId}] Error resolving MCP tools:`,
+      mcpResolveError
+    );
+    // Continue without MCP tools
+  }
+
   // Start title generation in parallel (if first message, skip if editing)
   const titlePromise =
     isFirstMessage && !editMessageId
@@ -155,32 +200,44 @@ export const executeAiResponseWithOrchestration = async (
         })
       : Promise.resolve();
 
-  // Execute AI response (creates stream)
-  const { uiStream, getUsage } = await executeAiResponse({
-    modelWithSearch,
-    memoryEnabled,
-    reasoningEffort,
-    messages,
-    abortSignal,
-    chatId,
-    streamId,
-    assistantMessageId,
-    userId,
-  });
+  try {
+    // Execute AI response (creates stream)
+    const { uiStream, getUsage } = await executeAiResponse({
+      modelWithSearch,
+      memoryEnabled,
+      reasoningEffort,
+      messages,
+      abortSignal,
+      chatId,
+      streamId,
+      assistantMessageId,
+      userId,
+      mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
+    });
 
-  // Process chunks: publish to Redis and write to client
-  // This MUST complete for onFinish to fire
-  // We iterate over the stream ourselves, which ensures it completes
-  // even if the client disconnects (writer.write will fail silently)
-  await processStreamChunks(uiStream, writer, streamId, chunkIndex);
+    // Process chunks: publish to Redis and write to client
+    // This MUST complete for onFinish to fire
+    // We iterate over the stream ourselves, which ensures it completes
+    // even if the client disconnects (writer.write will fail silently)
+    await processStreamChunks(uiStream, writer, streamId, chunkIndex);
 
-  // Get usage after stream is consumed (usage promise resolves when stream finishes)
-  const usage = await getUsage();
+    // Get usage after stream is consumed (usage promise resolves when stream finishes)
+    const usage = await getUsage();
 
-  // Wait for title generation - keeps stream open until title is written
-  await titlePromise;
+    // Wait for title generation - keeps stream open until title is written
+    await titlePromise;
 
-  return usage;
+    return usage;
+  } finally {
+    // Close MCP clients after stream finishes
+    await Promise.all(
+      mcpClients.map((client) =>
+        client.close().catch((err) => {
+          console.error(`[Stream ${streamId}] Error closing MCP client:`, err);
+        })
+      )
+    );
+  }
 };
 
 /**

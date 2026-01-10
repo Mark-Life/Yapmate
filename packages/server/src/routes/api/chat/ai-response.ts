@@ -42,6 +42,7 @@ type ExecuteAiResponseOptions = {
   streamId: string;
   assistantMessageId: string;
   userId: string;
+  mcpTools?: Record<string, unknown>;
 };
 
 /**
@@ -89,6 +90,7 @@ export const executeAiResponse = async (
     streamId,
     assistantMessageId,
     userId,
+    mcpTools,
   } = options;
 
   // Create Langfuse trace with assistantMessageId as trace ID for feedback linking
@@ -162,8 +164,11 @@ export const executeAiResponse = async (
   const result = streamText({
     model: baseModel,
     messages: await convertToModelMessages(messages),
-    // Type cast needed - @supermemory/tools uses older tool types
-    // tools: memoryTools as Parameters<typeof streamText>[0]["tools"],
+    // Type cast needed - MCP tools from @ai-sdk/mcp are compatible but need type assertion
+    ...(mcpTools &&
+      Object.keys(mcpTools).length > 0 && {
+        tools: mcpTools as Parameters<typeof streamText>[0]["tools"],
+      }),
     system: baseSystemPrompt,
     maxOutputTokens: 8192,
     abortSignal,

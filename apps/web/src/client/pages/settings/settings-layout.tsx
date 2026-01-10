@@ -1,15 +1,21 @@
 import { cn } from "@yapmate/components/lib/utils";
 import { Button } from "@yapmate/components/ui/button";
-import { ArrowLeftIcon, SparklesIcon, UserIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ServerIcon,
+  SparklesIcon,
+  UserIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { navigate } from "../../router";
+import { McpServersSection } from "./mcp-servers-section";
 import { ProfileSection } from "./profile-section";
 
-type SettingsSection = "profile" | "models";
+type SettingsSection = "profile" | "models" | "mcp-servers";
 
-const VALID_SECTIONS: SettingsSection[] = ["profile", "models"];
+const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp-servers"];
 const SETTINGS_PATH_REGEX = /^\/settings\/([^/]+)/;
 
 /**
@@ -34,6 +40,11 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "profile", label: "Profile", icon: <UserIcon className="size-4" /> },
   { id: "models", label: "Models", icon: <SparklesIcon className="size-4" /> },
+  {
+    id: "mcp-servers",
+    label: "MCP Servers",
+    icon: <ServerIcon className="size-4" />,
+  },
 ];
 
 /**
@@ -76,6 +87,8 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
           Models settings coming soon...
         </div>
       );
+    case "mcp-servers":
+      return <McpServersSection />;
     default:
       return null;
   }
@@ -134,7 +147,7 @@ export const SettingsLayout = () => {
   };
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col text-balance bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="relative mx-auto flex h-12 max-w-4xl items-center px-4">
