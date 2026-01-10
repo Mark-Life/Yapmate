@@ -15,7 +15,8 @@ export const HOTKEYS = {
   settings: "mod+alt+comma",
   help: "mod+alt+h",
   // Chat Input
-  submit: "mod+enter",
+  submit: "enter",
+  newLine: "shift+enter",
   stop: "escape",
   toggleVoice: "mod+alt+s",
   toggleSearch: "mod+alt+w",
