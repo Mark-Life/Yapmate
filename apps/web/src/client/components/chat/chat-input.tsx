@@ -145,9 +145,9 @@ export const ChatInput = ({
     HOTKEYS.toggleVoice,
     (e) => {
       e.preventDefault();
-      // Find and click the voice button
+      // Find and click the voice button (aria-label is "Start recording" or "Stop recording")
       const voiceButton = document.querySelector(
-        'button[aria-label*="voice"], button[aria-label*="Voice"]'
+        'button[aria-label*="recording"], button[aria-label*="Recording"], button[aria-label*="Transcribing"]'
       ) as HTMLButtonElement | null;
       voiceButton?.click();
     },
@@ -217,21 +217,9 @@ export const ChatInput = ({
       </PromptInputBody>
       <PromptInputFooter className="px-2 pb-2">
         <PromptInputTools>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <PromptInputTranscribeButton
-                onTranscriptionChange={handleTranscriptionChange}
-              />
-            </TooltipTrigger>
-            <TooltipContent hideArrow side="top" sideOffset={45}>
-              Voice input{" "}
-              <KbdGroup>
-                {splitHotkey(HOTKEYS.toggleVoice).map((key, idx) => (
-                  <Kbd key={idx}>{key}</Kbd>
-                ))}
-              </KbdGroup>
-            </TooltipContent>
-          </Tooltip>
+          <PromptInputTranscribeButton
+            onTranscriptionChange={handleTranscriptionChange}
+          />
           <ModelSelectorCombobox
             model={model}
             onModelChange={(newModel) => {
