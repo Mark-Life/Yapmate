@@ -25,7 +25,7 @@ import { rpcClient } from "../../lib/rpc-client";
 type McpServerFormData = {
   name: string;
   url: string;
-  transportType: "http" | "sse";
+  transportType: "http"; // SSE temporarily disabled
   authType: "bearer" | "api-key" | "none";
   authHeaderName: string;
   apiKey: string;
@@ -153,7 +153,8 @@ export const McpServerDialog = ({
         setFormData({
           name: editingServer.name,
           url: editingServer.url,
-          transportType: editingServer.transportType,
+          // SSE temporarily disabled - force HTTP for all servers
+          transportType: "http",
           authType: editingServer.authType,
           authHeaderName: editingServer.authHeaderName ?? "Authorization",
           apiKey: "", // Never show existing API key
@@ -257,7 +258,7 @@ export const McpServerDialog = ({
    */
   const handleFieldChange = (
     field: keyof McpServerFormData,
-    value: string | "http" | "sse" | "bearer" | "api-key" | "none"
+    value: string | "http" | "bearer" | "api-key" | "none" // SSE temporarily disabled
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear test result when form changes
@@ -389,7 +390,7 @@ export const McpServerDialog = ({
             <Label>Transport</Label>
             <RadioGroup
               onValueChange={(value) =>
-                handleFieldChange("transportType", value as "http" | "sse")
+                handleFieldChange("transportType", value as "http")
               }
               value={formData.transportType}
             >
@@ -402,7 +403,8 @@ export const McpServerDialog = ({
                   HTTP
                 </Label>
               </div>
-              <div className="flex items-center gap-2">
+              {/* SSE temporarily disabled */}
+              {/* <div className="flex items-center gap-2">
                 <RadioGroupItem id="transport-sse" value="sse" />
                 <Label
                   className="cursor-pointer font-normal"
@@ -410,7 +412,7 @@ export const McpServerDialog = ({
                 >
                   SSE (Server-Sent Events)
                 </Label>
-              </div>
+              </div> */}
             </RadioGroup>
             <p className="text-muted-foreground text-xs">
               Choose the transport protocol for connecting to the server

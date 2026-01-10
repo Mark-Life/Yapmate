@@ -179,30 +179,33 @@ export const mcpServerInsertSchema = createInsertSchema(mcpServers);
 export const mcpServerUpdateSchema = createUpdateSchema(mcpServers);
 
 /** Input for adding new MCP server (with optional apiKey for vault storage) */
+// SSE temporarily disabled - only HTTP transport allowed
 export const addMcpServerInputSchema = z.object({
   name: z.string().min(1).max(100),
   url: z.url(),
-  transportType: z.enum(["http", "sse"]),
+  transportType: z.enum(["http"]), // SSE temporarily disabled
   authType: z.enum(["bearer", "api-key", "none"]),
   authHeaderName: z.string().optional(),
   apiKey: z.string().optional(),
 });
 
 /** Input for updating MCP server */
+// SSE temporarily disabled - only HTTP transport allowed
 export const updateMcpServerInputSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(100).optional(),
   url: z.string().url().optional(),
-  transportType: z.enum(["http", "sse"]).optional(),
+  transportType: z.enum(["http"]).optional(), // SSE temporarily disabled
   authType: z.enum(["bearer", "api-key", "none"]).optional(),
   authHeaderName: z.string().optional(),
   apiKey: z.string().optional(),
 });
 
 /** Input for testing MCP connection */
+// SSE temporarily disabled - only HTTP transport allowed
 export const testMcpServerInputSchema = z.object({
   url: z.url(),
-  transportType: z.enum(["http", "sse"]),
+  transportType: z.enum(["http"]), // SSE temporarily disabled
   authType: z.enum(["bearer", "api-key", "none"]),
   authHeaderName: z.string().optional(),
   apiKey: z.string().optional(),
