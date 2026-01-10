@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@yapmate/components/ui/dropdown-menu";
+import { Kbd, KbdGroup } from "@yapmate/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +30,9 @@ import {
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
 import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
 import { usePostHog } from "../../hooks/use-posthog";
 import type { ReasoningEffort } from "../../hooks/use-user-preferences";
 import { ModelSelectorCombobox } from "../model-selector";
@@ -88,6 +91,7 @@ export const ChatInput = ({
   const attachments = usePromptInputAttachments();
   const hasAttachments = attachments.files.length > 0;
   const previousFileCountRef = useRef(attachments.files.length);
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
 
   /**
    * Track file attachments when they're added
@@ -123,6 +127,100 @@ export const ChatInput = ({
     onInputChange(transcription);
   };
 
+  /**
+   * Cycle through reasoning effort levels
+   */
+  const cycleReasoning = () => {
+    if (!supportsReasoning) {
+      return;
+    }
+    const levels: ReasoningEffort[] = ["low", "medium", "high"];
+    const currentIdx = levels.indexOf(reasoningEffort);
+    const nextIdx = (currentIdx + 1) % levels.length;
+    onReasoningEffortChange(levels[nextIdx]);
+  };
+
+  // Hotkeys for input actions
+  useHotkeys(
+    HOTKEYS.toggleVoice,
+    (e) => {
+      e.preventDefault();
+      // Find and click the voice button
+      const voiceButton = document.querySelector(
+        'button[aria-label*="voice"], button[aria-label*="Voice"]'
+      ) as HTMLButtonElement | null;
+      voiceButton?.click();
+    },
+    { enableOnFormTags: true }
+  );
+
+  useHotkeys(
+    HOTKEYS.toggleSearch,
+    (e) => {
+      e.preventDefault();
+      onSearchEnabledChange(!searchEnabled);
+    },
+    { enableOnFormTags: true }
+  );
+
+  useHotkeys(
+    HOTKEYS.openModelSelector,
+    (e) => {
+      e.preventDefault();
+      setModelSelectorOpen(true);
+    },
+    { enableOnFormTags: true }
+  );
+
+  useHotkeys(
+    HOTKEYS.attachFile,
+    (e) => {
+      e.preventDefault();
+      attachments.openFileDialog();
+    },
+    { enableOnFormTags: true }
+  );
+
+  useHotkeys(
+    HOTKEYS.cycleReasoning,
+    (e) => {
+      e.preventDefault();
+      if (supportsReasoning) {
+        cycleReasoning();
+      }
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Submit hotkey - triggers form submission
+  useHotkeys(
+    HOTKEYS.submit,
+    (e) => {
+      // Find the form containing the textarea
+      const textarea = document.querySelector(
+        'textarea[name="message"]'
+      ) as HTMLTextAreaElement | null;
+      if (textarea) {
+        const form = textarea.closest("form") as HTMLFormElement | null;
+        if (form) {
+          const submitButton = form.querySelector(
+            'button[type="submit"]'
+          ) as HTMLButtonElement | null;
+          // Only submit if there's input or if streaming (to stop)
+          if (
+            submitButton &&
+            !submitButton.disabled &&
+            (input.trim() || status === "streaming" || status === "submitted")
+          ) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
+        }
+      }
+    },
+    { enableOnFormTags: true }
+  );
+
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"
@@ -155,10 +253,23 @@ export const ChatInput = ({
               />
             </TooltipTrigger>
             <TooltipContent hideArrow side="top" sideOffset={45}>
-              Voice input
+              Voice input{" "}
+              <KbdGroup>
+                {splitHotkey(HOTKEYS.toggleVoice).map((key, idx) => (
+                  <Kbd key={idx}>{key}</Kbd>
+                ))}
+              </KbdGroup>
             </TooltipContent>
           </Tooltip>
-          <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
+          <ModelSelectorCombobox
+            model={model}
+            onModelChange={(newModel) => {
+              onModelChange(newModel);
+              setModelSelectorOpen(false);
+            }}
+            onOpenChange={setModelSelectorOpen}
+            open={modelSelectorOpen}
+          />
           {/* Desktop: show all buttons */}
           <div className="hidden items-center gap-1 md:flex">
             <Tooltip>
@@ -166,7 +277,12 @@ export const ChatInput = ({
                 <PromptInputAddFileButton />
               </TooltipTrigger>
               <TooltipContent hideArrow side="top" sideOffset={45}>
-                Add files
+                Add files{" "}
+                <KbdGroup>
+                  {splitHotkey(HOTKEYS.attachFile).map((key, idx) => (
+                    <Kbd key={idx}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -180,7 +296,12 @@ export const ChatInput = ({
                 </PromptInputButton>
               </TooltipTrigger>
               <TooltipContent hideArrow side="top" sideOffset={45}>
-                Web search
+                Web search{" "}
+                <KbdGroup>
+                  {splitHotkey(HOTKEYS.toggleSearch).map((key, idx) => (
+                    <Kbd key={idx}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
               </TooltipContent>
             </Tooltip>
             {supportsReasoning ? (
@@ -200,7 +321,12 @@ export const ChatInput = ({
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
                   <TooltipContent hideArrow side="top" sideOffset={45}>
-                    Reasoning depth
+                    Reasoning depth{" "}
+                    <KbdGroup>
+                      {splitHotkey(HOTKEYS.cycleReasoning).map((key, idx) => (
+                        <Kbd key={idx}>{key}</Kbd>
+                      ))}
+                    </KbdGroup>
                   </TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="start">

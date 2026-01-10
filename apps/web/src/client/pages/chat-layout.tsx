@@ -8,14 +8,18 @@ import {
 } from "@yapmate/components/ui/sidebar";
 import { MessageCircleQuestionIcon, PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { FeedbackDialog } from "../components/feedback-dialog";
+import { HotkeysCheatsheet } from "../components/hotkeys-cheatsheet";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
+import { HOTKEYS } from "../hooks/use-hotkeys-config";
 import { syncWithServer } from "../hooks/use-user-preferences";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
+import { navigate } from "../router";
 
 /**
  * Checks URL params for upgrade intent and triggers upgrade sheet
@@ -38,6 +42,84 @@ const useUpgradeFromUrl = () => {
       window.history.replaceState({}, "", newUrl);
     }
   }, []);
+};
+
+/**
+ * Global hotkeys handler component
+ */
+const GlobalHotkeys = () => {
+  const { navigateToNew } = useChatContext();
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
+
+  /**
+   * Focus the prompt input textarea
+   */
+  const focusPrompt = useCallback(() => {
+    const textarea = document.querySelector(
+      'textarea[name="message"]'
+    ) as HTMLTextAreaElement | null;
+    if (textarea) {
+      textarea.focus();
+    }
+  }, []);
+
+  // New chat hotkey
+  useHotkeys(
+    HOTKEYS.newChat,
+    () => {
+      navigateToNew();
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Focus prompt hotkey
+  useHotkeys(
+    HOTKEYS.focusPrompt,
+    (e) => {
+      e.preventDefault();
+      focusPrompt();
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Settings hotkey (toggles between settings and root)
+  useHotkeys(
+    HOTKEYS.settings,
+    (e) => {
+      e.preventDefault();
+      const isOnSettings = window.location.pathname.startsWith("/settings");
+      navigate(isOnSettings ? "/" : "/settings");
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Help/cheatsheet hotkey
+  useHotkeys(
+    HOTKEYS.help,
+    (e) => {
+      e.preventDefault();
+      setCheatsheetOpen((open) => !open);
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Listen for open-hotkeys-cheatsheet events
+  useEffect(() => {
+    const handleOpenCheatsheet = () => {
+      setCheatsheetOpen(true);
+    };
+    window.addEventListener("open-hotkeys-cheatsheet", handleOpenCheatsheet);
+    return () => {
+      window.removeEventListener(
+        "open-hotkeys-cheatsheet",
+        handleOpenCheatsheet
+      );
+    };
+  }, []);
+
+  return (
+    <HotkeysCheatsheet onOpenChange={setCheatsheetOpen} open={cheatsheetOpen} />
+  );
 };
 
 /**
@@ -205,6 +287,7 @@ export const ChatLayout = () => {
 
   return (
     <ChatProvider>
+      <GlobalHotkeys />
       <WebSocketSync />
       <SidebarProvider>
         <AppSidebar

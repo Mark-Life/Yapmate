@@ -6,8 +6,10 @@ import { cn } from "@yapmate/components/lib/utils";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
+import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { useModels } from "../../hooks/use-models";
 import { usePostHog } from "../../hooks/use-posthog";
 import {
@@ -510,6 +512,18 @@ export const Chat = ({
       });
     },
     [messages, regenerate, setMessages, chatId, model, capture]
+  );
+
+  // Chat hotkeys
+  useHotkeys(
+    HOTKEYS.stop,
+    (e) => {
+      if (status === "streaming" || status === "submitted") {
+        e.preventDefault();
+        handleStop();
+      }
+    },
+    { enableOnFormTags: true }
   );
 
   return (
