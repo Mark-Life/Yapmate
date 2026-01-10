@@ -32,6 +32,12 @@ const ROADMAP_FEATURES: RoadmapFeature[] = [
       "Connect external tools and services via Model Context Protocol.",
   },
   {
+    icon: FolderKanban,
+    title: "Projects & Memory",
+    description:
+      "Organize chats by project with shared context and persistent memory.",
+  },
+  {
     icon: Calendar,
     title: "Scheduled Tasks",
     description:
@@ -48,12 +54,6 @@ const ROADMAP_FEATURES: RoadmapFeature[] = [
     title: "AI Agents",
     description:
       "Specialized agents for deep research, analysis, and complex tasks.",
-  },
-  {
-    icon: FolderKanban,
-    title: "Projects & Memory",
-    description:
-      "Organize chats by project with shared context and persistent memory.",
   },
   {
     icon: Search,

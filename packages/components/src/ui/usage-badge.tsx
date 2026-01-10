@@ -86,9 +86,7 @@ export const UsageBadge = ({
       </div>
 
       {/* Usage stats */}
-      {isUnlimited ? (
-        <p className="text-muted-foreground text-xs">Unlimited generations</p>
-      ) : (
+      {!isUnlimited && (
         <>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">
