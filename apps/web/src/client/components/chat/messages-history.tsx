@@ -88,6 +88,16 @@ const renderFilePart = ({ message, part, partId }: RenderFilePartProps) => (
 );
 
 /**
+ * Checks if a message has visible text content (text or reasoning with actual content)
+ */
+const hasVisibleContent = (message: ChatUIMessage): boolean =>
+  message.parts.some(
+    (p) =>
+      (p.type === "text" && p.text.trim()) ||
+      (p.type === "reasoning" && p.text.trim())
+  );
+
+/**
  * Renders the conversation history with messages, reasoning, and file attachments
  */
 export const MessagesHistory = ({
@@ -105,6 +115,14 @@ export const MessagesHistory = ({
   const { models } = useModels();
 
   const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
+
+  // Show loader when waiting for response OR streaming without visible content yet
+  const lastMessage = messages.at(-1);
+  const isStreamingWithoutContent =
+    status === "streaming" &&
+    lastMessage?.role === "assistant" &&
+    !hasVisibleContent(lastMessage);
+  const showLoader = status === "submitted" || isStreamingWithoutContent;
 
   useEffect(() => {
     if (copiedPartId === null) {
@@ -195,7 +213,7 @@ export const MessagesHistory = ({
               })}
             </div>
           ))}
-          {status === "submitted" && <Loader />}
+          {showLoader ? <Loader /> : null}
         </div>
       </ConversationContent>
       <ConversationScrollButton />
