@@ -50,7 +50,7 @@ export const StaticHeader = () => {
             </a>
           ))}
           <Button asChild>
-            <a href="/">Start Chatting</a>
+            <a href="/">Start Yapping</a>
           </Button>
         </nav>
 
@@ -87,7 +87,7 @@ export const StaticHeader = () => {
               </a>
             ))}
             <Button asChild className="mt-2" onClick={closeMenu}>
-              <a href="/">Start Chatting</a>
+              <a href="/">Start Yapping</a>
             </Button>
           </div>
         </nav>

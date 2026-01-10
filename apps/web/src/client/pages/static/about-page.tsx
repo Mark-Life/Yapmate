@@ -94,7 +94,7 @@ const HeroSection = () => (
             window.location.href = "/";
           }}
         >
-          Start Chatting
+          Start Yapping
         </a>
         {/* TODO: Replace with actual App Store link once approved */}
         <span className="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-border px-8 py-3 font-semibold text-muted-foreground">
@@ -281,7 +281,7 @@ const CTASection = () => (
   <section className="py-20 text-center">
     <h2 className="mb-4 font-bold text-3xl">Ready to Chat?</h2>
     <p className="mx-auto mb-8 max-w-xl text-muted-foreground">
-      Start chatting with the world's best AI models today.
+      Start Yapping with the world's best AI models today.
     </p>
     <div className="flex flex-col justify-center gap-4 sm:flex-row">
       <a
