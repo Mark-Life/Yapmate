@@ -86,27 +86,22 @@ CREATE INDEX idx_chat_mcp_tools_chat_id ON chat_mcp_tools(chat_id);
 
 ### 4. Supabase Vault (secrets)
 
-API keys stored encrypted with `mcp_server_id` as lookup key.
+API keys stored encrypted using the vault service (`packages/db/src/service/vault.ts`).
 
-```sql
--- Using Supabase Vault functions
--- Key format: mcp_{server_id}
--- Value: JSON { "apiKey": "..." }
+**Key format**: `mcp-{userId}-{serverId}`
 
--- Insert secret
-SELECT vault.create_secret(
-  'mcp_' || server_id,
-  jsonb_build_object('apiKey', api_key_value)::text
-);
+**Implementation**: The vault service provides core functions (`createSecret`, `getSecret`, `deleteSecret`) and MCP-specific convenience functions:
 
--- Read secret
-SELECT decrypted_secret
-FROM vault.decrypted_secrets
-WHERE name = 'mcp_' || server_id;
+- `getMcpSecretName(userId, serverId)` - Generates secret name
+- `getMcpSecret(userId, serverId)` - Retrieves API key
+- `setMcpSecret(userId, serverId, apiKey)` - Stores API key
+- `deleteMcpSecret(userId, serverId)` - Deletes API key
 
--- Delete secret
-SELECT vault.delete_secret('mcp_' || server_id);
-```
+The service uses Supabase Vault's PostgreSQL functions:
+
+- `vault.create_secret(value, name)` - Creates/updates secrets
+- `vault.decrypted_secrets` view - Reads decrypted secrets
+- Direct DELETE from `vault.secrets` table - Deletes secrets
 
 ---
 
@@ -309,20 +304,58 @@ export const toggleMcpServer = async (userId: string, serverId: string, enabled:
 
 ### 2. `mcp-vault.service.ts`
 
-Secure API key storage using Supabase Vault.
+Secure API key storage using Supabase Vault. This service wraps the vault functions from `@yapmate/db/service`.
+
+**Note**: The core vault service is implemented in `packages/db/src/service/vault.ts` with MCP-specific functions already available. This service layer provides a thin wrapper if needed for server-specific logic.
 
 ```typescript
+import {
+  getMcpSecret as getMcpSecretFromVault,
+  setMcpSecret as setMcpSecretInVault,
+  deleteMcpSecret as deleteMcpSecretFromVault,
+  SecretNotFoundError,
+} from "@yapmate/db/service";
+
 /** Store API key in vault */
-export const storeMcpSecret = async (serverId: string, apiKey: string): Promise<void>
+export const storeMcpSecret = async (
+  userId: string,
+  serverId: string,
+  apiKey: string
+): Promise<void> => {
+  await setMcpSecretInVault(userId, serverId, apiKey);
+};
 
 /** Get API key from vault */
-export const getMcpSecret = async (serverId: string): Promise<string | null>
+export const getMcpSecret = async (
+  userId: string,
+  serverId: string
+): Promise<string | null> => {
+  try {
+    return await getMcpSecretFromVault(userId, serverId);
+  } catch (error) {
+    if (error instanceof SecretNotFoundError) {
+      return null;
+    }
+    throw error;
+  }
+};
 
 /** Delete API key from vault */
-export const deleteMcpSecret = async (serverId: string): Promise<void>
+export const deleteMcpSecret = async (
+  userId: string,
+  serverId: string
+): Promise<void> => {
+  await deleteMcpSecretFromVault(userId, serverId);
+};
 
-/** Update API key in vault */
-export const updateMcpSecret = async (serverId: string, apiKey: string): Promise<void>
+/** Update API key in vault (same as store - creates or updates) */
+export const updateMcpSecret = async (
+  userId: string,
+  serverId: string,
+  apiKey: string
+): Promise<void> => {
+  await setMcpSecretInVault(userId, serverId, apiKey);
+};
 ```
 
 ### 3. `mcp-tools.service.ts`
@@ -695,7 +728,10 @@ When MCP server connection fails, show toast notification.
 
 - [ ] Create Drizzle schema for `mcp_servers`, `mcp_tools`, `chat_mcp_tools`
 - [ ] Run migrations
-- [ ] Implement `mcp-vault.service.ts` (Supabase Vault integration)
+- [x] Implement vault service (`packages/db/src/service/vault.ts`) - **COMPLETE**
+  - Core functions: `createSecret`, `getSecret`, `deleteSecret`
+  - MCP-specific functions: `getMcpSecret`, `setMcpSecret`, `deleteMcpSecret`
+- [ ] Implement `mcp-vault.service.ts` (thin wrapper around vault service)
 - [ ] Implement `mcp-server.service.ts` (CRUD operations)
 - [ ] Write tests for data layer
 
@@ -785,3 +821,6 @@ When MCP server connection fails, show toast notification.
 - [AI SDK MCP Documentation](/docs/ai-sdk/core/mcp.md)
 - [MCP Specification](https://modelcontextprotocol.io/)
 - [Supabase Vault Docs](https://supabase.com/docs/guides/database/vault)
+- Vault Service Implementation: `packages/db/src/service/vault.ts`
+  - Core functions: `createSecret`, `getSecret`, `deleteSecret`
+  - MCP functions: `getMcpSecret`, `setMcpSecret`, `deleteMcpSecret`, `getMcpSecretName`

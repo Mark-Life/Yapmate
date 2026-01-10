@@ -12,3 +12,4 @@ export * from "./messages";
 export * from "./rate-limit";
 export * from "./usage";
 export * from "./users";
+export * from "./vault";
