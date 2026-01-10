@@ -27,12 +27,18 @@ import {
 import { Separator } from "@yapmate/components/ui/separator";
 import { Switch } from "@yapmate/components/ui/switch";
 import {
-  EditIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@yapmate/components/ui/tooltip";
+import {
   Loader2Icon,
+  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   ServerIcon,
   Trash2Icon,
+  WrenchIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -70,6 +76,7 @@ const McpServerCard = ({
   onDelete,
   onToggle,
   onSync,
+  isSyncing,
 }: {
   server: {
     id: string;
@@ -84,81 +91,86 @@ const McpServerCard = ({
   onDelete: () => void;
   onToggle: (enabled: boolean) => void;
   onSync: () => void;
-}) => {
-  const isSyncing = false; // TODO: track sync state per server
+  isSyncing?: boolean;
+}) => (
+  <Card className={`transition-opacity ${server.enabled ? "" : "opacity-60"}`}>
+    <CardHeader className="pb-0">
+      <div className="flex items-center justify-start gap-4">
+        <Switch checked={server.enabled} onCheckedChange={onToggle} />
+        <CardTitle className="truncate text-base">{server.name}</CardTitle>
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
+        {/* <CircleIcon
+          className={`size-2.5 shrink-0 fill-current ${
+            server.enabled ? "text-emerald-500" : "text-muted-foreground/50"
+          }`}
+        /> */}
+      </div>
+      <CardDescription className="truncate font-mono text-xs">
+        {server.url}
+      </CardDescription>
+    </CardHeader>
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <CardTitle className="flex items-center gap-2">
-              <ServerIcon className="size-4" />
-              {server.name}
-            </CardTitle>
-            <CardDescription className="font-mono text-xs">
-              {server.url}
-            </CardDescription>
-          </div>
-          <Switch checked={server.enabled} onCheckedChange={onToggle} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">
-              {server.transportType.toUpperCase()}
-            </Badge>
-            {server.toolCount !== undefined && (
-              <span className="text-muted-foreground">
-                {server.toolCount} {server.toolCount === 1 ? "tool" : "tools"}
-              </span>
-            )}
-            {server.lastSyncedAt ? (
-              <span className="text-muted-foreground">
-                • Last synced: {formatRelativeTime(server.lastSyncedAt)}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex gap-2">
-        <Button
-          className="flex-1"
-          disabled={isSyncing}
-          onClick={onSync}
-          size="sm"
-          variant="outline"
-        >
-          {isSyncing ? (
-            <>
-              <Loader2Icon className="mr-2 size-4 animate-spin" />
-              Syncing...
-            </>
-          ) : (
-            <>
-              <RefreshCwIcon className="mr-2 size-4" />
-              Sync
-            </>
+    <CardContent className="pb-0">
+      <div className="flex flex-col items-start gap-2 text-muted-foreground text-xs">
+        <div className="flex items-center gap-1">
+          <Badge className="font-mono text-[10px]" variant="secondary">
+            {server.transportType.toUpperCase()}
+          </Badge>
+          {server.toolCount !== undefined && (
+            <span className="flex items-center gap-1">
+              <WrenchIcon className="size-3" />
+              {server.toolCount} {server.toolCount === 1 ? "tool" : "tools"}
+            </span>
           )}
-        </Button>
-        <Button onClick={onEdit} size="sm" variant="outline">
-          <EditIcon className="mr-2 size-4" />
-          Edit
-        </Button>
-        <Button
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-          size="sm"
-          variant="outline"
-        >
-          <Trash2Icon className="mr-2 size-4" />
-          Delete
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-};
+        </div>
+        {server.lastSyncedAt !== null && server.lastSyncedAt !== undefined && (
+          <span>synced {formatRelativeTime(server.lastSyncedAt)}</span>
+        )}
+      </div>
+    </CardContent>
+
+    <CardFooter className="flex items-center gap-2 pt-0">
+      <Button
+        className="flex-1"
+        disabled={isSyncing}
+        onClick={onSync}
+        size="sm"
+        variant="outline"
+      >
+        {isSyncing ? (
+          <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
+        ) : (
+          <RefreshCwIcon className="mr-1.5 size-3.5" />
+        )}
+        {isSyncing ? "Syncing..." : "Sync Tools"}
+      </Button>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button onClick={onEdit} size="icon" variant="ghost">
+            <PencilIcon className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Edit server</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onDelete}
+            size="icon"
+            variant="ghost"
+          >
+            <Trash2Icon className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Delete server</TooltipContent>
+      </Tooltip>
+    </CardFooter>
+  </Card>
+);
 
 /**
  * MCP Servers settings section
@@ -379,6 +391,9 @@ export const McpServersSection = () => {
             const toolsInfo = serverToolsMap[server.id];
             return (
               <McpServerCard
+                isSyncing={
+                  syncMutation.isPending && syncMutation.variables === server.id
+                }
                 key={server.id}
                 onDelete={() => handleDelete(server.id)}
                 onEdit={() => handleEdit(server)}

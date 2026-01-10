@@ -47,6 +47,7 @@ export const HotkeysCheatsheet = ({
         { action: "Toggle voice input", hotkey: HOTKEYS.toggleVoice },
         { action: "Toggle web search", hotkey: HOTKEYS.toggleSearch },
         { action: "Open model selector", hotkey: HOTKEYS.openModelSelector },
+        { action: "Open MCP tool selector", hotkey: HOTKEYS.openToolSelector },
         { action: "Attach file", hotkey: HOTKEYS.attachFile },
         { action: "Cycle reasoning depth", hotkey: HOTKEYS.cycleReasoning },
       ],

@@ -676,9 +676,16 @@ const ToolItem = ({
       >
         <span className="truncate text-sm">{tool.displayName}</span>
         {tool.description ? (
-          <span className="line-clamp-2 text-muted-foreground text-xs">
-            {tool.description}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="line-clamp-2 text-muted-foreground text-xs">
+                {tool.description}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs" side="right">
+              {tool.description}
+            </TooltipContent>
+          </Tooltip>
         ) : null}
       </label>
     </div>
