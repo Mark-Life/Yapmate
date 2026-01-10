@@ -192,35 +192,6 @@ export const ChatInput = ({
     { enableOnFormTags: true }
   );
 
-  // Submit hotkey - triggers form submission
-  useHotkeys(
-    HOTKEYS.submit,
-    (e) => {
-      // Find the form containing the textarea
-      const textarea = document.querySelector(
-        'textarea[name="message"]'
-      ) as HTMLTextAreaElement | null;
-      if (textarea) {
-        const form = textarea.closest("form") as HTMLFormElement | null;
-        if (form) {
-          const submitButton = form.querySelector(
-            'button[type="submit"]'
-          ) as HTMLButtonElement | null;
-          // Only submit if there's input or if streaming (to stop)
-          if (
-            submitButton &&
-            !submitButton.disabled &&
-            (input.trim() || status === "streaming" || status === "submitted")
-          ) {
-            e.preventDefault();
-            form.requestSubmit();
-          }
-        }
-      }
-    },
-    { enableOnFormTags: true }
-  );
-
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"

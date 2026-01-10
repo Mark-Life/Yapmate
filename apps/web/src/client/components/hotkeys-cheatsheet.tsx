@@ -42,6 +42,7 @@ export const HotkeysCheatsheet = ({
       title: "Chat Input",
       items: [
         { action: "Submit message", hotkey: HOTKEYS.submit },
+        { action: "New line", hotkey: HOTKEYS.newLine },
         { action: "Stop streaming", hotkey: HOTKEYS.stop },
         { action: "Toggle voice input", hotkey: HOTKEYS.toggleVoice },
         { action: "Toggle web search", hotkey: HOTKEYS.toggleSearch },
