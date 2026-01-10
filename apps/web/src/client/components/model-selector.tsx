@@ -14,12 +14,14 @@ import {
   ModelSelectorTrigger,
 } from "@yapmate/components/ai-elements/model-selector";
 import { PromptInputButton } from "@yapmate/components/ai-elements/prompt-input";
+import { Kbd, KbdGroup } from "@yapmate/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@yapmate/components/ui/tooltip";
 import { useMemo, useState } from "react";
+import { HOTKEYS, splitHotkey } from "../hooks/use-hotkeys-config";
 import { useModels } from "../hooks/use-models";
 import {
   getProviderDisplayName,
@@ -29,6 +31,8 @@ import {
 type ModelSelectorComboboxProps = {
   model: string;
   onModelChange: (model: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
@@ -37,8 +41,12 @@ type ModelSelectorComboboxProps = {
 export const ModelSelectorCombobox = ({
   model,
   onModelChange,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: ModelSelectorComboboxProps) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const { models, loading } = useModels();
 
   const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
@@ -68,7 +76,12 @@ export const ModelSelectorCombobox = ({
           </ModelSelectorTrigger>
         </TooltipTrigger>
         <TooltipContent hideArrow side="top" sideOffset={45}>
-          Change model
+          Change model{" "}
+          <KbdGroup>
+            {splitHotkey(HOTKEYS.openModelSelector).map((key, idx) => (
+              <Kbd key={idx}>{key}</Kbd>
+            ))}
+          </KbdGroup>
         </TooltipContent>
       </Tooltip>
       <ModelSelectorContent>

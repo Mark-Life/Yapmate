@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@yapmate/components/ui/dropdown-menu";
 import { Input } from "@yapmate/components/ui/input";
+import { Kbd, KbdGroup } from "@yapmate/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -49,6 +50,7 @@ import { Skeleton } from "@yapmate/components/ui/skeleton";
 import { UsageBadge } from "@yapmate/components/ui/usage-badge";
 import {
   CreditCardIcon,
+  KeyboardIcon,
   LogOutIcon,
   PencilIcon,
   SettingsIcon,
@@ -57,6 +59,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
 import { useUser } from "../contexts/user-context";
+import { HOTKEYS, splitHotkey } from "../hooks/use-hotkeys-config";
 import { usePostHog } from "../hooks/use-posthog";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
@@ -406,7 +409,22 @@ export const AppSidebar = ({
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={() => navigate("/settings")}>
                 <SettingsIcon className="size-4" />
-                Settings
+                Settings{" "}
+                <KbdGroup>
+                  {splitHotkey(HOTKEYS.settings).map((key, idx) => (
+                    <Kbd key={idx}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("open-hotkeys-cheatsheet")
+                  );
+                }}
+              >
+                <KeyboardIcon className="size-4" />
+                Keyboard Shortcuts
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleManageSubscription}>
                 <CreditCardIcon className="size-4" />

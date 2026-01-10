@@ -34,6 +34,7 @@
     "posthog-js": "^1.315.1",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-hotkeys-hook": "^5.2.1",
     "sonner": "catalog:",
     "tailwindcss": "catalog:",
     "tw-animate-css": "catalog:",

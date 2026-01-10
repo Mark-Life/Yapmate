@@ -2,6 +2,8 @@ import { cn } from "@yapmate/components/lib/utils";
 import { Button } from "@yapmate/components/ui/button";
 import { ArrowLeftIcon, SparklesIcon, UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { navigate } from "../../router";
 import { ProfileSection } from "./profile-section";
 
@@ -86,6 +88,16 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
 export const SettingsLayout = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
     getSectionFromPath(window.location.pathname)
+  );
+
+  // Settings hotkey - navigate back to root from settings
+  useHotkeys(
+    HOTKEYS.settings,
+    (e) => {
+      e.preventDefault();
+      navigate("/");
+    },
+    { enableOnFormTags: true }
   );
 
   // Redirect /settings to /settings/profile and sync state with URL
