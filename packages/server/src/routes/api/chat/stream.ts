@@ -97,6 +97,7 @@ export const handleStreamError = async (
  */
 type ExecuteAiResponseWithOrchestrationOptions = {
   modelWithSearch: string;
+  memoryEnabled?: boolean;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -121,6 +122,7 @@ export const executeAiResponseWithOrchestration = async (
 ): Promise<AiResponseUsage | null> => {
   const {
     modelWithSearch,
+    memoryEnabled,
     messages,
     abortSignal,
     chatId,
@@ -150,6 +152,7 @@ export const executeAiResponseWithOrchestration = async (
   // Execute AI response (creates stream)
   const { uiStream, getUsage } = executeAiResponse({
     modelWithSearch,
+    memoryEnabled,
     messages,
     abortSignal,
     chatId,

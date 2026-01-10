@@ -8,11 +8,13 @@ const STORAGE_KEY = "yapmate_user_preferences";
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
+  memoryEnabled: boolean;
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   lastUsedModel: null,
   searchEnabled: false,
+  memoryEnabled: false,
 };
 
 /**
@@ -28,6 +30,7 @@ export const getUserPreferences = (): UserPreferences => {
     return {
       lastUsedModel: parsed.lastUsedModel ?? null,
       searchEnabled: parsed.searchEnabled ?? false,
+      memoryEnabled: parsed.memoryEnabled ?? false,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -70,6 +73,18 @@ export const getSearchEnabled = (): boolean =>
  */
 export const setSearchEnabled = (enabled: boolean): void =>
   setUserPreferences({ searchEnabled: enabled });
+
+/**
+ * Gets the memory enabled preference from localStorage
+ */
+export const getMemoryEnabled = (): boolean =>
+  getUserPreferences().memoryEnabled;
+
+/**
+ * Sets the memory enabled preference in localStorage
+ */
+export const setMemoryEnabled = (enabled: boolean): void =>
+  setUserPreferences({ memoryEnabled: enabled });
 
 /**
  * Syncs localStorage with server data if server has newer info
