@@ -3,6 +3,11 @@
  * Handles LLM streaming, Langfuse tracing, and usage extraction
  */
 
+import {
+  addMemoryTool,
+  searchMemoriesTool,
+  withSupermemory,
+} from "@supermemory/tools/ai-sdk";
 import { saveUsageRecord } from "@yapmate/db/service";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { langfuse } from "../../../lib/instrumentation";
@@ -26,6 +31,7 @@ export type AiResponseUsage = {
  */
 type ExecuteAiResponseOptions = {
   modelWithSearch: string;
+  memoryEnabled?: boolean;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -65,6 +71,7 @@ export const executeAiResponse = (
 ): AiResponseResult => {
   const {
     modelWithSearch,
+    memoryEnabled,
     messages,
     abortSignal,
     chatId,
@@ -100,9 +107,53 @@ export const executeAiResponse = (
     })),
   });
 
+  // Create base model
+  const baseModel = openrouter.chat(modelWithSearch, {
+    usage: { include: true },
+  });
+
+  // Get Supermemory API key (only needed when memory is enabled)
+
+  if (!process.env.SUPERMEMORY_API_KEY) {
+    throw new Error("SUPERMEMORY_API_KEY is not set");
+  }
+  const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY ?? "";
+
+  // Wrap model with Supermemory when memory is enabled
+  // mode: "full" = profile retrieval + query-based search
+  // addMemory: "always" = auto-save important info from conversations
+  // Note: Type cast needed due to AI SDK version mismatch in @supermemory/tools
+  const model =
+    memoryEnabled && supermemoryApiKey
+      ? withSupermemory(
+          baseModel as Parameters<typeof withSupermemory>[0],
+          userId,
+          {
+            mode: "full",
+            addMemory: "always",
+            apiKey: supermemoryApiKey,
+          }
+        )
+      : baseModel;
+
+  // Add individual memory tools when enabled
+  const memoryTools =
+    memoryEnabled && supermemoryApiKey
+      ? {
+          searchMemories: searchMemoriesTool(supermemoryApiKey, {
+            containerTags: [userId],
+          }),
+          addMemory: addMemoryTool(supermemoryApiKey, {
+            containerTags: [userId],
+          }),
+        }
+      : undefined;
+
   const result = streamText({
-    model: openrouter.chat(modelWithSearch, { usage: { include: true } }),
+    // Type cast needed due to AI SDK version mismatch in @supermemory/tools
+    model: model as Parameters<typeof streamText>[0]["model"],
     messages: convertToModelMessages(messages),
+    tools: memoryTools,
     system:
       "You are a helpful assistant that can answer questions and help with tasks",
     maxOutputTokens: 8192,

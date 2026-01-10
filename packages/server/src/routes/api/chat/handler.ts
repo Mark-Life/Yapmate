@@ -38,6 +38,7 @@ export const chatHandler = {
       message,
       model,
       searchEnabled,
+      memoryEnabled,
       id,
       regenerateMessageId,
       regenerateRole,
@@ -47,6 +48,7 @@ export const chatHandler = {
       message: UIMessage;
       model: string;
       searchEnabled?: boolean;
+      memoryEnabled?: boolean;
       id: string;
       regenerateMessageId?: string;
       regenerateRole?: "user" | "assistant";
@@ -157,6 +159,7 @@ export const chatHandler = {
         try {
           streamUsage = await executeAiResponseWithOrchestration({
             modelWithSearch,
+            memoryEnabled,
             messages: allMessages,
             abortSignal: abortController.signal,
             chatId: id,

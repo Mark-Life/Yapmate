@@ -23,7 +23,7 @@ import {
 } from "@yapmate/components/ui/dropdown-menu";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
-import { EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
+import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { usePostHog } from "../../hooks/use-posthog";
 import { ModelSelectorCombobox } from "../model-selector";
@@ -36,6 +36,8 @@ type ChatInputProps = {
   onModelChange: (model: string) => void;
   searchEnabled: boolean;
   onSearchEnabledChange: (enabled: boolean) => void;
+  memoryEnabled: boolean;
+  onMemoryEnabledChange: (enabled: boolean) => void;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
@@ -54,6 +56,8 @@ export const ChatInput = ({
   onModelChange,
   searchEnabled,
   onSearchEnabledChange,
+  memoryEnabled,
+  onMemoryEnabledChange,
   status,
   onSubmit,
   onStop,
@@ -139,6 +143,13 @@ export const ChatInput = ({
             >
               <GlobeIcon className="size-4" />
             </PromptInputButton>
+            <PromptInputButton
+              aria-label="Toggle memory"
+              onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+              variant={memoryEnabled ? "default" : "ghost"}
+            >
+              <BrainIcon className="size-4" />
+            </PromptInputButton>
             {messages && messages.length > 0 && (
               <TokenUsageIndicator messages={messages} model={model} />
             )}
@@ -161,6 +172,12 @@ export const ChatInput = ({
                 >
                   <GlobeIcon className="mr-2 size-4" />
                   {searchEnabled ? "Disable search" : "Enable search"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+                >
+                  <BrainIcon className="mr-2 size-4" />
+                  {memoryEnabled ? "Disable memory" : "Enable memory"}
                 </DropdownMenuItem>
                 {messages && messages.length > 0 && (
                   <div className="px-2 py-1.5">

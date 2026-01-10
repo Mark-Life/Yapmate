@@ -11,7 +11,9 @@ import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { useModels } from "../../hooks/use-models";
 import { usePostHog } from "../../hooks/use-posthog";
 import {
+  getMemoryEnabled,
   getSearchEnabled,
+  setMemoryEnabled as persistMemoryEnabled,
   setSearchEnabled as persistSearchEnabled,
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
@@ -44,6 +46,7 @@ export const Chat = ({
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
+  const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -99,6 +102,21 @@ export const Chat = ({
     },
     [chatId, capture]
   );
+
+  /**
+   * Handles memory enabled change with localStorage persistence
+   */
+  const handleMemoryEnabledChange = useCallback(
+    (enabled: boolean) => {
+      capture("memory_toggled", {
+        enabled,
+        chat_id: chatId,
+      });
+      setMemoryEnabled(enabled);
+      persistMemoryEnabled(enabled);
+    },
+    [chatId, capture]
+  );
   const [isNewChat, setIsNewChat] = useState(!initialId);
 
   // Mutation to create chat
@@ -114,6 +132,7 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
+  const memoryEnabledRef = useRef(memoryEnabled);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -121,6 +140,7 @@ export const Chat = ({
   const isResumingStreamRef = useRef(false);
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
+  memoryEnabledRef.current = memoryEnabled;
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -162,6 +182,7 @@ export const Chat = ({
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
+              memoryEnabled: memoryEnabledRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -198,6 +219,7 @@ export const Chat = ({
           chat_id: chatId,
           model,
           search_enabled: searchEnabled,
+          memory_enabled: memoryEnabled,
           message_count: finishedMessages.length,
           has_response: !!assistantMessage,
         });
@@ -368,6 +390,7 @@ export const Chat = ({
       chat_id: chatId,
       model,
       search_enabled: searchEnabled,
+      memory_enabled: memoryEnabled,
       has_text: hasText,
       has_attachments: hasAttachments,
       attachment_count: message.files?.length ?? 0,
@@ -492,10 +515,12 @@ export const Chat = ({
               <ChatInput
                 chatId={chatId}
                 input={input}
+                memoryEnabled={memoryEnabled}
                 messages={messages}
                 model={model}
                 onFocusChange={setIsInputFocused}
                 onInputChange={setInput}
+                onMemoryEnabledChange={handleMemoryEnabledChange}
                 onModelChange={handleModelChange}
                 onSearchEnabledChange={handleSearchEnabledChange}
                 onStop={handleStop}
