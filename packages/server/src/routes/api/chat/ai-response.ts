@@ -3,15 +3,18 @@
  * Handles LLM streaming, Langfuse tracing, and usage extraction
  */
 
-import {
-  addMemoryTool,
-  searchMemoriesTool,
-  withSupermemory,
-} from "@supermemory/tools/ai-sdk";
 import { saveUsageRecord } from "@yapmate/db/service";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  type UIMessage,
+} from "ai";
 import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
+
+/** Reasoning effort level for models that support extended thinking */
+export type ReasoningEffort = "high" | "medium" | "low";
 
 /**
  * Usage data from AI response (matches MessageMetadata format)
@@ -32,6 +35,7 @@ export type AiResponseUsage = {
 type ExecuteAiResponseOptions = {
   modelWithSearch: string;
   memoryEnabled?: boolean;
+  reasoningEffort?: ReasoningEffort;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -62,16 +66,23 @@ const getMessageText = (msg: UIMessage): string => {
   return textParts.map((p) => p.text).join("\n\n");
 };
 
+// Get Supermemory API key (only needed when memory is enabled)
+// if (!process.env.SUPERMEMORY_API_KEY) {
+//   throw new Error("SUPERMEMORY_API_KEY is not set");
+// }
+// const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
+
 /**
  * Creates and executes the LLM stream with Langfuse tracing
  * @returns UI stream and function to get usage data (after stream is consumed)
  */
-export const executeAiResponse = (
+export const executeAiResponse = async (
   options: ExecuteAiResponseOptions
-): AiResponseResult => {
+): Promise<AiResponseResult> => {
   const {
     modelWithSearch,
-    memoryEnabled,
+    // memoryEnabled,
+    reasoningEffort = "low",
     messages,
     abortSignal,
     chatId,
@@ -107,57 +118,56 @@ export const executeAiResponse = (
     })),
   });
 
-  // Create base model
+  // Create base model with reasoning support
   const baseModel = openrouter.chat(modelWithSearch, {
     usage: { include: true },
+    reasoning: { effort: reasoningEffort },
   });
-
-  // Get Supermemory API key (only needed when memory is enabled)
-
-  if (!process.env.SUPERMEMORY_API_KEY) {
-    throw new Error("SUPERMEMORY_API_KEY is not set");
-  }
-  const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY ?? "";
 
   // Wrap model with Supermemory when memory is enabled
   // mode: "full" = profile retrieval + query-based search
   // addMemory: "always" = auto-save important info from conversations
-  // Note: Type cast needed due to AI SDK version mismatch in @supermemory/tools
-  const model =
-    memoryEnabled && supermemoryApiKey
-      ? withSupermemory(
-          baseModel as Parameters<typeof withSupermemory>[0],
-          userId,
-          {
-            mode: "full",
-            addMemory: "always",
-            apiKey: supermemoryApiKey,
-          }
-        )
-      : baseModel;
+  // const model =
+  //   memoryEnabled && supermemoryApiKey
+  //     ? withSupermemory(baseModel, userId, {
+  //         mode: "full",
+  //         apiKey: supermemoryApiKey,
+  //         verbose: true,
+  //         conversationId: chatId,
+  //       })
+  //     : baseModel;
 
   // Add individual memory tools when enabled
-  const memoryTools =
-    memoryEnabled && supermemoryApiKey
-      ? {
-          searchMemories: searchMemoriesTool(supermemoryApiKey, {
-            containerTags: [userId],
-          }),
-          addMemory: addMemoryTool(supermemoryApiKey, {
-            containerTags: [userId],
-          }),
-        }
-      : undefined;
+  // const memoryTools =
+  //   memoryEnabled && supermemoryApiKey
+  //     ? {
+  //         searchMemories: searchMemoriesTool(supermemoryApiKey, {
+  //           containerTags: [userId],
+  //         }),
+  //         addMemory: addMemoryTool(supermemoryApiKey, {
+  //           containerTags: [userId],
+  //         }),
+  //       }
+  //     : undefined;
+
+  const baseSystemPrompt =
+    "You are a helpful assistant that can answer questions and help with tasks.";
+  // const memorySystemPrompt =
+  //   "When users share information about themselves, remember it using the addMemory tool. When they ask questions, search your memories to provide personalized responses. Always be proactive about remembering important details.";
+
+  // const finalPrompt = memoryEnabled
+  //   ? `${baseSystemPrompt} ${memorySystemPrompt}`
+  //   : baseSystemPrompt;
 
   const result = streamText({
-    // Type cast needed due to AI SDK version mismatch in @supermemory/tools
-    model: model as Parameters<typeof streamText>[0]["model"],
-    messages: convertToModelMessages(messages),
-    tools: memoryTools,
-    system:
-      "You are a helpful assistant that can answer questions and help with tasks",
+    model: baseModel,
+    messages: await convertToModelMessages(messages),
+    // Type cast needed - @supermemory/tools uses older tool types
+    // tools: memoryTools as Parameters<typeof streamText>[0]["tools"],
+    system: baseSystemPrompt,
     maxOutputTokens: 8192,
     abortSignal,
+    stopWhen: stepCountIs(5),
   });
 
   // Get UI stream
@@ -198,8 +208,8 @@ export const executeAiResponse = (
       },
       metadata: {
         finishReason,
-        cachedTokens: usage.cachedInputTokens,
-        reasoningTokens: usage.reasoningTokens,
+        cachedTokens: usage.inputTokenDetails.cacheReadTokens,
+        reasoningTokens: usage.outputTokenDetails.reasoningTokens,
         cost: openrouterUsage?.cost,
       },
     });
@@ -229,8 +239,8 @@ export const executeAiResponse = (
         inputTokens: usage.inputTokens ?? null,
         outputTokens: usage.outputTokens ?? null,
         totalTokens: usage.totalTokens ?? null,
-        cachedTokens: usage.cachedInputTokens ?? 0,
-        reasoningTokens: usage.reasoningTokens ?? 0,
+        cachedTokens: usage.inputTokenDetails.cacheReadTokens ?? 0,
+        reasoningTokens: usage.outputTokenDetails.reasoningTokens ?? 0,
         costUsd: openrouterUsage?.cost?.toString() ?? null,
         generationId: response.id,
         finishReason: finishReason ?? null,
@@ -249,8 +259,8 @@ export const executeAiResponse = (
       promptTokens: usage.inputTokens,
       completionTokens: usage.outputTokens,
       totalTokens: usage.totalTokens,
-      cachedTokens: usage.cachedInputTokens,
-      reasoningTokens: usage.reasoningTokens,
+      cachedTokens: usage.inputTokenDetails.cacheReadTokens,
+      reasoningTokens: usage.outputTokenDetails.reasoningTokens,
     };
   };
 

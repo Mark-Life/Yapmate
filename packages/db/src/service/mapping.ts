@@ -39,10 +39,13 @@ const extractToolName = (type: string): string | null => {
 
 /** Maps tool state from AI SDK to DB format */
 const mapToolState = (state: string): ToolState => {
-  if (state === "result" || state === "output") {
+  if (state === "output-available") {
     return "result";
   }
-  if (state === "call") {
+  if (state === "approval-requested") {
+    return "approval";
+  }
+  if (state === "input-available") {
     return "call";
   }
   return "partial-call";
@@ -261,7 +264,9 @@ export const mapDbPartToUI = (
         };
       }
 
-      if (dbPart.tool_state === "call") {
+      // "approval" and "call" both map to input-available when loading from DB
+      // (approval context is lost on reload - user can re-trigger if needed)
+      if (dbPart.tool_state === "approval" || dbPart.tool_state === "call") {
         return {
           type: "dynamic-tool",
           ...baseInvocation,

@@ -26,8 +26,16 @@ import type { ChatStatus } from "ai";
 import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { usePostHog } from "../../hooks/use-posthog";
+import type { ReasoningEffort } from "../../hooks/use-user-preferences";
 import { ModelSelectorCombobox } from "../model-selector";
 import { TokenUsageIndicator } from "./token-usage-indicator";
+
+/** Labels for reasoning effort levels */
+const REASONING_LABELS: Record<ReasoningEffort, string> = {
+  low: "Quick",
+  medium: "Balanced",
+  high: "Deep",
+};
 
 type ChatInputProps = {
   input: string;
@@ -36,8 +44,11 @@ type ChatInputProps = {
   onModelChange: (model: string) => void;
   searchEnabled: boolean;
   onSearchEnabledChange: (enabled: boolean) => void;
-  memoryEnabled: boolean;
-  onMemoryEnabledChange: (enabled: boolean) => void;
+  // memoryEnabled: boolean;
+  // onMemoryEnabledChange: (enabled: boolean) => void;
+  reasoningEffort: ReasoningEffort;
+  onReasoningEffortChange: (effort: ReasoningEffort) => void;
+  supportsReasoning: boolean;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
@@ -56,8 +67,11 @@ export const ChatInput = ({
   onModelChange,
   searchEnabled,
   onSearchEnabledChange,
-  memoryEnabled,
-  onMemoryEnabledChange,
+  // memoryEnabled,
+  // onMemoryEnabledChange,
+  reasoningEffort,
+  onReasoningEffortChange,
+  supportsReasoning,
   status,
   onSubmit,
   onStop,
@@ -143,13 +157,54 @@ export const ChatInput = ({
             >
               <GlobeIcon className="size-4" />
             </PromptInputButton>
-            <PromptInputButton
+            {supportsReasoning ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <PromptInputButton
+                    aria-label="Reasoning effort"
+                    variant="ghost"
+                  >
+                    <BrainIcon className="size-4" />
+                    <span className="text-xs">
+                      {REASONING_LABELS[reasoningEffort]}
+                    </span>
+                  </PromptInputButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => onReasoningEffortChange("low")}
+                  >
+                    <span className="font-medium">Quick</span>
+                    <span className="ml-2 text-muted-foreground text-xs">
+                      Fast responses
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onReasoningEffortChange("medium")}
+                  >
+                    <span className="font-medium">Balanced</span>
+                    <span className="ml-2 text-muted-foreground text-xs">
+                      Good depth
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onReasoningEffortChange("high")}
+                  >
+                    <span className="font-medium">Deep</span>
+                    <span className="ml-2 text-muted-foreground text-xs">
+                      Maximum thinking
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+            {/* <PromptInputButton
               aria-label="Toggle memory"
               onClick={() => onMemoryEnabledChange(!memoryEnabled)}
               variant={memoryEnabled ? "default" : "ghost"}
             >
               <BrainIcon className="size-4" />
-            </PromptInputButton>
+            </PromptInputButton> */}
             {messages && messages.length > 0 && (
               <TokenUsageIndicator messages={messages} model={model} />
             )}
@@ -163,6 +218,11 @@ export const ChatInput = ({
                 </PromptInputButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                {messages && messages.length > 0 && (
+                  <div className="px-2 py-1.5">
+                    <TokenUsageIndicator messages={messages} model={model} />
+                  </div>
+                )}
                 <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
                   <ImageIcon className="mr-2 size-4" />
                   Add file
@@ -173,17 +233,29 @@ export const ChatInput = ({
                   <GlobeIcon className="mr-2 size-4" />
                   {searchEnabled ? "Disable search" : "Enable search"}
                 </DropdownMenuItem>
-                <DropdownMenuItem
+                {supportsReasoning ? (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const levels: ReasoningEffort[] = [
+                        "low",
+                        "medium",
+                        "high",
+                      ];
+                      const currentIdx = levels.indexOf(reasoningEffort);
+                      const nextIdx = (currentIdx + 1) % levels.length;
+                      onReasoningEffortChange(levels[nextIdx]);
+                    }}
+                  >
+                    <BrainIcon className="mr-2 size-4" />
+                    Thinking: {REASONING_LABELS[reasoningEffort]}
+                  </DropdownMenuItem>
+                ) : null}
+                {/* <DropdownMenuItem
                   onClick={() => onMemoryEnabledChange(!memoryEnabled)}
                 >
                   <BrainIcon className="mr-2 size-4" />
                   {memoryEnabled ? "Disable memory" : "Enable memory"}
-                </DropdownMenuItem>
-                {messages && messages.length > 0 && (
-                  <div className="px-2 py-1.5">
-                    <TokenUsageIndicator messages={messages} model={model} />
-                  </div>
-                )}
+                </DropdownMenuItem> */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
