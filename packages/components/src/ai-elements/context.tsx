@@ -11,6 +11,11 @@ import {
   HoverCardTrigger,
 } from "@yapmate/components/ui/hover-card";
 import { Progress } from "@yapmate/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@yapmate/components/ui/tooltip";
 
 const PERCENT_MAX = 100;
 const ICON_RADIUS = 10;
@@ -407,13 +412,27 @@ export const ContextReasoningUsage = ({
     : undefined;
 
   return (
-    <div
-      className={cn("flex items-center justify-between text-xs", className)}
-      {...props}
-    >
-      <span className="text-muted-foreground">Reasoning</span>
-      <TokensWithCost costText={reasoningCostText} tokens={reasoningTokens} />
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "flex cursor-help items-center justify-between text-xs",
+            className
+          )}
+          {...props}
+        >
+          <span className="text-muted-foreground">Reasoning</span>
+          <TokensWithCost
+            costText={reasoningCostText}
+            tokens={reasoningTokens}
+          />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent hideArrow side="top">
+        Not included in context — reasoning is ephemeral and not sent back to
+        the model
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

@@ -10,6 +10,7 @@ import {
   ContextTrigger,
 } from "@yapmate/components/ai-elements/context";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
+import type { LanguageModelUsage } from "ai";
 import { useMemo } from "react";
 import { useModels } from "../../hooks/use-models";
 
@@ -55,13 +56,7 @@ export const TokenUsageIndicator = ({
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-      totalTokens: number;
-      cachedInputTokens: number;
-      reasoningTokens: number;
-    };
+    usage: LanguageModelUsage;
   } | null => {
     if (!meta) {
       return null;
@@ -69,9 +64,11 @@ export const TokenUsageIndicator = ({
 
     const inputTokens = meta.promptTokens ?? 0;
     const outputTokens = meta.completionTokens ?? 0;
+    const reasoningTokens = meta.reasoningTokens ?? 0;
     const totalTokens = meta.totalTokens;
 
-    // If we have totalTokens, use it; otherwise sum input + output
+    // Context usage = input + output only (reasoning tokens are ephemeral,
+    // not sent back to model, and don't consume context window space)
     const usedTokens = totalTokens ?? inputTokens + outputTokens;
 
     if (!usedTokens || usedTokens === 0) {
@@ -88,8 +85,17 @@ export const TokenUsageIndicator = ({
         outputTokens,
         totalTokens: usedTokens,
         cachedInputTokens: meta.cachedTokens ?? 0,
-        reasoningTokens: meta.reasoningTokens ?? 0,
-      } as const,
+        reasoningTokens,
+        inputTokenDetails: {
+          cacheReadTokens: meta.cachedTokens ?? 0,
+          cacheWriteTokens: undefined,
+          noCacheTokens: undefined,
+        },
+        outputTokenDetails: {
+          textTokens: outputTokens - reasoningTokens,
+          reasoningTokens,
+        },
+      },
     };
   };
 

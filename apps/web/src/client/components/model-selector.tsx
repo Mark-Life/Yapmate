@@ -14,6 +14,11 @@ import {
   ModelSelectorTrigger,
 } from "@yapmate/components/ai-elements/model-selector";
 import { PromptInputButton } from "@yapmate/components/ai-elements/prompt-input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@yapmate/components/ui/tooltip";
 import { useMemo, useState } from "react";
 import { useModels } from "../hooks/use-models";
 import {
@@ -44,21 +49,28 @@ export const ModelSelectorCombobox = ({
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
-      <ModelSelectorTrigger asChild>
-        <PromptInputButton
-          aria-expanded={open}
-          className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
-        >
-          {currentModel ? (
-            <ModelSelectorLogo
-              provider={
-                currentModel.provider as ModelSelectorLogoProps["provider"]
-              }
-            />
-          ) : null}
-          <span>{currentModel?.name}</span>
-        </PromptInputButton>
-      </ModelSelectorTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ModelSelectorTrigger asChild>
+            <PromptInputButton
+              aria-expanded={open}
+              className="gap-2 border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
+            >
+              {currentModel ? (
+                <ModelSelectorLogo
+                  provider={
+                    currentModel.provider as ModelSelectorLogoProps["provider"]
+                  }
+                />
+              ) : null}
+              <span>{currentModel?.name}</span>
+            </PromptInputButton>
+          </ModelSelectorTrigger>
+        </TooltipTrigger>
+        <TooltipContent hideArrow side="top" sideOffset={45}>
+          Change model
+        </TooltipContent>
+      </Tooltip>
       <ModelSelectorContent>
         <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>

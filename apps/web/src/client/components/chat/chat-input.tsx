@@ -21,6 +21,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@yapmate/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@yapmate/components/ui/tooltip";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
 import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
@@ -143,33 +148,61 @@ export const ChatInput = ({
       </PromptInputBody>
       <PromptInputFooter className="px-2 pb-2">
         <PromptInputTools>
-          <PromptInputTranscribeButton
-            onTranscriptionChange={handleTranscriptionChange}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PromptInputTranscribeButton
+                onTranscriptionChange={handleTranscriptionChange}
+              />
+            </TooltipTrigger>
+            <TooltipContent hideArrow side="top" sideOffset={45}>
+              Voice input
+            </TooltipContent>
+          </Tooltip>
           <ModelSelectorCombobox model={model} onModelChange={onModelChange} />
           {/* Desktop: show all buttons */}
           <div className="hidden items-center gap-1 md:flex">
-            <PromptInputAddFileButton />
-            <PromptInputButton
-              aria-label="Toggle search"
-              onClick={() => onSearchEnabledChange(!searchEnabled)}
-              variant={searchEnabled ? "default" : "ghost"}
-            >
-              <GlobeIcon className="size-4" />
-            </PromptInputButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PromptInputAddFileButton />
+              </TooltipTrigger>
+              <TooltipContent hideArrow side="top" sideOffset={45}>
+                Add files
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PromptInputButton
+                  aria-label="Toggle search"
+                  onClick={() => onSearchEnabledChange(!searchEnabled)}
+                  variant={searchEnabled ? "default" : "ghost"}
+                >
+                  <GlobeIcon className="size-4" />
+                </PromptInputButton>
+              </TooltipTrigger>
+              <TooltipContent hideArrow side="top" sideOffset={45}>
+                Web search
+              </TooltipContent>
+            </Tooltip>
             {supportsReasoning ? (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <PromptInputButton
-                    aria-label="Reasoning effort"
-                    variant="ghost"
-                  >
-                    <BrainIcon className="size-4" />
-                    <span className="text-xs">
-                      {REASONING_LABELS[reasoningEffort]}
-                    </span>
-                  </PromptInputButton>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <PromptInputButton
+                        aria-label="Reasoning effort"
+                        variant="ghost"
+                      >
+                        <BrainIcon className="size-4" />
+                        <span className="text-xs">
+                          {REASONING_LABELS[reasoningEffort]}
+                        </span>
+                      </PromptInputButton>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent hideArrow side="top" sideOffset={45}>
+                    Reasoning depth
+                  </TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem
                     onClick={() => onReasoningEffortChange("low")}
@@ -212,11 +245,18 @@ export const ChatInput = ({
           {/* Mobile: overflow menu for secondary actions */}
           <div className="md:hidden">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <PromptInputButton aria-label="More options">
-                  <EllipsisIcon className="size-4" />
-                </PromptInputButton>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <PromptInputButton aria-label="More options">
+                      <EllipsisIcon className="size-4" />
+                    </PromptInputButton>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent hideArrow side="top" sideOffset={45}>
+                  More options
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="start">
                 {messages && messages.length > 0 && (
                   <div className="px-2 py-1.5">
