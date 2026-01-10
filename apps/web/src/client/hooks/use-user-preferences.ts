@@ -7,11 +7,18 @@ const STORAGE_KEY = "yapmate_user_preferences";
 
 export type ReasoningEffort = "high" | "medium" | "low";
 
+/** MCP tool selection for persistence */
+export type McpToolSelection = {
+  mcpServerId: string;
+  toolName: string;
+};
+
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
   memoryEnabled: boolean;
   reasoningEffort: ReasoningEffort;
+  selectedMcpTools: McpToolSelection[];
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -19,6 +26,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   searchEnabled: false,
   memoryEnabled: false,
   reasoningEffort: "low",
+  selectedMcpTools: [],
 };
 
 /**
@@ -36,6 +44,9 @@ export const getUserPreferences = (): UserPreferences => {
       searchEnabled: parsed.searchEnabled ?? false,
       memoryEnabled: parsed.memoryEnabled ?? false,
       reasoningEffort: parsed.reasoningEffort ?? "low",
+      selectedMcpTools: Array.isArray(parsed.selectedMcpTools)
+        ? parsed.selectedMcpTools
+        : [],
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -102,6 +113,18 @@ export const getReasoningEffort = (): ReasoningEffort =>
  */
 export const setReasoningEffort = (effort: ReasoningEffort): void =>
   setUserPreferences({ reasoningEffort: effort });
+
+/**
+ * Gets selected MCP tools from localStorage
+ */
+export const getSelectedMcpTools = (): McpToolSelection[] =>
+  getUserPreferences().selectedMcpTools;
+
+/**
+ * Sets selected MCP tools in localStorage
+ */
+export const setSelectedMcpTools = (tools: McpToolSelection[]): void =>
+  setUserPreferences({ selectedMcpTools: tools });
 
 /**
  * Syncs localStorage with server data if server has newer info

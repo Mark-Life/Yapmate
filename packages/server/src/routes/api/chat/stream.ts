@@ -98,6 +98,12 @@ export const handleStreamError = async (
   }
 };
 
+/** MCP tool selection from client */
+type McpToolSelection = {
+  mcpServerId: string;
+  toolName: string;
+};
+
 /**
  * Options for executing AI response with orchestration
  */
@@ -105,6 +111,7 @@ type ExecuteAiResponseWithOrchestrationOptions = {
   modelWithSearch: string;
   memoryEnabled?: boolean;
   reasoningEffort?: ReasoningEffort;
+  selectedMcpTools?: McpToolSelection[];
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -131,6 +138,7 @@ export const executeAiResponseWithOrchestration = async (
     modelWithSearch,
     memoryEnabled,
     reasoningEffort,
+    selectedMcpTools,
     messages,
     abortSignal,
     chatId,
@@ -154,7 +162,11 @@ export const executeAiResponseWithOrchestration = async (
   }> = [];
 
   try {
-    const mcpResult = await resolveChatMcpTools(userId, chatId);
+    const mcpResult = await resolveChatMcpTools(
+      userId,
+      chatId,
+      selectedMcpTools
+    );
     mcpTools = mcpResult.tools;
     mcpClients = mcpResult.clients;
     mcpErrors = mcpResult.errors;

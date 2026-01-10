@@ -62,22 +62,35 @@ export const removeChatToolSelection = async (
   await removeChatToolSelectionDb(chatId, mcpServerId, toolName);
 };
 
+/** Inline tool selection from client (used before DB sync) */
+type InlineToolSelection = {
+  mcpServerId: string;
+  toolName: string;
+};
+
 /**
  * Resolve tools for chat request
  * Creates MCP clients, fetches selected tools, returns merged tools object
  * @param userId - The user ID
  * @param chatId - The chat ID
+ * @param inlineSelections - Optional inline selections from client (bypasses DB)
  * @returns Object with merged tools, client instances, and any errors
  */
-export const resolveChatMcpTools = async (userId: string, chatId: string) => {
+export const resolveChatMcpTools = async (
+  userId: string,
+  chatId: string,
+  inlineSelections?: InlineToolSelection[]
+) => {
   const tools: Record<string, unknown> = {};
   const clients: MCPClient[] = [];
   const errors: Array<{ serverId: string; serverName: string; error: string }> =
     [];
 
-  // Get tool selections for this chat
-  const selections = await getChatToolSelectionsDb(chatId);
-  const enabledSelections = selections.filter((s) => s.enabled);
+  // Use inline selections if provided, otherwise fetch from DB
+  const enabledSelections: Array<{ mcpServerId: string; toolName: string }> =
+    inlineSelections && inlineSelections.length > 0
+      ? inlineSelections
+      : (await getChatToolSelectionsDb(chatId)).filter((s) => s.enabled);
 
   if (enabledSelections.length === 0) {
     return { tools, clients, errors };

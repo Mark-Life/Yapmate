@@ -1,9 +1,10 @@
 /**
  * MCP Tool Selector - allows selecting MCP tools for a chat
  * Shows servers and their tools in a hierarchical popover
+ * Controlled component - selections managed by parent
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { PromptInputButton } from "@yapmate/components/ai-elements/prompt-input";
 import { Badge } from "@yapmate/components/ui/badge";
 import { Checkbox } from "@yapmate/components/ui/checkbox";
@@ -34,12 +35,13 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
+import type { McpToolSelection } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
 
 type ToolSelectorProps = {
-  chatId: string | undefined;
+  selections: McpToolSelection[];
+  onSelectionsChange: (selections: McpToolSelection[]) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
@@ -63,100 +65,30 @@ type McpServerWithTools = {
 };
 
 /**
- * Custom hook for tool selector mutations
- */
-const useToolMutations = (
-  chatId: string | undefined,
-  queryClient: ReturnType<typeof useQueryClient>
-) => {
-  const addToolMutation = useMutation({
-    mutationFn: ({
-      mcpServerId,
-      toolName,
-    }: {
-      mcpServerId: string;
-      toolName: string;
-    }) => {
-      if (!chatId) {
-        throw new Error("Chat ID is required");
-      }
-      return rpcClient.mcp.chat.addTool({
-        chatId,
-        mcpServerId,
-        toolName,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["mcp", "chat", "selections", chatId],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to add tool"
-      );
-    },
-  });
-
-  const removeToolMutation = useMutation({
-    mutationFn: ({
-      mcpServerId,
-      toolName,
-    }: {
-      mcpServerId: string;
-      toolName: string;
-    }) => {
-      if (!chatId) {
-        throw new Error("Chat ID is required");
-      }
-      return rpcClient.mcp.chat.removeTool({
-        chatId,
-        mcpServerId,
-        toolName,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["mcp", "chat", "selections", chatId],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to remove tool"
-      );
-    },
-  });
-
-  return { addToolMutation, removeToolMutation };
-};
-
-/**
- * Main tool selector component
+ * Main tool selector component - controlled by parent
  */
 export const ToolSelector = ({
-  chatId,
+  selections,
+  onSelectionsChange,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }: ToolSelectorProps) => {
-  const queryClient = useQueryClient();
   const [internalOpen, setInternalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
 
-  const { addToolMutation, removeToolMutation } = useToolMutations(
-    chatId,
-    queryClient
-  );
-
-  // Fetch user's MCP servers
+  // Fetch user's MCP servers (cached aggressively - rarely changes)
   const { data: servers = [], isLoading: serversLoading } = useQuery({
     queryKey: ["mcp", "servers"],
     queryFn: () => rpcClient.mcp.servers.list(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
   });
 
-  // Fetch tools for all servers
+  // Fetch tools for all servers (cached aggressively - rarely changes)
   const { data: serverToolsMap = {}, isLoading: toolsLoading } = useQuery({
     queryKey: ["mcp", "tools", "all-for-selector"],
     queryFn: async () => {
@@ -176,18 +108,9 @@ export const ToolSelector = ({
       return map;
     },
     enabled: servers.length > 0,
-  });
-
-  // Fetch current selections for this chat
-  const { data: selections = [], isLoading: selectionsLoading } = useQuery({
-    queryKey: ["mcp", "chat", "selections", chatId],
-    queryFn: () => {
-      if (!chatId) {
-        return [];
-      }
-      return rpcClient.mcp.chat.getSelections({ chatId });
-    },
-    enabled: Boolean(chatId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
   });
 
   // Combine servers with their tools
@@ -236,7 +159,7 @@ export const ToolSelector = ({
         (s) => s.mcpServerId === mcpServerId && s.toolName === toolName
       );
       if (explicit) {
-        return explicit.enabled;
+        return true;
       }
 
       // Check for wildcard selection
@@ -244,7 +167,7 @@ export const ToolSelector = ({
         (s) => s.mcpServerId === mcpServerId && s.toolName === "*"
       );
       if (wildcard) {
-        return wildcard.enabled;
+        return true;
       }
 
       return false;
@@ -259,7 +182,7 @@ export const ToolSelector = ({
       const wildcard = selections.find(
         (s) => s.mcpServerId === serverId && s.toolName === "*"
       );
-      if (wildcard?.enabled) {
+      if (wildcard) {
         return true;
       }
 
@@ -286,37 +209,28 @@ export const ToolSelector = ({
       _tools: McpTool[],
       currentState: boolean | "indeterminate"
     ) => {
-      if (!chatId) {
-        return;
-      }
-
       if (currentState === true || currentState === "indeterminate") {
-        // Deselect: remove wildcard and all individual selections
-        const serverSelections = selections.filter(
-          (s) => s.mcpServerId === serverId
+        // Deselect: remove all selections for this server
+        const newSelections = selections.filter(
+          (s) => s.mcpServerId !== serverId
         );
-        for (const sel of serverSelections) {
-          removeToolMutation.mutate({
-            mcpServerId: serverId,
-            toolName: sel.toolName,
-          });
-        }
+        onSelectionsChange(newSelections);
       } else {
-        // Select all: add wildcard
-        addToolMutation.mutate({ mcpServerId: serverId, toolName: "*" });
+        // Select all: add wildcard (remove any individual selections first)
+        const newSelections = selections.filter(
+          (s) => s.mcpServerId !== serverId
+        );
+        newSelections.push({ mcpServerId: serverId, toolName: "*" });
+        onSelectionsChange(newSelections);
       }
     },
-    [chatId, selections, addToolMutation, removeToolMutation]
+    [selections, onSelectionsChange]
   );
 
   // Handle individual tool toggle
   const handleToolToggle = useCallback(
     (mcpServerId: string, toolName: string, isSelected: boolean) => {
-      if (!chatId) {
-        return;
-      }
-
-      // If there's a wildcard, we need to convert to individual selections
+      // Check for wildcard
       const hasWildcard = selections.some(
         (s) => s.mcpServerId === mcpServerId && s.toolName === "*"
       );
@@ -326,22 +240,28 @@ export const ToolSelector = ({
         const serverTools =
           serversWithTools.find((s) => s.id === mcpServerId)?.tools ?? [];
 
-        // Remove wildcard
-        removeToolMutation.mutate({ mcpServerId, toolName: "*" });
-
-        // Add all other tools individually
+        const newSelections = selections.filter(
+          (s) => s.mcpServerId !== mcpServerId
+        );
         for (const tool of serverTools) {
           if (tool.toolName !== toolName) {
-            addToolMutation.mutate({ mcpServerId, toolName: tool.toolName });
+            newSelections.push({ mcpServerId, toolName: tool.toolName });
           }
         }
+        onSelectionsChange(newSelections);
       } else if (isSelected) {
-        removeToolMutation.mutate({ mcpServerId, toolName });
+        // Remove this tool
+        const newSelections = selections.filter(
+          (s) => !(s.mcpServerId === mcpServerId && s.toolName === toolName)
+        );
+        onSelectionsChange(newSelections);
       } else {
-        addToolMutation.mutate({ mcpServerId, toolName });
+        // Add this tool
+        const newSelections = [...selections, { mcpServerId, toolName }];
+        onSelectionsChange(newSelections);
       }
     },
-    [chatId, selections, serversWithTools, addToolMutation, removeToolMutation]
+    [selections, serversWithTools, onSelectionsChange]
   );
 
   // Count total selected tools
@@ -349,20 +269,20 @@ export const ToolSelector = ({
     let count = 0;
     for (const server of serversWithTools) {
       const hasWildcard = selections.some(
-        (s) => s.mcpServerId === server.id && s.toolName === "*" && s.enabled
+        (s) => s.mcpServerId === server.id && s.toolName === "*"
       );
       if (hasWildcard) {
         count += server.tools.length;
       } else {
         count += selections.filter(
-          (s) => s.mcpServerId === server.id && s.toolName !== "*" && s.enabled
+          (s) => s.mcpServerId === server.id && s.toolName !== "*"
         ).length;
       }
     }
     return count;
   }, [serversWithTools, selections]);
 
-  const isLoading = serversLoading || toolsLoading || selectionsLoading;
+  const isLoading = serversLoading || toolsLoading;
   const hasServers = serversWithTools.length > 0;
   const hasTools = serversWithTools.some((s) => s.tools.length > 0);
 
@@ -375,13 +295,11 @@ export const ToolSelector = ({
               aria-expanded={open}
               aria-label="MCP Tools"
               className="gap-1.5"
+              variant={selectedCount > 0 ? "default" : "ghost"}
             >
               <WrenchIcon className="size-4" />
               {selectedCount > 0 ? (
-                <Badge
-                  className="h-4 min-w-4 px-1 text-[10px]"
-                  variant="secondary"
-                >
+                <Badge className="h-4 min-w-4 px-1 text-[10px] text-primary-foreground">
                   {selectedCount}
                 </Badge>
               ) : null}
@@ -417,7 +335,6 @@ export const ToolSelector = ({
           <ScrollArea className="max-h-80">
             <div className="p-2">
               <ToolSelectorContent
-                chatId={chatId}
                 filteredServers={filteredServers}
                 hasServers={hasServers}
                 hasTools={hasTools}
@@ -431,19 +348,10 @@ export const ToolSelector = ({
           </ScrollArea>
 
           {/* Footer with hint */}
-          {hasTools && chatId ? (
+          {hasTools ? (
             <div className="border-t px-3 py-2">
               <p className="text-muted-foreground text-xs">
                 Selected tools will be available to the AI in this chat
-              </p>
-            </div>
-          ) : null}
-
-          {/* No chatId warning */}
-          {hasTools && !chatId ? (
-            <div className="border-t bg-muted/50 px-3 py-2">
-              <p className="text-muted-foreground text-xs">
-                Send a message first to enable tool selection
               </p>
             </div>
           ) : null}
@@ -459,7 +367,6 @@ const ToolSelectorContent = ({
   hasServers,
   hasTools,
   filteredServers,
-  chatId,
   isServerSelected,
   isToolSelected,
   onServerToggle,
@@ -469,7 +376,6 @@ const ToolSelectorContent = ({
   hasServers: boolean;
   hasTools: boolean;
   filteredServers: McpServerWithTools[];
-  chatId: string | undefined;
   isServerSelected: (
     serverId: string,
     tools: McpTool[]
@@ -525,7 +431,6 @@ const ToolSelectorContent = ({
     <div className="space-y-1">
       {filteredServers.map((server) => (
         <ServerSection
-          chatId={chatId}
           isServerSelected={isServerSelected}
           isToolSelected={isToolSelected}
           key={server.id}
@@ -556,14 +461,12 @@ const EmptyState = ({
 /** Server section with collapsible tools */
 const ServerSection = ({
   server,
-  chatId,
   isServerSelected,
   isToolSelected,
   onServerToggle,
   onToolToggle,
 }: {
   server: McpServerWithTools;
-  chatId: string | undefined;
   isServerSelected: (
     serverId: string,
     tools: McpTool[]
@@ -606,7 +509,7 @@ const ServerSection = ({
           data-state={
             serverState === "indeterminate" ? "indeterminate" : undefined
           }
-          disabled={!(chatId && hasTools)}
+          disabled={!hasTools}
           id={checkboxId}
           onCheckedChange={() =>
             onServerToggle(server.id, server.tools, serverState)
@@ -631,7 +534,6 @@ const ServerSection = ({
             const selected = isToolSelected(server.id, tool.toolName);
             return (
               <ToolItem
-                chatId={chatId}
                 isSelected={selected}
                 key={tool.id}
                 onToggle={() =>
@@ -652,12 +554,10 @@ const ToolItem = ({
   tool,
   isSelected,
   onToggle,
-  chatId,
 }: {
   tool: McpTool;
   isSelected: boolean;
   onToggle: () => void;
-  chatId: string | undefined;
 }) => {
   const checkboxId = `tool-${tool.id}`;
 
@@ -666,7 +566,6 @@ const ToolItem = ({
       <Checkbox
         checked={isSelected}
         className="mt-0.5"
-        disabled={!chatId}
         id={checkboxId}
         onCheckedChange={onToggle}
       />

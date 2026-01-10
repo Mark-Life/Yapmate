@@ -13,8 +13,15 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@yapmate/components/ai-elements/reasoning";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@yapmate/components/ai-elements/tool";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
-import type { ChatStatus } from "ai";
+import type { ChatStatus, ToolUIPart } from "ai";
 import { useEffect, useMemo, useState } from "react";
 import { useModels } from "../../hooks/use-models";
 import { sendFeedback } from "../../lib/langfuse";
@@ -86,6 +93,52 @@ const renderFilePart = ({ message, part, partId }: RenderFilePartProps) => (
     />
   </Message>
 );
+
+/** Dynamic tool part from DB (has toolName property) */
+type DynamicToolPart = {
+  type: "dynamic-tool";
+  toolCallId: string;
+  toolName: string;
+  state: ToolUIPart["state"];
+  input: unknown;
+  output?: unknown;
+  errorText?: string;
+};
+
+type RenderToolPartProps = {
+  part: ToolUIPart | DynamicToolPart;
+  partId: string;
+};
+
+/**
+ * Renders a tool invocation part
+ */
+const renderToolPart = ({ part, partId }: RenderToolPartProps) => {
+  const isDynamic = part.type === "dynamic-tool";
+  const dynamicPart = part as DynamicToolPart;
+  // For dynamic tools, construct type from toolName; typed tools use their type directly
+  const toolType: ToolUIPart["type"] = isDynamic
+    ? (`tool-${dynamicPart.toolName}` as ToolUIPart["type"])
+    : part.type;
+
+  return (
+    <Tool key={partId}>
+      <ToolHeader state={part.state} type={toolType} />
+      <ToolContent>
+        <ToolInput input={part.input} />
+        {(part.state === "output-available" ||
+          part.state === "output-error") && (
+          <ToolOutput
+            errorText={
+              part.state === "output-error" ? part.errorText : undefined
+            }
+            output={part.state === "output-available" ? part.output : undefined}
+          />
+        )}
+      </ToolContent>
+    </Tool>
+  );
+};
 
 /**
  * Checks if a message has visible text content (text or reasoning with actual content)
@@ -208,6 +261,16 @@ export const MessagesHistory = ({
                   case "file":
                     return renderFilePart({ message, part, partId });
                   default:
+                    // Handle tool parts (type starts with "tool-" or "dynamic-tool")
+                    if (
+                      part.type.startsWith("tool-") ||
+                      part.type === "dynamic-tool"
+                    ) {
+                      return renderToolPart({
+                        part: part as ToolUIPart | DynamicToolPart,
+                        partId,
+                      });
+                    }
                     return null;
                 }
               })}

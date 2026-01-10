@@ -40,7 +40,10 @@ import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
 import { usePostHog } from "../../hooks/use-posthog";
-import type { ReasoningEffort } from "../../hooks/use-user-preferences";
+import type {
+  McpToolSelection,
+  ReasoningEffort,
+} from "../../hooks/use-user-preferences";
 import { ModelSelectorCombobox } from "../model-selector";
 import { TokenUsageIndicator } from "./token-usage-indicator";
 import { ToolSelector } from "./tool-selector";
@@ -63,12 +66,15 @@ type ChatInputProps = {
   // onMemoryEnabledChange: (enabled: boolean) => void;
   reasoningEffort: ReasoningEffort;
   onReasoningEffortChange: (effort: ReasoningEffort) => void;
+  selectedMcpTools: McpToolSelection[];
+  onSelectedMcpToolsChange: (tools: McpToolSelection[]) => void;
   supportsReasoning: boolean;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
   onFocusChange?: (focused: boolean) => void;
   messages?: ChatUIMessage[];
+  /** Used for auto-focus when navigating between chats */
   chatId?: string;
 };
 
@@ -86,6 +92,8 @@ export const ChatInput = ({
   // onMemoryEnabledChange,
   reasoningEffort,
   onReasoningEffortChange,
+  selectedMcpTools,
+  onSelectedMcpToolsChange,
   supportsReasoning,
   status,
   onSubmit,
@@ -112,7 +120,6 @@ export const ChatInput = ({
       const newFiles = attachments.files.slice(previousFileCount);
       for (const file of newFiles) {
         capture("file_attachment_added", {
-          chat_id: chatId,
           media_type: file.mediaType,
           has_url: !!file.url,
         });
@@ -120,7 +127,7 @@ export const ChatInput = ({
     }
 
     previousFileCountRef.current = currentFileCount;
-  }, [attachments.files, chatId, capture]);
+  }, [attachments.files, capture]);
 
   /**
    * Handle transcription with tracking
@@ -128,7 +135,6 @@ export const ChatInput = ({
   const handleTranscriptionChange = (transcription: string) => {
     if (transcription) {
       capture("transcription_used", {
-        chat_id: chatId,
         transcription_length: transcription.length,
       });
     }
@@ -259,9 +265,10 @@ export const ChatInput = ({
             open={modelSelectorOpen}
           />
           <ToolSelector
-            chatId={chatId}
             onOpenChange={setToolSelectorOpen}
+            onSelectionsChange={onSelectedMcpToolsChange}
             open={toolSelectorOpen}
+            selections={selectedMcpTools}
           />
           {/* Desktop: show all buttons */}
           <div className="hidden items-center gap-1 md:flex">

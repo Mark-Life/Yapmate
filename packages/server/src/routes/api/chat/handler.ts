@@ -14,6 +14,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessage,
 } from "ai";
+import { setChatToolSelections } from "../../../lib/mcp";
 import { registerStream } from "../../../lib/redis/controller";
 import { setStreamStatus } from "../../../lib/redis/stream";
 import { getCurrentUserId } from "../../../lib/supabase";
@@ -41,6 +42,7 @@ export const chatHandler = {
       searchEnabled,
       memoryEnabled,
       reasoningEffort,
+      selectedMcpTools,
       id,
       regenerateMessageId,
       regenerateRole,
@@ -52,6 +54,7 @@ export const chatHandler = {
       searchEnabled?: boolean;
       memoryEnabled?: boolean;
       reasoningEffort?: ReasoningEffort;
+      selectedMcpTools?: Array<{ mcpServerId: string; toolName: string }>;
       id: string;
       regenerateMessageId?: string;
       regenerateRole?: "user" | "assistant";
@@ -120,6 +123,18 @@ export const chatHandler = {
         model,
       });
 
+      // Save MCP tool selections on first message (syncs client state to DB)
+      if (isFirstMessage && selectedMcpTools && selectedMcpTools.length > 0) {
+        await setChatToolSelections(
+          id,
+          selectedMcpTools.map((t) => ({
+            mcpServerId: t.mcpServerId,
+            toolName: t.toolName,
+            enabled: true,
+          }))
+        );
+      }
+
       // Trigger background upload (non-blocking)
       if (fileRecords.length > 0) {
         uploadFilesInBackground(req, fileRecords, id);
@@ -164,6 +179,7 @@ export const chatHandler = {
             modelWithSearch,
             memoryEnabled,
             reasoningEffort,
+            selectedMcpTools,
             messages: allMessages,
             abortSignal: abortController.signal,
             chatId: id,

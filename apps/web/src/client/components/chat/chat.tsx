@@ -15,9 +15,12 @@ import { usePostHog } from "../../hooks/use-posthog";
 import {
   getReasoningEffort,
   getSearchEnabled,
+  getSelectedMcpTools,
+  type McpToolSelection,
   // setMemoryEnabled as persistMemoryEnabled,
   setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
+  setSelectedMcpTools as persistSelectedMcpTools,
   type ReasoningEffort,
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
@@ -53,6 +56,9 @@ export const Chat = ({
   // const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
     getReasoningEffort()
+  );
+  const [selectedMcpTools, setSelectedMcpTools] = useState<McpToolSelection[]>(
+    () => getSelectedMcpTools()
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -140,6 +146,21 @@ export const Chat = ({
     [chatId, capture]
   );
 
+  /**
+   * Handles MCP tools selection change with localStorage persistence
+   */
+  const handleSelectedMcpToolsChange = useCallback(
+    (tools: McpToolSelection[]) => {
+      capture("mcp_tools_changed", {
+        tool_count: tools.length,
+        chat_id: chatId,
+      });
+      setSelectedMcpTools(tools);
+      persistSelectedMcpTools(tools);
+    },
+    [chatId, capture]
+  );
+
   /** Check if current model supports reasoning */
   const supportsReasoning =
     models.find((m) => m.value === model)?.supportsReasoning ?? false;
@@ -162,6 +183,7 @@ export const Chat = ({
   // const memoryEnabledRef = useRef(memoryEnabled);
   const reasoningEffortRef = useRef(reasoningEffort);
   const supportsReasoningRef = useRef(supportsReasoning);
+  const selectedMcpToolsRef = useRef(selectedMcpTools);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -172,6 +194,7 @@ export const Chat = ({
   // memoryEnabledRef.current = memoryEnabled;
   reasoningEffortRef.current = reasoningEffort;
   supportsReasoningRef.current = supportsReasoning;
+  selectedMcpToolsRef.current = selectedMcpTools;
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -216,6 +239,9 @@ export const Chat = ({
               // memoryEnabled: memoryEnabledRef.current,
               ...(supportsReasoningRef.current
                 ? { reasoningEffort: reasoningEffortRef.current }
+                : {}),
+              ...(selectedMcpToolsRef.current.length > 0
+                ? { selectedMcpTools: selectedMcpToolsRef.current }
                 : {}),
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
@@ -588,10 +614,12 @@ export const Chat = ({
                 onModelChange={handleModelChange}
                 onReasoningEffortChange={handleReasoningEffortChange}
                 onSearchEnabledChange={handleSearchEnabledChange}
+                onSelectedMcpToolsChange={handleSelectedMcpToolsChange}
                 onStop={handleStop}
                 onSubmit={handleSubmit}
                 reasoningEffort={reasoningEffort}
                 searchEnabled={searchEnabled}
+                selectedMcpTools={selectedMcpTools}
                 status={status}
                 supportsReasoning={supportsReasoning}
               />
