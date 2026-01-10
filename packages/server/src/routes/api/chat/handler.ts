@@ -18,6 +18,7 @@ import { registerStream } from "../../../lib/redis/controller";
 import { setStreamStatus } from "../../../lib/redis/stream";
 import { getCurrentUserId } from "../../../lib/supabase";
 import { publishUserEvent } from "../../../lib/websocket";
+import type { ReasoningEffort } from "./ai-response";
 import { processMessageFiles } from "./files";
 import { handleEdit, handleRegeneration } from "./messages";
 import { getChat, loadChatMessages } from "./store";
@@ -39,6 +40,7 @@ export const chatHandler = {
       model,
       searchEnabled,
       memoryEnabled,
+      reasoningEffort,
       id,
       regenerateMessageId,
       regenerateRole,
@@ -49,6 +51,7 @@ export const chatHandler = {
       model: string;
       searchEnabled?: boolean;
       memoryEnabled?: boolean;
+      reasoningEffort?: ReasoningEffort;
       id: string;
       regenerateMessageId?: string;
       regenerateRole?: "user" | "assistant";
@@ -160,6 +163,7 @@ export const chatHandler = {
           streamUsage = await executeAiResponseWithOrchestration({
             modelWithSearch,
             memoryEnabled,
+            reasoningEffort,
             messages: allMessages,
             abortSignal: abortController.signal,
             chatId: id,

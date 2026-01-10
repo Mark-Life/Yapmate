@@ -34,7 +34,7 @@
     "ultracite": "6.4.2"
   },
   "catalog": {
-    "ai": "^5.0.115",
+    "ai": "^6.0.27",
     "sonner": "^2.0.7",
     "typescript": "^5",
     "streamdown": "^1.6.10",

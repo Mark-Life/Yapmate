@@ -16,7 +16,11 @@ import {
   setStreamStatus,
 } from "../../../lib/redis/stream";
 import { publishUserEvent } from "../../../lib/websocket";
-import { type AiResponseUsage, executeAiResponse } from "./ai-response";
+import {
+  type AiResponseUsage,
+  executeAiResponse,
+  type ReasoningEffort,
+} from "./ai-response";
 import { saveChatMessages } from "./store";
 import { generateAndPublishTitle } from "./title";
 
@@ -98,6 +102,7 @@ export const handleStreamError = async (
 type ExecuteAiResponseWithOrchestrationOptions = {
   modelWithSearch: string;
   memoryEnabled?: boolean;
+  reasoningEffort?: ReasoningEffort;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -123,6 +128,7 @@ export const executeAiResponseWithOrchestration = async (
   const {
     modelWithSearch,
     memoryEnabled,
+    reasoningEffort,
     messages,
     abortSignal,
     chatId,
@@ -150,9 +156,10 @@ export const executeAiResponseWithOrchestration = async (
       : Promise.resolve();
 
   // Execute AI response (creates stream)
-  const { uiStream, getUsage } = executeAiResponse({
+  const { uiStream, getUsage } = await executeAiResponse({
     modelWithSearch,
     memoryEnabled,
+    reasoningEffort,
     messages,
     abortSignal,
     chatId,

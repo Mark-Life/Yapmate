@@ -5,16 +5,20 @@
 
 const STORAGE_KEY = "yapmate_user_preferences";
 
+export type ReasoningEffort = "high" | "medium" | "low";
+
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
   memoryEnabled: boolean;
+  reasoningEffort: ReasoningEffort;
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   lastUsedModel: null,
   searchEnabled: false,
   memoryEnabled: false,
+  reasoningEffort: "low",
 };
 
 /**
@@ -31,6 +35,7 @@ export const getUserPreferences = (): UserPreferences => {
       lastUsedModel: parsed.lastUsedModel ?? null,
       searchEnabled: parsed.searchEnabled ?? false,
       memoryEnabled: parsed.memoryEnabled ?? false,
+      reasoningEffort: parsed.reasoningEffort ?? "low",
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -85,6 +90,18 @@ export const getMemoryEnabled = (): boolean =>
  */
 export const setMemoryEnabled = (enabled: boolean): void =>
   setUserPreferences({ memoryEnabled: enabled });
+
+/**
+ * Gets the reasoning effort preference from localStorage
+ */
+export const getReasoningEffort = (): ReasoningEffort =>
+  getUserPreferences().reasoningEffort;
+
+/**
+ * Sets the reasoning effort preference in localStorage
+ */
+export const setReasoningEffort = (effort: ReasoningEffort): void =>
+  setUserPreferences({ reasoningEffort: effort });
 
 /**
  * Syncs localStorage with server data if server has newer info
