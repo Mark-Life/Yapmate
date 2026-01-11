@@ -28,6 +28,7 @@ import {
   testMcpConnection,
   toggleMcpServer,
   updateMcpServer,
+  validateMcpUrl,
 } from "@yapmate/server/lib/mcp";
 import { getChat } from "@yapmate/server/routes/api/chat/store";
 import { z } from "zod";
@@ -159,6 +160,15 @@ export const mcp = {
         })
       )
       .handler(async ({ input }) => {
+        // Validate URL before testing
+        const urlValidation = await validateMcpUrl(input.url);
+        if (!urlValidation.valid) {
+          return {
+            success: false,
+            error: urlValidation.reason,
+          };
+        }
+
         return await testMcpConnection({
           id: "", // Not used for testing
           userId: "", // Not used for testing

@@ -1,11 +1,6 @@
 import { cn } from "@yapmate/components/lib/utils";
 import { Button } from "@yapmate/components/ui/button";
-import {
-  ArrowLeftIcon,
-  ServerIcon,
-  SparklesIcon,
-  UserIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, ServerIcon, UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS } from "../../hooks/use-hotkeys-config";
@@ -39,12 +34,12 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "profile", label: "Profile", icon: <UserIcon className="size-4" /> },
-  { id: "models", label: "Models", icon: <SparklesIcon className="size-4" /> },
   {
     id: "mcp-servers",
     label: "MCP Servers",
     icon: <ServerIcon className="size-4" />,
   },
+  // { id: "models", label: "Models", icon: <SparklesIcon className="size-4" /> },
 ];
 
 /**
@@ -81,14 +76,15 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
   switch (section) {
     case "profile":
       return <ProfileSection />;
+
+    case "mcp-servers":
+      return <McpServersSection />;
     case "models":
       return (
         <div className="text-muted-foreground">
           Models settings coming soon...
         </div>
       );
-    case "mcp-servers":
-      return <McpServersSection />;
     default:
       return null;
   }

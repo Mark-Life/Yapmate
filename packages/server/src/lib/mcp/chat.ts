@@ -14,6 +14,7 @@ import {
   setChatToolSelections as setChatToolSelectionsDb,
 } from "@yapmate/db/service";
 import { createMcpClientFromConfig, fetchMcpTools } from "./client";
+import { createMcpContext, runInMcpContext } from "./context";
 import type { McpServerWithSecrets } from "./types";
 
 /**
@@ -69,35 +70,38 @@ type InlineToolSelection = {
 };
 
 /**
- * Resolve tools for chat request
- * Creates MCP clients, fetches selected tools, returns merged tools object
- * @param userId - The user ID
- * @param chatId - The chat ID
- * @param inlineSelections - Optional inline selections from client (bypasses DB)
- * @returns Object with merged tools, client instances, and any errors
+ * Get enabled tool selections for a chat
  */
-export const resolveChatMcpTools = async (
-  userId: string,
+const getEnabledSelections = async (
   chatId: string,
   inlineSelections?: InlineToolSelection[]
-) => {
+): Promise<Array<{ mcpServerId: string; toolName: string }>> => {
+  if (inlineSelections && inlineSelections.length > 0) {
+    return inlineSelections;
+  }
+  const dbSelections = await getChatToolSelectionsDb(chatId);
+  return dbSelections.filter((s) => s.enabled);
+};
+
+/**
+ * Process all MCP servers and fetch their tools
+ */
+const processAllServers = async (
+  userId: string,
+  serverIds: string[],
+  enabledSelections: Array<{ mcpServerId: string; toolName: string }>
+): Promise<{
+  tools: Record<string, unknown>;
+  clients: MCPClient[];
+  errors: Array<{ serverId: string; serverName: string; error: string }>;
+}> => {
   const tools: Record<string, unknown> = {};
   const clients: MCPClient[] = [];
-  const errors: Array<{ serverId: string; serverName: string; error: string }> =
-    [];
-
-  // Use inline selections if provided, otherwise fetch from DB
-  const enabledSelections: Array<{ mcpServerId: string; toolName: string }> =
-    inlineSelections && inlineSelections.length > 0
-      ? inlineSelections
-      : (await getChatToolSelectionsDb(chatId)).filter((s) => s.enabled);
-
-  if (enabledSelections.length === 0) {
-    return { tools, clients, errors };
-  }
-
-  // Get unique server IDs
-  const serverIds = [...new Set(enabledSelections.map((s) => s.mcpServerId))];
+  const errors: Array<{
+    serverId: string;
+    serverName: string;
+    error: string;
+  }> = [];
 
   // Fetch server configs
   const servers = await getMcpServersByIds(userId, serverIds);
@@ -154,4 +158,42 @@ export const resolveChatMcpTools = async (
   }
 
   return { tools, clients, errors };
+};
+
+/**
+ * Resolve tools for chat request
+ * Creates MCP clients, fetches selected tools, returns merged tools object
+ * @param userId - The user ID
+ * @param chatId - The chat ID
+ * @param inlineSelections - Optional inline selections from client (bypasses DB)
+ * @returns Object with merged tools, client instances, and any errors
+ */
+export const resolveChatMcpTools = async (
+  userId: string,
+  chatId: string,
+  inlineSelections?: InlineToolSelection[]
+) => {
+  // Create context and run within isolated scope
+  const context = createMcpContext(userId, chatId);
+  return await runInMcpContext(context, async () => {
+    // Get enabled selections
+    const enabledSelections = await getEnabledSelections(
+      chatId,
+      inlineSelections
+    );
+
+    if (enabledSelections.length === 0) {
+      return {
+        tools: {},
+        clients: [],
+        errors: [],
+      };
+    }
+
+    // Get unique server IDs
+    const serverIds = [...new Set(enabledSelections.map((s) => s.mcpServerId))];
+
+    // Process all servers
+    return await processAllServers(userId, serverIds, enabledSelections);
+  });
 };

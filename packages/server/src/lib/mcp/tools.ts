@@ -15,6 +15,33 @@ import { createMcpClientFromConfig } from "./client";
 import type { McpServerWithSecrets } from "./types";
 
 /**
+ * Timeout for tool fetch operations
+ */
+const MCP_TOOL_FETCH_TIMEOUT_MS = 30_000; // 30s for tool operations
+
+/**
+ * Wraps a promise with a timeout
+ * @param promise - The promise to wrap
+ * @param ms - Timeout in milliseconds
+ * @param operation - Operation name for error message
+ * @returns Promise that rejects if timeout is exceeded
+ */
+const withTimeout = <T>(
+  promise: Promise<T>,
+  ms: number,
+  operation: string
+): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`MCP ${operation} timed out after ${ms}ms`)),
+        ms
+      )
+    ),
+  ]);
+
+/**
  * Get cached tools for an MCP server
  * @param serverId - The MCP server ID
  * @returns Array of cached tool metadata
@@ -70,7 +97,11 @@ export const fetchAndSyncMcpTools = async (
     const tools: Record<
       string,
       { description?: string; parameters?: Record<string, unknown> }
-    > = await client.tools();
+    > = await withTimeout(
+      client.tools(),
+      MCP_TOOL_FETCH_TIMEOUT_MS,
+      "tool fetch"
+    );
 
     // Transform tools to cache format
     const toolEntries = Object.entries(tools);

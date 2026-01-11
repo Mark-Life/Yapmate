@@ -351,18 +351,26 @@ export const McpServersSection = () => {
     );
   }
 
+  const MCP_SERVER_LIMIT = 5;
+  const isAtLimit = servers.length >= MCP_SERVER_LIMIT;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="font-semibold text-lg">MCP Servers</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-lg">MCP Servers</h2>
+            <span className="text-muted-foreground text-sm">
+              ({servers.length} / {MCP_SERVER_LIMIT})
+            </span>
+          </div>
           <p className="text-muted-foreground text-sm">
             Configure Model Context Protocol servers to extend AI capabilities
             with custom tools
           </p>
         </div>
-        <Button onClick={handleAddNew} size="sm">
+        <Button disabled={isAtLimit} onClick={handleAddNew} size="sm">
           <PlusIcon className="mr-2 size-4" />
           Add New
         </Button>
@@ -380,40 +388,53 @@ export const McpServersSection = () => {
               Add your first MCP server to get started
             </p>
           </div>
-          <Button onClick={handleAddNew} size="sm">
+          <Button disabled={isAtLimit} onClick={handleAddNew} size="sm">
             <PlusIcon className="mr-2 size-4" />
             Add MCP Server
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {servers.map((server) => {
-            const toolsInfo = serverToolsMap[server.id];
-            return (
-              <McpServerCard
-                isSyncing={
-                  syncMutation.isPending && syncMutation.variables === server.id
-                }
-                key={server.id}
-                onDelete={() => handleDelete(server.id)}
-                onEdit={() => handleEdit(server)}
-                onSync={() => syncMutation.mutate(server.id)}
-                onToggle={(enabled) =>
-                  toggleMutation.mutate({ id: server.id, enabled })
-                }
-                server={{
-                  id: server.id,
-                  name: server.name,
-                  url: server.url,
-                  transportType: server.transportType as "http" | "sse",
-                  enabled: server.enabled,
-                  toolCount: toolsInfo?.count,
-                  lastSyncedAt: toolsInfo?.lastSyncedAt ?? null,
-                }}
-              />
-            );
-          })}
-        </div>
+        <>
+          {isAtLimit ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <p className="font-medium text-sm">
+                Server limit reached ({MCP_SERVER_LIMIT} / {MCP_SERVER_LIMIT})
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Disable or delete an existing server to add a new one
+              </p>
+            </div>
+          ) : null}
+          <div className="grid gap-4 md:grid-cols-2">
+            {servers.map((server) => {
+              const toolsInfo = serverToolsMap[server.id];
+              return (
+                <McpServerCard
+                  isSyncing={
+                    syncMutation.isPending &&
+                    syncMutation.variables === server.id
+                  }
+                  key={server.id}
+                  onDelete={() => handleDelete(server.id)}
+                  onEdit={() => handleEdit(server)}
+                  onSync={() => syncMutation.mutate(server.id)}
+                  onToggle={(enabled) =>
+                    toggleMutation.mutate({ id: server.id, enabled })
+                  }
+                  server={{
+                    id: server.id,
+                    name: server.name,
+                    url: server.url,
+                    transportType: server.transportType as "http" | "sse",
+                    enabled: server.enabled,
+                    toolCount: toolsInfo?.count,
+                    lastSyncedAt: toolsInfo?.lastSyncedAt ?? null,
+                  }}
+                />
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Add/Edit Dialog */}

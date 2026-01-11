@@ -17,6 +17,13 @@ export {
   fetchMcpTools,
   testMcpConnection,
 } from "./client";
+export type { McpRequestContext } from "./context";
+// Request context isolation
+export {
+  createMcpContext,
+  getMcpContext,
+  runInMcpContext,
+} from "./context";
 // Server CRUD
 export {
   addMcpServer,
@@ -26,7 +33,6 @@ export {
   toggleMcpServer,
   updateMcpServer,
 } from "./server";
-
 // Tool discovery & caching
 export {
   clearCachedTools,
@@ -42,3 +48,6 @@ export type {
   McpServerWithSecrets,
   McpToolMeta,
 } from "./types";
+export type { UrlValidationResult } from "./url-validation";
+// URL validation
+export { validateMcpUrl } from "./url-validation";

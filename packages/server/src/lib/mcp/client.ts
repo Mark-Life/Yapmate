@@ -7,6 +7,34 @@ import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import type { McpServerWithSecrets } from "./types";
 
 /**
+ * Timeout constants for MCP operations
+ */
+const MCP_CONNECTION_TIMEOUT_MS = 10_000; // 10s for initial connection
+const MCP_TOOL_FETCH_TIMEOUT_MS = 30_000; // 30s for tool operations
+
+/**
+ * Wraps a promise with a timeout
+ * @param promise - The promise to wrap
+ * @param ms - Timeout in milliseconds
+ * @param operation - Operation name for error message
+ * @returns Promise that rejects if timeout is exceeded
+ */
+const withTimeout = <T>(
+  promise: Promise<T>,
+  ms: number,
+  operation: string
+): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`MCP ${operation} timed out after ${ms}ms`)),
+        ms
+      )
+    ),
+  ]);
+
+/**
  * Create MCP client from server config
  * @param config - MCP server configuration with secrets
  * @returns MCP client instance
@@ -38,9 +66,13 @@ export const createMcpClientFromConfig = async (
           headers,
         };
 
-  return await createMCPClient({
-    transport: transportConfig,
-  });
+  return await withTimeout(
+    createMCPClient({
+      transport: transportConfig,
+    }),
+    MCP_CONNECTION_TIMEOUT_MS,
+    "connection"
+  );
 };
 
 /**
@@ -54,8 +86,12 @@ export const testMcpConnection = async (config: McpServerWithSecrets) => {
   try {
     client = await createMcpClientFromConfig(config);
 
-    // Fetch tools from server
-    const tools = await client.tools();
+    // Fetch tools from server with timeout
+    const tools = await withTimeout(
+      client.tools(),
+      MCP_TOOL_FETCH_TIMEOUT_MS,
+      "tool fetch"
+    );
 
     const toolNames = Object.keys(tools);
     const toolList = toolNames.map((name) => {
@@ -91,7 +127,11 @@ export const fetchMcpTools = async (
   client: MCPClient,
   selectedTools?: string[]
 ) => {
-  const allTools = await client.tools();
+  const allTools = await withTimeout(
+    client.tools(),
+    MCP_TOOL_FETCH_TIMEOUT_MS,
+    "tool fetch"
+  );
 
   // If no selection specified, return all tools
   if (!selectedTools) {

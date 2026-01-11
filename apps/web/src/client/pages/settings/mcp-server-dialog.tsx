@@ -415,7 +415,7 @@ export const McpServerDialog = ({
               </div> */}
             </RadioGroup>
             <p className="text-muted-foreground text-xs">
-              Choose the transport protocol for connecting to the server
+              for Web App use we only support HTTP MCP servers
             </p>
           </div>
 
@@ -506,6 +506,10 @@ export const McpServerDialog = ({
                   Leave blank to keep existing API key
                 </p>
               ) : null}
+              <p className="text-muted-foreground text-xs">
+                🔒 Your API key is stored encrypted and never appears in logs or
+                backups.
+              </p>
             </div>
           )}
 

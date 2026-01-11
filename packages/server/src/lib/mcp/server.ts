@@ -12,6 +12,7 @@ import {
   toggleMcpServer as toggleMcpServerDb,
   updateMcpServer as updateMcpServerDb,
 } from "@yapmate/db/service";
+import { validateMcpUrl } from "./url-validation";
 
 /**
  * Get all MCP servers for a user
@@ -36,8 +37,18 @@ export const getMcpServer = async (userId: string, serverId: string) =>
  * @param input - Server configuration and optional API key
  * @returns Created MCP server configuration
  */
-export const addMcpServer = async (userId: string, input: AddMcpServerInput) =>
-  addMcpServerDb(userId, input);
+export const addMcpServer = async (
+  userId: string,
+  input: AddMcpServerInput
+) => {
+  // Validate URL before adding
+  const urlValidation = await validateMcpUrl(input.url);
+  if (!urlValidation.valid) {
+    throw new Error(urlValidation.reason);
+  }
+
+  return addMcpServerDb(userId, input);
+};
 
 /**
  * Update MCP server config
@@ -50,7 +61,17 @@ export const updateMcpServer = async (
   userId: string,
   serverId: string,
   input: Partial<AddMcpServerInput>
-) => updateMcpServerDb(userId, serverId, input);
+) => {
+  // Validate URL if provided
+  if (input.url) {
+    const urlValidation = await validateMcpUrl(input.url);
+    if (!urlValidation.valid) {
+      throw new Error(urlValidation.reason);
+    }
+  }
+
+  return updateMcpServerDb(userId, serverId, input);
+};
 
 /**
  * Delete MCP server (cascades to tools, chat selections, vault secret)

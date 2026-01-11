@@ -3,7 +3,7 @@
  * Pure database operations, returns DB types
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../client";
 import type {
   AddMcpServerInput,
@@ -16,6 +16,11 @@ import { chatMcpTools, mcpServers, mcpTools } from "../schema/mcp";
 import { deleteMcpSecret, setMcpSecret } from "./vault";
 
 // ─── Server Operations ────────────────────────────────────────────────────────
+
+/**
+ * Maximum number of MCP servers allowed per user
+ */
+export const MCP_SERVER_LIMIT = 5;
 
 /**
  * Get all MCP servers for a user
@@ -60,6 +65,19 @@ export const addMcpServer = async (
   userId: string,
   input: AddMcpServerInput
 ): Promise<McpServerSelect> => {
+  // Check server limit
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(mcpServers)
+    .where(eq(mcpServers.userId, userId));
+
+  const existingCount = Number(countResult[0]?.count ?? 0);
+  if (existingCount >= MCP_SERVER_LIMIT) {
+    throw new Error(
+      `Maximum of ${MCP_SERVER_LIMIT} MCP servers allowed. Disable or delete an existing server first.`
+    );
+  }
+
   const { apiKey, ...serverData } = input;
 
   // Insert server config
