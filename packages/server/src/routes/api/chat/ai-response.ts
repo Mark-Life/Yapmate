@@ -178,7 +178,6 @@ export const executeAiResponse = async (
       ? withSupermemory(baseModel, userId, {
           mode: "full",
           apiKey: supermemoryApiKey,
-          verbose: true,
           conversationId: chatId,
           promptTemplate: customMemoryPromptTemplate,
         })
