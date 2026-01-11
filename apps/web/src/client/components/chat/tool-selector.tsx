@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { PromptInputButton } from "@yapmate/components/ai-elements/prompt-input";
 import { Badge } from "@yapmate/components/ui/badge";
+import { Button } from "@yapmate/components/ui/button";
 import { Checkbox } from "@yapmate/components/ui/checkbox";
 import {
   Collapsible,
@@ -38,6 +39,7 @@ import { useCallback, useMemo, useState } from "react";
 import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
 import type { McpToolSelection } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
+import { navigate } from "../../router";
 
 type ToolSelectorProps = {
   selections: McpToolSelection[];
@@ -403,6 +405,10 @@ const ToolSelectorContent = ({
   if (!hasServers) {
     return (
       <EmptyState
+        action={{
+          label: "Add MCP server",
+          onClick: () => navigate("/settings/mcp"),
+        }}
         description="Add MCP servers in Settings to use tools"
         title="No MCP servers"
       />
@@ -447,14 +453,21 @@ const ToolSelectorContent = ({
 const EmptyState = ({
   title,
   description,
+  action,
 }: {
   title: string;
   description: string;
+  action?: { label: string; onClick: () => void };
 }) => (
-  <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
+  <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
     <ServerIcon className="size-8 text-muted-foreground/50" />
     <p className="font-medium text-sm">{title}</p>
     <p className="text-muted-foreground text-xs">{description}</p>
+    {action ? (
+      <Button onClick={action.onClick} size="sm" variant="default">
+        {action.label}
+      </Button>
+    ) : null}
   </div>
 );
 

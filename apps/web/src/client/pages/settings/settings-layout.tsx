@@ -8,9 +8,9 @@ import { navigate } from "../../router";
 import { McpServersSection } from "./mcp-servers-section";
 import { ProfileSection } from "./profile-section";
 
-type SettingsSection = "profile" | "models" | "mcp-servers";
+type SettingsSection = "profile" | "models" | "mcp";
 
-const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp-servers"];
+const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp"];
 const SETTINGS_PATH_REGEX = /^\/settings\/([^/]+)/;
 
 /**
@@ -35,7 +35,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "profile", label: "Profile", icon: <UserIcon className="size-4" /> },
   {
-    id: "mcp-servers",
+    id: "mcp",
     label: "MCP Servers",
     icon: <ServerIcon className="size-4" />,
   },
@@ -77,7 +77,7 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
     case "profile":
       return <ProfileSection />;
 
-    case "mcp-servers":
+    case "mcp":
       return <McpServersSection />;
     case "models":
       return (
