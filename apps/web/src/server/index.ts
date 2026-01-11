@@ -435,6 +435,19 @@ const server = serve<WsClientData>({
       return addCorsHeaders(req, new Response("Not Found", { status: 404 }));
     },
 
+    // Service worker - must be served with no-cache headers for update detection
+    "/sw.js": () => {
+      const file = Bun.file(isProduction ? "./client/sw.js" : "./public/sw.js");
+      return new Response(file, {
+        headers: {
+          "Content-Type": "application/javascript",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+    },
+
     // Static assets - discovered at startup
     ...publicAssets,
 

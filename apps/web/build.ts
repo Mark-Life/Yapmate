@@ -179,7 +179,11 @@ const copyAssets = async () => {
       `const CACHE_VERSION = "${cacheVersion}";`
     );
 
+    // Write to both locations:
+    // - dist/sw.js (for direct access)
+    // - dist/client/sw.js (overwrite Vite's copy, this is what server serves)
     await Bun.write("./dist/sw.js", updatedSwContent);
+    await Bun.write("./dist/client/sw.js", updatedSwContent);
 
     // Vite copies public dir to dist/client, so copy manifest from there
     const clientManifest = Bun.file("./dist/client/site.webmanifest");
