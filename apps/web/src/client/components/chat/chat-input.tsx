@@ -29,7 +29,13 @@ import {
 } from "@yapmate/components/ui/tooltip";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
-import { BrainIcon, EllipsisIcon, GlobeIcon, ImageIcon } from "lucide-react";
+import {
+  BrainIcon,
+  DatabaseIcon,
+  EllipsisIcon,
+  GlobeIcon,
+  ImageIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS, splitHotkey } from "../../hooks/use-hotkeys-config";
@@ -52,8 +58,8 @@ type ChatInputProps = {
   onModelChange: (model: string) => void;
   searchEnabled: boolean;
   onSearchEnabledChange: (enabled: boolean) => void;
-  // memoryEnabled: boolean;
-  // onMemoryEnabledChange: (enabled: boolean) => void;
+  memoryEnabled: boolean;
+  onMemoryEnabledChange: (enabled: boolean) => void;
   reasoningEffort: ReasoningEffort;
   onReasoningEffortChange: (effort: ReasoningEffort) => void;
   supportsReasoning: boolean;
@@ -75,8 +81,8 @@ export const ChatInput = ({
   onModelChange,
   searchEnabled,
   onSearchEnabledChange,
-  // memoryEnabled,
-  // onMemoryEnabledChange,
+  memoryEnabled,
+  onMemoryEnabledChange,
   reasoningEffort,
   onReasoningEffortChange,
   supportsReasoning,
@@ -192,6 +198,15 @@ export const ChatInput = ({
     { enableOnFormTags: true }
   );
 
+  useHotkeys(
+    HOTKEYS.toggleMemory,
+    (e) => {
+      e.preventDefault();
+      onMemoryEnabledChange(!memoryEnabled);
+    },
+    { enableOnFormTags: true }
+  );
+
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"
@@ -263,6 +278,25 @@ export const ChatInput = ({
                 </KbdGroup>
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PromptInputButton
+                  aria-label="Toggle memory"
+                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+                  variant={memoryEnabled ? "default" : "ghost"}
+                >
+                  <DatabaseIcon className="size-4" />
+                </PromptInputButton>
+              </TooltipTrigger>
+              <TooltipContent hideArrow side="top" sideOffset={45}>
+                Memory{" "}
+                <KbdGroup>
+                  {splitHotkey(HOTKEYS.toggleMemory).map((key, idx) => (
+                    <Kbd key={idx}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
+              </TooltipContent>
+            </Tooltip>
             {supportsReasoning ? (
               <DropdownMenu>
                 <Tooltip>
@@ -316,13 +350,6 @@ export const ChatInput = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
-            {/* <PromptInputButton
-              aria-label="Toggle memory"
-              onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-              variant={memoryEnabled ? "default" : "ghost"}
-            >
-              <BrainIcon className="size-4" />
-            </PromptInputButton> */}
             {messages && messages.length > 0 && (
               <TokenUsageIndicator messages={messages} model={model} />
             )}
@@ -358,6 +385,12 @@ export const ChatInput = ({
                   <GlobeIcon className="mr-2 size-4" />
                   {searchEnabled ? "Disable search" : "Enable search"}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+                >
+                  <DatabaseIcon className="mr-2 size-4" />
+                  {memoryEnabled ? "Disable memory" : "Enable memory"}
+                </DropdownMenuItem>
                 {supportsReasoning ? (
                   <DropdownMenuItem
                     onClick={() => {
@@ -375,12 +408,6 @@ export const ChatInput = ({
                     Thinking: {REASONING_LABELS[reasoningEffort]}
                   </DropdownMenuItem>
                 ) : null}
-                {/* <DropdownMenuItem
-                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-                >
-                  <BrainIcon className="mr-2 size-4" />
-                  {memoryEnabled ? "Disable memory" : "Enable memory"}
-                </DropdownMenuItem> */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

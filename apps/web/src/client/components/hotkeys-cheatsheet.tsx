@@ -49,6 +49,7 @@ export const HotkeysCheatsheet = ({
         { action: "Open model selector", hotkey: HOTKEYS.openModelSelector },
         { action: "Attach file", hotkey: HOTKEYS.attachFile },
         { action: "Cycle reasoning depth", hotkey: HOTKEYS.cycleReasoning },
+        { action: "Toggle memory", hotkey: HOTKEYS.toggleMemory },
       ],
     },
   ];

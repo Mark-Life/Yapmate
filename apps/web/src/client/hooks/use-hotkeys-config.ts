@@ -23,6 +23,7 @@ export const HOTKEYS = {
   openModelSelector: "mod+alt+m",
   attachFile: "mod+alt+a",
   cycleReasoning: "mod+alt+t",
+  toggleMemory: "mod+alt+v",
 } as const;
 
 /**
