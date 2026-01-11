@@ -21,9 +21,9 @@ export const HOTKEYS = {
   toggleVoice: "mod+alt+s",
   toggleSearch: "mod+alt+w",
   openModelSelector: "mod+alt+m",
-  openToolSelector: "mod+alt+p",
+  openToolSelector: "mod+alt+t",
   attachFile: "mod+alt+a",
-  cycleReasoning: "mod+alt+t",
+  cycleReasoning: "mod+alt+r",
   toggleMemory: "mod+alt+v",
 } as const;
 

@@ -14,7 +14,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@yapmate/components/ui/collapsible";
-import { Dialog, DialogContent } from "@yapmate/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@yapmate/components/ui/dialog";
 import { Input } from "@yapmate/components/ui/input";
 import { Kbd, KbdGroup } from "@yapmate/components/ui/kbd";
 import { ScrollArea } from "@yapmate/components/ui/scroll-area";
@@ -315,6 +319,7 @@ export const ToolSelector = ({
 
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogContent className="w-[90vw] max-w-md p-0 sm:w-80">
+          <DialogTitle className="sr-only">MCP Tools</DialogTitle>
           <div className="flex flex-col">
             {/* Search header */}
             <div className="border-b p-2">
