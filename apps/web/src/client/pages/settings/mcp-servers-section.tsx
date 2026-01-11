@@ -114,7 +114,7 @@ const McpServerCard = ({
     <CardContent className="pb-0">
       <div className="flex flex-col items-start gap-2 text-muted-foreground text-xs">
         <div className="flex items-center gap-1">
-          <Badge className="font-mono text-[10px]" variant="secondary">
+          <Badge className="font-mono text-[10px]" variant="primaryOutline">
             {server.transportType.toUpperCase()}
           </Badge>
           {server.toolCount !== undefined && (

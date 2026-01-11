@@ -297,7 +297,7 @@ export const ToolSelector = ({
             aria-label="MCP Tools"
             className="gap-1.5"
             onClick={() => setOpen(true)}
-            variant={selectedCount > 0 ? "default" : "ghost"}
+            variant={selectedCount > 0 ? "primaryOutline" : "ghost"}
           >
             <WrenchIcon className="size-4" />
             {selectedCount > 0 ? (

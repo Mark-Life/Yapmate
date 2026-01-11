@@ -287,7 +287,7 @@ export const ChatInput = ({
                 <PromptInputButton
                   aria-label="Toggle search"
                   onClick={() => onSearchEnabledChange(!searchEnabled)}
-                  variant={searchEnabled ? "default" : "ghost"}
+                  variant={searchEnabled ? "primaryOutline" : "ghost"}
                 >
                   <GlobeIcon className="size-4" />
                 </PromptInputButton>
@@ -306,7 +306,7 @@ export const ChatInput = ({
                 <PromptInputButton
                   aria-label="Toggle memory"
                   onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-                  variant={memoryEnabled ? "default" : "ghost"}
+                  variant={memoryEnabled ? "primaryOutline" : "ghost"}
                 >
                   <DatabaseIcon className="size-4" />
                 </PromptInputButton>
