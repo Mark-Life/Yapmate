@@ -24,6 +24,7 @@ export const HOTKEYS = {
   openToolSelector: "mod+alt+p",
   attachFile: "mod+alt+a",
   cycleReasoning: "mod+alt+t",
+  toggleMemory: "mod+alt+v",
 } as const;
 
 /**

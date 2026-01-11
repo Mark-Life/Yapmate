@@ -3,6 +3,7 @@
  * Handles LLM streaming, Langfuse tracing, and usage extraction
  */
 
+import { withSupermemory } from "@supermemory/tools/ai-sdk";
 import { saveUsageRecord } from "@yapmate/db/service";
 import {
   convertToModelMessages,
@@ -12,6 +13,10 @@ import {
 } from "ai";
 import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
+import {
+  addMemoryTool,
+  searchMemoriesTool,
+} from "../../../lib/supermemory-tools";
 
 /** Reasoning effort level for models that support extended thinking */
 export type ReasoningEffort = "high" | "medium" | "low";
@@ -68,10 +73,10 @@ const getMessageText = (msg: UIMessage): string => {
 };
 
 // Get Supermemory API key (only needed when memory is enabled)
-// if (!process.env.SUPERMEMORY_API_KEY) {
-//   throw new Error("SUPERMEMORY_API_KEY is not set");
-// }
-// const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
+if (!process.env.SUPERMEMORY_API_KEY) {
+  throw new Error("SUPERMEMORY_API_KEY is not set");
+}
+const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
 
 /**
  * Creates and executes the LLM stream with Langfuse tracing
@@ -82,7 +87,7 @@ export const executeAiResponse = async (
 ): Promise<AiResponseResult> => {
   const {
     modelWithSearch,
-    // memoryEnabled,
+    memoryEnabled,
     reasoningEffort = "low",
     messages,
     abortSignal,
@@ -129,47 +134,52 @@ export const executeAiResponse = async (
   // Wrap model with Supermemory when memory is enabled
   // mode: "full" = profile retrieval + query-based search
   // addMemory: "always" = auto-save important info from conversations
-  // const model =
-  //   memoryEnabled && supermemoryApiKey
-  //     ? withSupermemory(baseModel, userId, {
-  //         mode: "full",
-  //         apiKey: supermemoryApiKey,
-  //         verbose: true,
-  //         conversationId: chatId,
-  //       })
-  //     : baseModel;
+  const model =
+    memoryEnabled && supermemoryApiKey
+      ? withSupermemory(baseModel, userId, {
+          mode: "profile",
+          apiKey: supermemoryApiKey,
+          verbose: true,
+          conversationId: chatId,
+        })
+      : baseModel;
 
   // Add individual memory tools when enabled
-  // const memoryTools =
-  //   memoryEnabled && supermemoryApiKey
-  //     ? {
-  //         searchMemories: searchMemoriesTool(supermemoryApiKey, {
-  //           containerTags: [userId],
-  //         }),
-  //         addMemory: addMemoryTool(supermemoryApiKey, {
-  //           containerTags: [userId],
-  //         }),
-  //       }
-  //     : undefined;
+  const memoryTools =
+    memoryEnabled && supermemoryApiKey
+      ? {
+          searchMemories: searchMemoriesTool(supermemoryApiKey, {
+            containerTags: [userId],
+          }),
+          addMemory: addMemoryTool(supermemoryApiKey, {
+            containerTags: [userId],
+          }),
+        }
+      : undefined;
 
   const baseSystemPrompt =
     "You are a helpful assistant that can answer questions and help with tasks.";
-  // const memorySystemPrompt =
-  //   "When users share information about themselves, remember it using the addMemory tool. When they ask questions, search your memories to provide personalized responses. Always be proactive about remembering important details.";
+  const memorySystemPrompt =
+    "When users share information about themselves, remember it using the addMemory tool. When they ask questions, search your memories to provide personalized responses. Always be proactive about remembering important details.";
 
-  // const finalPrompt = memoryEnabled
-  //   ? `${baseSystemPrompt} ${memorySystemPrompt}`
-  //   : baseSystemPrompt;
+  const finalPrompt = memoryEnabled
+    ? `${baseSystemPrompt} ${memorySystemPrompt}`
+    : baseSystemPrompt;
+
+  // Merge MCP tools and memory tools
+  const allTools = {
+    ...(mcpTools && Object.keys(mcpTools).length > 0 ? mcpTools : {}),
+    ...(memoryTools || {}),
+  };
 
   const result = streamText({
-    model: baseModel,
+    model,
     messages: await convertToModelMessages(messages),
     // Type cast needed - MCP tools from @ai-sdk/mcp are compatible but need type assertion
-    ...(mcpTools &&
-      Object.keys(mcpTools).length > 0 && {
-        tools: mcpTools as Parameters<typeof streamText>[0]["tools"],
-      }),
-    system: baseSystemPrompt,
+    ...(Object.keys(allTools).length > 0 && {
+      tools: allTools as Parameters<typeof streamText>[0]["tools"],
+    }),
+    system: finalPrompt,
     maxOutputTokens: 8192,
     abortSignal,
     stopWhen: stepCountIs(5),

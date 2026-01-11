@@ -31,6 +31,7 @@ import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus } from "ai";
 import {
   BrainIcon,
+  DatabaseIcon,
   EllipsisIcon,
   GlobeIcon,
   ImageIcon,
@@ -62,8 +63,8 @@ type ChatInputProps = {
   onModelChange: (model: string) => void;
   searchEnabled: boolean;
   onSearchEnabledChange: (enabled: boolean) => void;
-  // memoryEnabled: boolean;
-  // onMemoryEnabledChange: (enabled: boolean) => void;
+  memoryEnabled: boolean;
+  onMemoryEnabledChange: (enabled: boolean) => void;
   reasoningEffort: ReasoningEffort;
   onReasoningEffortChange: (effort: ReasoningEffort) => void;
   selectedMcpTools: McpToolSelection[];
@@ -88,8 +89,8 @@ export const ChatInput = ({
   onModelChange,
   searchEnabled,
   onSearchEnabledChange,
-  // memoryEnabled,
-  // onMemoryEnabledChange,
+  memoryEnabled,
+  onMemoryEnabledChange,
   reasoningEffort,
   onReasoningEffortChange,
   selectedMcpTools,
@@ -159,9 +160,9 @@ export const ChatInput = ({
     HOTKEYS.toggleVoice,
     (e) => {
       e.preventDefault();
-      // Find and click the voice button
+      // Find and click the voice button (aria-label is "Start recording" or "Stop recording")
       const voiceButton = document.querySelector(
-        'button[aria-label*="voice"], button[aria-label*="Voice"]'
+        'button[aria-label*="recording"], button[aria-label*="Recording"], button[aria-label*="Transcribing"]'
       ) as HTMLButtonElement | null;
       voiceButton?.click();
     },
@@ -215,6 +216,15 @@ export const ChatInput = ({
     { enableOnFormTags: true }
   );
 
+  useHotkeys(
+    HOTKEYS.toggleMemory,
+    (e) => {
+      e.preventDefault();
+      onMemoryEnabledChange(!memoryEnabled);
+    },
+    { enableOnFormTags: true }
+  );
+
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"
@@ -240,21 +250,9 @@ export const ChatInput = ({
       </PromptInputBody>
       <PromptInputFooter className="px-2 pb-2">
         <PromptInputTools>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <PromptInputTranscribeButton
-                onTranscriptionChange={handleTranscriptionChange}
-              />
-            </TooltipTrigger>
-            <TooltipContent hideArrow side="top" sideOffset={45}>
-              Voice input{" "}
-              <KbdGroup>
-                {splitHotkey(HOTKEYS.toggleVoice).map((key, idx) => (
-                  <Kbd key={idx}>{key}</Kbd>
-                ))}
-              </KbdGroup>
-            </TooltipContent>
-          </Tooltip>
+          <PromptInputTranscribeButton
+            onTranscriptionChange={handleTranscriptionChange}
+          />
           <ModelSelectorCombobox
             model={model}
             onModelChange={(newModel) => {
@@ -299,6 +297,25 @@ export const ChatInput = ({
                 Web search{" "}
                 <KbdGroup>
                   {splitHotkey(HOTKEYS.toggleSearch).map((key, idx) => (
+                    <Kbd key={idx}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PromptInputButton
+                  aria-label="Toggle memory"
+                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+                  variant={memoryEnabled ? "default" : "ghost"}
+                >
+                  <DatabaseIcon className="size-4" />
+                </PromptInputButton>
+              </TooltipTrigger>
+              <TooltipContent hideArrow side="top" sideOffset={45}>
+                Memory{" "}
+                <KbdGroup>
+                  {splitHotkey(HOTKEYS.toggleMemory).map((key, idx) => (
                     <Kbd key={idx}>{key}</Kbd>
                   ))}
                 </KbdGroup>
@@ -357,13 +374,6 @@ export const ChatInput = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
-            {/* <PromptInputButton
-              aria-label="Toggle memory"
-              onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-              variant={memoryEnabled ? "default" : "ghost"}
-            >
-              <BrainIcon className="size-4" />
-            </PromptInputButton> */}
             {messages && messages.length > 0 && (
               <TokenUsageIndicator messages={messages} model={model} />
             )}
@@ -399,6 +409,12 @@ export const ChatInput = ({
                   <GlobeIcon className="mr-2 size-4" />
                   {searchEnabled ? "Disable search" : "Enable search"}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+                >
+                  <DatabaseIcon className="mr-2 size-4" />
+                  {memoryEnabled ? "Disable memory" : "Enable memory"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setToolSelectorOpen(true)}>
                   <WrenchIcon className="mr-2 size-4" />
                   MCP Tools
@@ -420,12 +436,6 @@ export const ChatInput = ({
                     Thinking: {REASONING_LABELS[reasoningEffort]}
                   </DropdownMenuItem>
                 ) : null}
-                {/* <DropdownMenuItem
-                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-                >
-                  <BrainIcon className="mr-2 size-4" />
-                  {memoryEnabled ? "Disable memory" : "Enable memory"}
-                </DropdownMenuItem> */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

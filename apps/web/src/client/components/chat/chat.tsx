@@ -13,11 +13,12 @@ import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { useModels } from "../../hooks/use-models";
 import { usePostHog } from "../../hooks/use-posthog";
 import {
+  getMemoryEnabled,
   getReasoningEffort,
   getSearchEnabled,
   getSelectedMcpTools,
   type McpToolSelection,
-  // setMemoryEnabled as persistMemoryEnabled,
+  setMemoryEnabled as persistMemoryEnabled,
   setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
   setSelectedMcpTools as persistSelectedMcpTools,
@@ -53,7 +54,7 @@ export const Chat = ({
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
-  // const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
+  const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
     getReasoningEffort()
   );
@@ -119,17 +120,17 @@ export const Chat = ({
   /**
    * Handles memory enabled change with localStorage persistence
    */
-  // const handleMemoryEnabledChange = useCallback(
-  //   (enabled: boolean) => {
-  //     capture("memory_toggled", {
-  //       enabled,
-  //       chat_id: chatId,
-  //     });
-  //     setMemoryEnabled(enabled);
-  //     persistMemoryEnabled(enabled);
-  //   },
-  //   [chatId, capture]
-  // );
+  const handleMemoryEnabledChange = useCallback(
+    (enabled: boolean) => {
+      capture("memory_toggled", {
+        enabled,
+        chat_id: chatId,
+      });
+      setMemoryEnabled(enabled);
+      persistMemoryEnabled(enabled);
+    },
+    [chatId, capture]
+  );
 
   /**
    * Handles reasoning effort change with localStorage persistence
@@ -180,7 +181,7 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
-  // const memoryEnabledRef = useRef(memoryEnabled);
+  const memoryEnabledRef = useRef(memoryEnabled);
   const reasoningEffortRef = useRef(reasoningEffort);
   const supportsReasoningRef = useRef(supportsReasoning);
   const selectedMcpToolsRef = useRef(selectedMcpTools);
@@ -191,7 +192,7 @@ export const Chat = ({
   const isResumingStreamRef = useRef(false);
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
-  // memoryEnabledRef.current = memoryEnabled;
+  memoryEnabledRef.current = memoryEnabled;
   reasoningEffortRef.current = reasoningEffort;
   supportsReasoningRef.current = supportsReasoning;
   selectedMcpToolsRef.current = selectedMcpTools;
@@ -236,7 +237,7 @@ export const Chat = ({
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
-              // memoryEnabled: memoryEnabledRef.current,
+              memoryEnabled: memoryEnabledRef.current,
               ...(supportsReasoningRef.current
                 ? { reasoningEffort: reasoningEffortRef.current }
                 : {}),
@@ -297,7 +298,7 @@ export const Chat = ({
           chat_id: chatId,
           model,
           search_enabled: searchEnabled,
-          // memory_enabled: memoryEnabled,
+          memory_enabled: memoryEnabled,
           message_count: finishedMessages.length,
           has_response: !!assistantMessage,
         });
@@ -468,7 +469,7 @@ export const Chat = ({
       chat_id: chatId,
       model,
       search_enabled: searchEnabled,
-      // memory_enabled: memoryEnabled,
+      memory_enabled: memoryEnabled,
       has_text: hasText,
       has_attachments: hasAttachments,
       attachment_count: message.files?.length ?? 0,
@@ -605,12 +606,12 @@ export const Chat = ({
               <ChatInput
                 chatId={chatId}
                 input={input}
-                // memoryEnabled={memoryEnabled}
+                memoryEnabled={memoryEnabled}
                 messages={messages}
                 model={model}
                 onFocusChange={setIsInputFocused}
                 onInputChange={setInput}
-                // onMemoryEnabledChange={handleMemoryEnabledChange}
+                onMemoryEnabledChange={handleMemoryEnabledChange}
                 onModelChange={handleModelChange}
                 onReasoningEffortChange={handleReasoningEffortChange}
                 onSearchEnabledChange={handleSearchEnabledChange}

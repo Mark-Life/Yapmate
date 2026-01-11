@@ -1372,14 +1372,14 @@ export const PromptInputSpeechButton = ({
     <PromptInputButton
       className={cn(
         "relative transition-all duration-200",
-        isListening && "animate-pulse bg-accent text-accent-foreground",
+        isListening && "animate-pulse bg-accent",
         className
       )}
       disabled={!recognition}
       onClick={toggleListening}
       {...props}
     >
-      <MicIcon className="size-4" />
+      <MicIcon className={cn("size-4", isListening && "text-destructive")} />
     </PromptInputButton>
   );
 };
@@ -1536,7 +1536,7 @@ export const PromptInputTranscribeButton = ({
       }
       className={cn(
         "relative transition-all duration-200",
-        isRecording && "animate-pulse bg-accent text-accent-foreground",
+        isRecording && "animate-pulse bg-accent",
         isTranscribing && "opacity-50",
         className
       )}
@@ -1547,7 +1547,7 @@ export const PromptInputTranscribeButton = ({
       {isTranscribing ? (
         <Loader2Icon className="size-4 animate-spin" />
       ) : (
-        <MicIcon className="size-4" />
+        <MicIcon className={cn("size-4", isRecording && "text-red-500")} />
       )}
     </PromptInputButton>
   );
