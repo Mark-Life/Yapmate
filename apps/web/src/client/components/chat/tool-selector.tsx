@@ -1,6 +1,6 @@
 /**
  * MCP Tool Selector - allows selecting MCP tools for a chat
- * Shows servers and their tools in a hierarchical popover
+ * Shows servers and their tools in a hierarchical dialog
  * Controlled component - selections managed by parent
  */
 
@@ -14,13 +14,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@yapmate/components/ui/collapsible";
+import { Dialog, DialogContent } from "@yapmate/components/ui/dialog";
 import { Input } from "@yapmate/components/ui/input";
 import { Kbd, KbdGroup } from "@yapmate/components/ui/kbd";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@yapmate/components/ui/popover";
 import { ScrollArea } from "@yapmate/components/ui/scroll-area";
 import {
   Tooltip,
@@ -289,24 +285,23 @@ export const ToolSelector = ({
   const hasTools = serversWithTools.some((s) => s.tools.length > 0);
 
   return (
-    <Popover onOpenChange={setOpen} open={open}>
+    <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <PromptInputButton
-              aria-expanded={open}
-              aria-label="MCP Tools"
-              className="gap-1.5"
-              variant={selectedCount > 0 ? "default" : "ghost"}
-            >
-              <WrenchIcon className="size-4" />
-              {selectedCount > 0 ? (
-                <Badge className="h-4 min-w-4 px-1 text-[10px] text-primary-foreground">
-                  {selectedCount}
-                </Badge>
-              ) : null}
-            </PromptInputButton>
-          </PopoverTrigger>
+          <PromptInputButton
+            aria-expanded={open}
+            aria-label="MCP Tools"
+            className="gap-1.5"
+            onClick={() => setOpen(true)}
+            variant={selectedCount > 0 ? "default" : "ghost"}
+          >
+            <WrenchIcon className="size-4" />
+            {selectedCount > 0 ? (
+              <Badge className="h-4 min-w-4 px-1 text-[10px] text-primary-foreground">
+                {selectedCount}
+              </Badge>
+            ) : null}
+          </PromptInputButton>
         </TooltipTrigger>
         <TooltipContent hideArrow side="top" sideOffset={45}>
           MCP Tools{" "}
@@ -318,48 +313,50 @@ export const ToolSelector = ({
         </TooltipContent>
       </Tooltip>
 
-      <PopoverContent align="start" className="w-80 p-0">
-        <div className="flex flex-col">
-          {/* Search header */}
-          <div className="border-b p-2">
-            <div className="relative">
-              <SearchIcon className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-8 pl-8"
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tools..."
-                value={searchQuery}
-              />
+      <Dialog onOpenChange={setOpen} open={open}>
+        <DialogContent className="w-[90vw] max-w-md p-0 sm:w-80">
+          <div className="flex flex-col">
+            {/* Search header */}
+            <div className="border-b p-2">
+              <div className="relative">
+                <SearchIcon className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="h-8 pl-8"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search tools..."
+                  value={searchQuery}
+                />
+              </div>
             </div>
+
+            {/* Content */}
+            <ScrollArea className="max-h-80">
+              <div className="p-2">
+                <ToolSelectorContent
+                  filteredServers={filteredServers}
+                  hasServers={hasServers}
+                  hasTools={hasTools}
+                  isLoading={isLoading}
+                  isServerSelected={isServerSelected}
+                  isToolSelected={isToolSelected}
+                  onServerToggle={handleServerToggle}
+                  onToolToggle={handleToolToggle}
+                />
+              </div>
+            </ScrollArea>
+
+            {/* Footer with hint */}
+            {hasTools ? (
+              <div className="border-t px-3 py-2">
+                <p className="text-muted-foreground text-xs">
+                  Selected tools will be available to the AI in this chat
+                </p>
+              </div>
+            ) : null}
           </div>
-
-          {/* Content */}
-          <ScrollArea className="max-h-80">
-            <div className="p-2">
-              <ToolSelectorContent
-                filteredServers={filteredServers}
-                hasServers={hasServers}
-                hasTools={hasTools}
-                isLoading={isLoading}
-                isServerSelected={isServerSelected}
-                isToolSelected={isToolSelected}
-                onServerToggle={handleServerToggle}
-                onToolToggle={handleToolToggle}
-              />
-            </div>
-          </ScrollArea>
-
-          {/* Footer with hint */}
-          {hasTools ? (
-            <div className="border-t px-3 py-2">
-              <p className="text-muted-foreground text-xs">
-                Selected tools will be available to the AI in this chat
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

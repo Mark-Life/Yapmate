@@ -79,6 +79,44 @@ if (!process.env.SUPERMEMORY_API_KEY) {
 const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
 
 /**
+ * Memory prompt data structure for custom template
+ */
+interface MemoryPromptData {
+  userMemories: string;
+  generalSearchMemories: string;
+}
+
+/**
+ * Custom prompt template for memory injection
+ * Removes supermemory branding and uses custom formatting
+ */
+const customMemoryPromptTemplate = (data: MemoryPromptData): string => {
+  const parts: string[] = [];
+
+  if (data.userMemories || data.generalSearchMemories) {
+    parts.push(
+      "The following user profile and context information has been retrieved from existing user memories stored in the memory database."
+    );
+  }
+
+  if (data.userMemories) {
+    parts.push(`User Profile:\n${data.userMemories}`);
+  }
+
+  if (data.generalSearchMemories) {
+    parts.push(`Relevant Context:\n${data.generalSearchMemories}`);
+  }
+
+  if (data.userMemories || data.generalSearchMemories) {
+    parts.push(
+      "Important: Do not save this information using the addMemory tool, as it is already stored in the memory database. Only use addMemory for new information shared by the user that is not already present in the above profile or context."
+    );
+  }
+
+  return parts.length > 0 ? parts.join("\n\n") : "";
+};
+
+/**
  * Creates and executes the LLM stream with Langfuse tracing
  * @returns UI stream and function to get usage data (after stream is consumed)
  */
@@ -134,6 +172,7 @@ export const executeAiResponse = async (
   // Wrap model with Supermemory when memory is enabled
   // mode: "full" = profile retrieval + query-based search
   // addMemory: we dont do "always" because we pass tool to do it
+  // promptTemplate: custom branding without supermemory references
   const model =
     memoryEnabled && supermemoryApiKey
       ? withSupermemory(baseModel, userId, {
@@ -141,6 +180,7 @@ export const executeAiResponse = async (
           apiKey: supermemoryApiKey,
           verbose: true,
           conversationId: chatId,
+          promptTemplate: customMemoryPromptTemplate,
         })
       : baseModel;
 
