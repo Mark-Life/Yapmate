@@ -5,8 +5,8 @@ import {
   FolderKanban,
   Image,
   type LucideIcon,
-  Plug,
   Search,
+  Server,
   Sheet,
   Speaker,
   Workflow,
@@ -26,16 +26,10 @@ type RoadmapFeature = {
  */
 const ROADMAP_FEATURES: RoadmapFeature[] = [
   {
-    icon: Plug,
-    title: "MCP Support",
-    description:
-      "Connect external tools and services via Model Context Protocol.",
-  },
-  {
     icon: FolderKanban,
-    title: "Projects & Memory",
+    title: "Projects",
     description:
-      "Organize chats by project with shared context and persistent memory.",
+      "Organize chats by project with shared context and collaboration.",
   },
   {
     icon: Calendar,
@@ -81,6 +75,12 @@ const ROADMAP_FEATURES: RoadmapFeature[] = [
     icon: Chrome,
     title: "Chrome Extension",
     description: "Access Yapmate anywhere on the web with a browser extension.",
+  },
+  {
+    icon: Server,
+    title: "Local LLM Models",
+    description:
+      "Run AI models locally on your device for privacy and offline access.",
   },
 ];
 

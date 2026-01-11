@@ -2,10 +2,12 @@ import { PRICE_IDS, PricingCards } from "@yapmate/components/ui/pricing-cards";
 import {
   Brain,
   Cloud,
+  DatabaseIcon,
   Globe,
   type LucideIcon,
   Mic,
   Paperclip,
+  Plug,
   Zap,
 } from "lucide-react";
 import { useCallback } from "react";
@@ -46,14 +48,27 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
       "Get up-to-date answers with real-time web search integration.",
   },
   {
-    icon: Paperclip,
-    title: "Share Files",
-    description: "Upload images and documents directly in your conversations.",
-  },
-  {
     icon: Mic,
     title: "Voice Input",
     description: "Speak your prompts naturally with built-in voice support.",
+  },
+
+  {
+    icon: DatabaseIcon,
+    title: "User Memory",
+    description:
+      "Persistent memory across conversations to remember your preferences and context.",
+  },
+  {
+    icon: Plug,
+    title: "MCP Tools",
+    description:
+      "Connect external tools and services via HTTP Model Context Protocol.",
+  },
+  {
+    icon: Paperclip,
+    title: "Share Files",
+    description: "Upload images and documents directly in your conversations.",
   },
   {
     icon: Cloud,
