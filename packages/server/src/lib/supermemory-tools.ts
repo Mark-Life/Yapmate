@@ -57,6 +57,7 @@ export const searchMemoriesTool = (
     description:
       "Search through stored memories to find relevant information about the user or past conversations",
     inputSchema: searchMemoriesInputSchema,
+    needsApproval: true,
     execute: async ({
       informationToGet,
       includeFullDocs,
@@ -112,6 +113,7 @@ export const addMemoryTool = (
     description:
       "Save important information about the user to memory for future reference. Use this to remember preferences, facts, or context shared by the user.",
     inputSchema: addMemoryInputSchema,
+    needsApproval: true,
     execute: async ({ memory }: z.infer<typeof addMemoryInputSchema>) => {
       try {
         const response = await client.memories.add({

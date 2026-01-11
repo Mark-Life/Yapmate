@@ -30,6 +30,10 @@ import { groupModelsByProvider } from "./model-utils";
 import { TextPart } from "./text-part";
 
 type MessagesHistoryProps = {
+  addToolApprovalResponse?: (response: {
+    id: string;
+    approved: boolean;
+  }) => void;
   disabled?: boolean;
   messages: ChatUIMessage[];
   onEdit?: (messageId: string, editedText: string) => void;
@@ -103,9 +107,14 @@ type DynamicToolPart = {
   input: unknown;
   output?: unknown;
   errorText?: string;
+  approval?: { id: string };
 };
 
 type RenderToolPartProps = {
+  addToolApprovalResponse?: (response: {
+    id: string;
+    approved: boolean;
+  }) => void;
   part: ToolUIPart | DynamicToolPart;
   partId: string;
 };
@@ -113,7 +122,11 @@ type RenderToolPartProps = {
 /**
  * Renders a tool invocation part
  */
-const renderToolPart = ({ part, partId }: RenderToolPartProps) => {
+const renderToolPart = ({
+  addToolApprovalResponse,
+  part,
+  partId,
+}: RenderToolPartProps) => {
   const isDynamic = part.type === "dynamic-tool";
   const dynamicPart = part as DynamicToolPart;
   // For dynamic tools, construct type from toolName; typed tools use their type directly
@@ -121,13 +134,64 @@ const renderToolPart = ({ part, partId }: RenderToolPartProps) => {
     ? (`tool-${dynamicPart.toolName}` as ToolUIPart["type"])
     : part.type;
 
+  const needsApproval = part.state === "approval-requested";
+
+  // Get approval ID from part (works for both ToolUIPart and DynamicToolPart)
+  // Tool parts with approval-requested state have an approval property with id
+  let approvalId: string | undefined;
+  if (
+    needsApproval &&
+    "approval" in part &&
+    part.approval &&
+    typeof part.approval === "object" &&
+    "id" in part.approval
+  ) {
+    approvalId = (part.approval as { id: string }).id;
+  }
+
   return (
-    <Tool key={partId}>
+    <Tool defaultOpen={needsApproval} key={partId}>
       <ToolHeader state={part.state} type={toolType} />
       <ToolContent>
         <ToolInput input={part.input} />
+        {needsApproval &&
+          addToolApprovalResponse !== undefined &&
+          approvalId !== undefined && (
+            <div className="space-y-2 border-t p-4">
+              <p className="text-muted-foreground text-sm">
+                This tool requires your approval to execute.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+                  onClick={() =>
+                    addToolApprovalResponse({
+                      id: approvalId,
+                      approved: true,
+                    })
+                  }
+                  type="button"
+                >
+                  Approve
+                </button>
+                <button
+                  className="rounded-md border border-input bg-background px-4 py-2 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                  onClick={() =>
+                    addToolApprovalResponse({
+                      id: approvalId,
+                      approved: false,
+                    })
+                  }
+                  type="button"
+                >
+                  Deny
+                </button>
+              </div>
+            </div>
+          )}
         {(part.state === "output-available" ||
-          part.state === "output-error") && (
+          part.state === "output-error" ||
+          part.state === "output-denied") && (
           <ToolOutput
             errorText={
               part.state === "output-error" ? part.errorText : undefined
@@ -154,6 +218,7 @@ const hasVisibleContent = (message: ChatUIMessage): boolean =>
  * Renders the conversation history with messages, reasoning, and file attachments
  */
 export const MessagesHistory = ({
+  addToolApprovalResponse,
   disabled = false,
   messages,
   onEdit,
@@ -267,6 +332,7 @@ export const MessagesHistory = ({
                       part.type === "dynamic-tool"
                     ) {
                       return renderToolPart({
+                        addToolApprovalResponse,
                         part: part as ToolUIPart | DynamicToolPart,
                         partId,
                       });

@@ -30,6 +30,7 @@ import {
 } from "./stream";
 
 export const chatHandler = {
+  // TODO: fix me later - complex function
   async POST(req: Request) {
     const userId = await getCurrentUserId(req);
     if (!userId) {
@@ -98,11 +99,42 @@ export const chatHandler = {
     >["fileRecords"] = [];
     let isFirstMessage = false;
 
+    // Check if this is a follow-up request for tool approval (not a new user message)
+    // This happens when useChat's sendAutomaticallyWhen triggers after approval
+    // The message could be:
+    // 1. An assistant message with tool parts containing approval info
+    // 2. A message with tool-approval-response type parts
+    const isAssistantMessage = message.role === "assistant";
+    const hasToolApprovalResponse =
+      Array.isArray(message.parts) &&
+      message.parts.some((part) => {
+        // Direct tool-approval-response type
+        if (part.type === "tool-approval-response") {
+          return true;
+        }
+        // Tool part with approval response (approval.approved is set)
+        if (
+          typeof part === "object" &&
+          part !== null &&
+          "approval" in part &&
+          part.approval &&
+          typeof part.approval === "object" &&
+          "approved" in part.approval
+        ) {
+          return true;
+        }
+        return false;
+      });
+
+    // Skip saving if this is a tool approval follow-up (assistant message with approval)
+    const isToolApprovalFollowUp =
+      isAssistantMessage || hasToolApprovalResponse;
+
     // Handle edit: update message text and delete stale messages
     if (editMessageId && editedText) {
       await handleEdit(req, id, editMessageId, editedText);
-    } else {
-      // Process file parts and create file records (only if not editing)
+    } else if (!isToolApprovalFollowUp) {
+      // Process file parts and create file records (only if not editing and not tool approval)
       const processedFiles = await processMessageFiles(message, userId);
       fileRecords = processedFiles.fileRecords;
       const fileIdByPartIndex = processedFiles.fileIdByPartIndex;
@@ -141,8 +173,23 @@ export const chatHandler = {
       }
     }
 
-    // Load all messages (includes the newly saved/updated message)
-    const allMessages = await loadChatMessages(req, id);
+    // Load all messages from DB
+    const dbMessages = await loadChatMessages(req, id);
+
+    // For tool approval follow-ups, replace the matching assistant message with the one containing approval
+    // This ensures the approval response is included when calling the LLM
+    let allMessages: UIMessage[] = dbMessages;
+    if (isToolApprovalFollowUp && message.id) {
+      // Find and replace the message with matching ID (to include approval info)
+      const messageIndex = dbMessages.findIndex((m) => m.id === message.id);
+      if (messageIndex !== -1) {
+        allMessages = [...dbMessages];
+        allMessages[messageIndex] = message as UIMessage;
+      } else {
+        // If not found, append it (might be a tool message not in DB)
+        allMessages = [...dbMessages, message as UIMessage];
+      }
+    }
 
     const modelWithSearch = searchEnabled ? `${model}:online` : model;
 

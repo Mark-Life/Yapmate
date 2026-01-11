@@ -206,9 +206,23 @@ export const executeAiResponse = async (
     ? `${baseSystemPrompt} ${memorySystemPrompt}`
     : baseSystemPrompt;
 
+  // Wrap MCP tools to require approval
+  const wrappedMcpTools =
+    mcpTools && Object.keys(mcpTools).length > 0
+      ? Object.fromEntries(
+          Object.entries(mcpTools).map(([toolName, tool]) => [
+            toolName,
+            {
+              ...(tool as Record<string, unknown>),
+              needsApproval: true,
+            },
+          ])
+        )
+      : {};
+
   // Merge MCP tools and memory tools
   const allTools = {
-    ...(mcpTools && Object.keys(mcpTools).length > 0 ? mcpTools : {}),
+    ...wrappedMcpTools,
     ...(memoryTools || {}),
   };
 

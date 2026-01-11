@@ -4,7 +4,10 @@ import type { PromptInputMessage } from "@yapmate/components/ai-elements/prompt-
 import { PromptInputProvider } from "@yapmate/components/ai-elements/prompt-input";
 import { cn } from "@yapmate/components/lib/utils";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
-import { DefaultChatTransport } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+} from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -256,93 +259,100 @@ export const Chat = ({
       })
   );
 
-  const { messages, sendMessage, status, regenerate, setMessages } =
-    useChat<ChatUIMessage>({
-      id: chatId,
-      messages: initialMessages,
-      transport,
-      generateId: () => crypto.randomUUID(),
-      onData: (dataPart) => {
-        // Handle streamed title updates
-        if (dataPart.type === "data-chat-title") {
-          // Refresh sidebar to show new title
-          queryClient.invalidateQueries({ queryKey: ["chats"] });
-        }
-        // TODO: fix typecasting
-        // Handle MCP connection errors (custom data type)
-        const part = dataPart as { type: string; data?: unknown };
-        if (part.type === "data-mcp-error" && part.data) {
-          const { errors } = part.data as {
-            errors: Array<{
-              serverId: string;
-              serverName: string;
-              error: string;
-            }>;
-          };
-          for (const err of errors) {
-            toast.error(`MCP Error: ${err.serverName}`, {
-              description: err.error,
-              duration: 8000,
-            });
-          }
-        }
-      },
-      onFinish: ({ messages: finishedMessages }) => {
-        // Manually update messages state to ensure UI reflects completed stream
-        setMessages(finishedMessages);
-        // Track message completion
-        const assistantMessage = finishedMessages.find(
-          (msg) => msg.role === "assistant"
-        );
-        capture("message_completed", {
-          chat_id: chatId,
-          model,
-          search_enabled: searchEnabled,
-          memory_enabled: memoryEnabled,
-          message_count: finishedMessages.length,
-          has_response: !!assistantMessage,
-        });
-        // Invalidate cache so navigation back to this chat fetches fresh DB data
-        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
-        // Update subscription usage count (message was saved before streaming)
-        // Invalidate to ensure accuracy after stream completes
-        // React Query deduplicates rapid invalidations automatically
-        queryClient.invalidateQueries({
-          queryKey: ["subscription", "usage"],
-        });
-      },
-      onError: (error) => {
-        // Handle 402 Payment Required (rate limit exceeded)
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          error.status === 402
-        ) {
-          capture("rate_limit_exceeded", {
-            chat_id: chatId,
-            model,
-          });
-          toast.error("Message limit reached", {
-            description: "You've used all your free messages this month.",
+  const {
+    messages,
+    sendMessage,
+    status,
+    regenerate,
+    setMessages,
+    addToolApprovalResponse,
+  } = useChat<ChatUIMessage>({
+    id: chatId,
+    messages: initialMessages,
+    transport,
+    generateId: () => crypto.randomUUID(),
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    onData: (dataPart) => {
+      // Handle streamed title updates
+      if (dataPart.type === "data-chat-title") {
+        // Refresh sidebar to show new title
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      }
+      // TODO: fix typecasting
+      // Handle MCP connection errors (custom data type)
+      const part = dataPart as { type: string; data?: unknown };
+      if (part.type === "data-mcp-error" && part.data) {
+        const { errors } = part.data as {
+          errors: Array<{
+            serverId: string;
+            serverName: string;
+            error: string;
+          }>;
+        };
+        for (const err of errors) {
+          toast.error(`MCP Error: ${err.serverName}`, {
+            description: err.error,
             duration: 8000,
-            action: {
-              label: "Upgrade",
-              onClick: () => {
-                window.dispatchEvent(new CustomEvent("open-upgrade-sheet"));
-              },
-            },
           });
-          return;
         }
-        capture("message_error", {
+      }
+    },
+    onFinish: ({ messages: finishedMessages }) => {
+      // Manually update messages state to ensure UI reflects completed stream
+      setMessages(finishedMessages);
+      // Track message completion
+      const assistantMessage = finishedMessages.find(
+        (msg) => msg.role === "assistant"
+      );
+      capture("message_completed", {
+        chat_id: chatId,
+        model,
+        search_enabled: searchEnabled,
+        memory_enabled: memoryEnabled,
+        message_count: finishedMessages.length,
+        has_response: !!assistantMessage,
+      });
+      // Invalidate cache so navigation back to this chat fetches fresh DB data
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+      // Update subscription usage count (message was saved before streaming)
+      // Invalidate to ensure accuracy after stream completes
+      // React Query deduplicates rapid invalidations automatically
+      queryClient.invalidateQueries({
+        queryKey: ["subscription", "usage"],
+      });
+    },
+    onError: (error) => {
+      // Handle 402 Payment Required (rate limit exceeded)
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 402
+      ) {
+        capture("rate_limit_exceeded", {
           chat_id: chatId,
           model,
-          error_type: error?.constructor?.name ?? "unknown",
         });
-        console.error("useChat error:", error);
-      },
-    });
+        toast.error("Message limit reached", {
+          description: "You've used all your free messages this month.",
+          duration: 8000,
+          action: {
+            label: "Upgrade",
+            onClick: () => {
+              window.dispatchEvent(new CustomEvent("open-upgrade-sheet"));
+            },
+          },
+        });
+        return;
+      }
+      capture("message_error", {
+        chat_id: chatId,
+        model,
+        error_type: error?.constructor?.name ?? "unknown",
+      });
+      console.error("useChat error:", error);
+    },
+  });
 
   /**
    * Handles stopping the current stream
@@ -594,6 +604,7 @@ export const Chat = ({
             </div>
           ) : (
             <MessagesHistory
+              addToolApprovalResponse={addToolApprovalResponse}
               messages={messages}
               onEdit={handleEdit}
               onRegenerate={handleRegenerate}
