@@ -133,11 +133,11 @@ export const executeAiResponse = async (
 
   // Wrap model with Supermemory when memory is enabled
   // mode: "full" = profile retrieval + query-based search
-  // addMemory: "always" = auto-save important info from conversations
+  // addMemory: we dont do "always" because we pass tool to do it
   const model =
     memoryEnabled && supermemoryApiKey
       ? withSupermemory(baseModel, userId, {
-          mode: "profile",
+          mode: "full",
           apiKey: supermemoryApiKey,
           verbose: true,
           conversationId: chatId,

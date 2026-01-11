@@ -35,7 +35,6 @@ import {
   EllipsisIcon,
   GlobeIcon,
   ImageIcon,
-  WrenchIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -414,10 +413,6 @@ export const ChatInput = ({
                 >
                   <DatabaseIcon className="mr-2 size-4" />
                   {memoryEnabled ? "Disable memory" : "Enable memory"}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setToolSelectorOpen(true)}>
-                  <WrenchIcon className="mr-2 size-4" />
-                  MCP Tools
                 </DropdownMenuItem>
                 {supportsReasoning ? (
                   <DropdownMenuItem
