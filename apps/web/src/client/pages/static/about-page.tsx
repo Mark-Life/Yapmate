@@ -129,14 +129,14 @@ const HeroSection = () => (
     <div className="flex flex-col items-center justify-center gap-8 lg:flex-row lg:gap-12">
       <img
         alt="Yapmate web app model selection"
-        className="w-full max-w-6xl rounded-xl border shadow-lg"
+        className="w-full min-w-0 max-w-6xl shrink rounded-xl border shadow-lg lg:flex-1"
         height={600}
         src="https://esvxscqmjmnbktpyifcg.supabase.co/storage/v1/object/public/yapmate/website/about/yapmate-example-model-selection.png"
         width={960}
       />
       <img
         alt="Yapmate iOS app markdown render"
-        className="w-full max-w-[360px] rounded-3xl border shadow-lg"
+        className="w-full min-w-0 max-w-[360px] shrink rounded-3xl border shadow-lg lg:shrink-0"
         height={800}
         src="https://esvxscqmjmnbktpyifcg.supabase.co/storage/v1/object/public/yapmate/website/about/yapmate-ios-markdown-render-small.jpg"
         width={360}
