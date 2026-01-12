@@ -128,20 +128,26 @@ export const useServiceWorker = () => {
     };
 
     /**
-     * Handle controller change (service worker activated)
-     */
-    const handleControllerChange = () => {
-      setState((prev) => ({ ...prev, updateAvailable: false }));
-      // Reload page to get new version
-      window.location.reload();
-    };
-
-    /**
      * Listen for messages from service worker
      */
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === "UPDATE_AVAILABLE") {
         setState((prev) => ({ ...prev, updateAvailable: true }));
+      }
+    };
+
+    // Track if we already had a controller before registering
+    // This prevents reload on first install (Safari fires controllerchange immediately)
+    const hadControllerBeforeRegister =
+      navigator.serviceWorker.controller !== null;
+
+    /**
+     * Handle controller change - only reload on actual updates, not first install
+     */
+    const handleControllerChange = () => {
+      setState((prev) => ({ ...prev, updateAvailable: false }));
+      if (hadControllerBeforeRegister) {
+        window.location.reload();
       }
     };
 
