@@ -313,8 +313,11 @@ yapmate/
 
 ### 4.6 Code Signing (for Distribution)
 
-- [ ] Setup Apple Developer account
-- [ ] Configure code signing in Tauri
+- [x] Setup Apple Developer account
+- [x] Configure code signing in Tauri
+- [x] Create codesigning guide (`apps/desktop/CODESIGNING.md`)
+- [ ] Get Developer ID certificates
+- [ ] Setup App Store Connect API key for notarization
 - [ ] Build signed .dmg
 
 ---
