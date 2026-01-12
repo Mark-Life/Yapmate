@@ -3,12 +3,13 @@ import {
   Brain,
   Cloud,
   DatabaseIcon,
+  FileText,
   Globe,
+  Keyboard,
   type LucideIcon,
   Mic,
   Paperclip,
   Plug,
-  Zap,
 } from "lucide-react";
 import { useCallback } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
@@ -71,14 +72,21 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
     description: "Upload images and documents directly in your conversations.",
   },
   {
+    icon: FileText,
+    title: "User Rules",
+    description:
+      "Set up custom rules that are automatically appended or prepended to your messages.",
+  },
+  {
+    icon: Keyboard,
+    title: "Hotkeys",
+    description:
+      "Navigate and control the app efficiently with customizable keyboard shortcuts.",
+  },
+  {
     icon: Cloud,
     title: "Sync Everywhere",
     description: "Your conversation history syncs across all your devices.",
-  },
-  {
-    icon: Zap,
-    title: "Fast Streaming",
-    description: "Watch responses appear in real-time with streaming output.",
   },
 ];
 
