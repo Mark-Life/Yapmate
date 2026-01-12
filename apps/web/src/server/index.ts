@@ -40,6 +40,28 @@ import devTermsHtml from "../client/pages/static/terms.html";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
 
+/** Cache durations in seconds */
+const CACHE_IMMUTABLE = 31_536_000; // 1 year - for Vite hashed assets
+const CACHE_STATIC = 604_800; // 1 week - for non-hashed static files
+const CACHE_HTML = 3600; // 1 hour - for static HTML pages
+
+/**
+ * Get Cache-Control header value based on URL path
+ * Vite assets are hashed (immutable), other static files get shorter cache
+ */
+const getCacheControl = (urlPath: string): string => {
+  // Vite hashed assets in /assets/ - immutable, cache forever
+  if (urlPath.startsWith("/assets/")) {
+    return `public, max-age=${CACHE_IMMUTABLE}, immutable`;
+  }
+  // HTML files - short cache for updates
+  if (urlPath.endsWith(".html")) {
+    return `public, max-age=${CACHE_HTML}`;
+  }
+  // Other static files (images, fonts, manifest, etc.)
+  return `public, max-age=${CACHE_STATIC}`;
+};
+
 /** Pattern to match private IP addresses and localhost */
 const PRIVATE_IP_PATTERN =
   /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.0\.0\.1|localhost)/;
@@ -197,13 +219,14 @@ const isNotFoundError = (error: unknown): boolean =>
   error instanceof Error && "code" in error && error.code === "ENOENT";
 
 /**
- * Recursively discover all files in a directory and create route mappings
+ * Recursively discover all files in a directory and create route handlers
+ * Returns handlers that serve files with appropriate Cache-Control headers
  * Based on: https://github.com/Mark-Life/bun-full-stack-app-example
  */
 const discoverPublicAssets = async (
   dir: string
-): Promise<Record<string, BunFile>> => {
-  const assets: Record<string, BunFile> = {};
+): Promise<Record<string, () => Response>> => {
+  const assets: Record<string, () => Response> = {};
 
   const scanDirectory = async (currentDir: string, baseDir: string) => {
     try {
@@ -216,7 +239,11 @@ const discoverPublicAssets = async (
         } else if (entry.isFile() && !BLOCKED_FILES.has(entry.name)) {
           const relativePath = relative(baseDir, fullPath);
           const urlPath = `/${relativePath.split(sep).join("/")}`;
-          assets[urlPath] = Bun.file(fullPath);
+          // Create handler that serves file with cache headers
+          assets[urlPath] = () =>
+            new Response(Bun.file(fullPath), {
+              headers: { "Cache-Control": getCacheControl(urlPath) },
+            });
         }
       }
     } catch (error) {
@@ -311,35 +338,51 @@ const server = serve<WsClientData>({
     "/about": isProduction
       ? () =>
           new Response(Bun.file("./client/pages/static/about.html"), {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": `public, max-age=${CACHE_HTML}`,
+            },
           })
       : devAboutHtml,
     "/help": isProduction
       ? () =>
           new Response(Bun.file("./client/pages/static/help.html"), {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": `public, max-age=${CACHE_HTML}`,
+            },
           })
       : devHelpHtml,
     "/policy": isProduction
       ? () =>
           new Response(Bun.file("./client/pages/static/policy.html"), {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": `public, max-age=${CACHE_HTML}`,
+            },
           })
       : devPolicyHtml,
     "/terms": isProduction
       ? () =>
           new Response(Bun.file("./client/pages/static/terms.html"), {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": `public, max-age=${CACHE_HTML}`,
+            },
           })
       : devTermsHtml,
 
     // Universal link configuration files
-    "/.well-known/apple-app-site-association": () => {
-      const file = Bun.file("./public/.well-known/apple-app-site-association");
-      return new Response(file, {
-        headers: { "Content-Type": "application/json" },
-      });
-    },
+    "/.well-known/apple-app-site-association": () =>
+      new Response(
+        Bun.file("./public/.well-known/apple-app-site-association"),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": `public, max-age=${CACHE_STATIC}`,
+          },
+        }
+      ),
 
     // API routes - streaming and file uploads (kept as HTTP)
     "/api/chat": async (req: Request) => {
@@ -456,8 +499,9 @@ const server = serve<WsClientData>({
       const url = new URL(req.url);
       const fileName = url.pathname.replace("/public/", "");
       const filePath = isProduction ? `./${fileName}` : `./public/${fileName}`;
-      const file = Bun.file(filePath);
-      return new Response(file);
+      return new Response(Bun.file(filePath), {
+        headers: { "Cache-Control": getCacheControl(url.pathname) },
+      });
     },
 
     // SPA catch-all fallback - must be last in routes

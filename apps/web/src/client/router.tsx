@@ -13,7 +13,7 @@ import { SettingsLayout } from "./pages/settings/settings-layout";
  */
 const AuthLoading = () => (
   <div className="flex min-h-svh items-center justify-center">
-    <Spinner className="size-8" />
+    <Spinner className="size-8 text-primary" />
   </div>
 );
 
