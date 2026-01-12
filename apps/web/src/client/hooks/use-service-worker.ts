@@ -17,6 +17,8 @@ export const useServiceWorker = () => {
   });
 
   const checkIntervalRef = useRef<number | null>(null);
+  // Track if user explicitly requested update - only reload when true
+  const userRequestedUpdateRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -136,17 +138,13 @@ export const useServiceWorker = () => {
       }
     };
 
-    // Track if we already had a controller before registering
-    // This prevents reload on first install (Safari fires controllerchange immediately)
-    const hadControllerBeforeRegister =
-      navigator.serviceWorker.controller !== null;
-
     /**
-     * Handle controller change - only reload on actual updates, not first install
+     * Handle controller change - only reload if user explicitly requested update
+     * Safari fires this event aggressively (on first install, etc.) so we must guard it
      */
     const handleControllerChange = () => {
       setState((prev) => ({ ...prev, updateAvailable: false }));
-      if (hadControllerBeforeRegister) {
+      if (userRequestedUpdateRef.current) {
         window.location.reload();
       }
     };
@@ -173,8 +171,10 @@ export const useServiceWorker = () => {
 
   /**
    * Apply update by telling waiting service worker to skip waiting
+   * Sets flag so controllerchange handler knows to reload
    */
   const applyUpdate = useCallback(() => {
+    userRequestedUpdateRef.current = true;
     if (state.registration?.waiting) {
       state.registration.waiting.postMessage({ type: "SKIP_WAITING" });
       // The controllerchange event will trigger a reload
