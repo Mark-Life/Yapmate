@@ -22,6 +22,7 @@ export const HOTKEYS = {
   toggleSearch: "mod+alt+w",
   openModelSelector: "mod+alt+m",
   openToolSelector: "mod+alt+t",
+  openRuleSelector: "mod+alt+u",
   attachFile: "mod+alt+a",
   cycleReasoning: "mod+alt+r",
   toggleMemory: "mod+alt+v",

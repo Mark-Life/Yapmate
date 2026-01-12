@@ -71,6 +71,13 @@
       "when": 1768072050306,
       "tag": "0009_violet_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768241067809,
+      "tag": "0010_unusual_human_torch",
+      "breakpoints": true
     }
   ]
 }

@@ -41,6 +41,7 @@ type ExecuteAiResponseOptions = {
   modelWithSearch: string;
   memoryEnabled?: boolean;
   reasoningEffort?: ReasoningEffort;
+  userRules?: Array<{ title: string; content: string }>;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -127,6 +128,7 @@ export const executeAiResponse = async (
     modelWithSearch,
     memoryEnabled,
     reasoningEffort = "low",
+    userRules,
     messages,
     abortSignal,
     chatId,
@@ -225,9 +227,31 @@ export const executeAiResponse = async (
     ...(memoryTools || {}),
   };
 
+  // Prepend user rules as context message
+  const rulesContent =
+    userRules && userRules.length > 0
+      ? userRules.map((r) => `[${r.title}]\n${r.content}`).join("\n\n")
+      : null;
+
+  // Convert messages to format expected by convertToModelMessages (omit id)
+  const messagesForModel = messages.map((msg) => {
+    const { id, ...rest } = msg;
+    return rest;
+  });
+
+  const messagesWithRules = rulesContent
+    ? [
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, text: rulesContent }],
+        },
+        ...messagesForModel,
+      ]
+    : messagesForModel;
+
   const result = streamText({
     model,
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(messagesWithRules),
     // Type cast needed - MCP tools from @ai-sdk/mcp are compatible but need type assertion
     ...(Object.keys(allTools).length > 0 && {
       tools: allTools as Parameters<typeof streamText>[0]["tools"],

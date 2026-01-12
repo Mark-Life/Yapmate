@@ -12,5 +12,6 @@ export * from "./mcp";
 export * from "./messages";
 export * from "./rate-limit";
 export * from "./usage";
+export * from "./user-rules";
 export * from "./users";
 export * from "./vault";

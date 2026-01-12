@@ -112,6 +112,7 @@ type ExecuteAiResponseWithOrchestrationOptions = {
   memoryEnabled?: boolean;
   reasoningEffort?: ReasoningEffort;
   selectedMcpTools?: McpToolSelection[];
+  userRules?: Array<{ title: string; content: string }>;
   messages: UIMessage[];
   abortSignal: AbortSignal;
   chatId: string;
@@ -139,6 +140,7 @@ export const executeAiResponseWithOrchestration = async (
     memoryEnabled,
     reasoningEffort,
     selectedMcpTools,
+    userRules,
     messages,
     abortSignal,
     chatId,
@@ -218,6 +220,7 @@ export const executeAiResponseWithOrchestration = async (
       modelWithSearch,
       memoryEnabled,
       reasoningEffort,
+      userRules,
       messages,
       abortSignal,
       chatId,

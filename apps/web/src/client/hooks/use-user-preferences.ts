@@ -19,6 +19,7 @@ type UserPreferences = {
   memoryEnabled: boolean;
   reasoningEffort: ReasoningEffort;
   selectedMcpTools: McpToolSelection[];
+  selectedRuleIds: string[];
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -27,6 +28,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   memoryEnabled: false,
   reasoningEffort: "low",
   selectedMcpTools: [],
+  selectedRuleIds: [],
 };
 
 /**
@@ -46,6 +48,9 @@ export const getUserPreferences = (): UserPreferences => {
       reasoningEffort: parsed.reasoningEffort ?? "low",
       selectedMcpTools: Array.isArray(parsed.selectedMcpTools)
         ? parsed.selectedMcpTools
+        : [],
+      selectedRuleIds: Array.isArray(parsed.selectedRuleIds)
+        ? parsed.selectedRuleIds
         : [],
     };
   } catch {
@@ -125,6 +130,18 @@ export const getSelectedMcpTools = (): McpToolSelection[] =>
  */
 export const setSelectedMcpTools = (tools: McpToolSelection[]): void =>
   setUserPreferences({ selectedMcpTools: tools });
+
+/**
+ * Gets selected rule IDs from localStorage
+ */
+export const getSelectedRuleIds = (): string[] =>
+  getUserPreferences().selectedRuleIds;
+
+/**
+ * Sets selected rule IDs in localStorage
+ */
+export const setSelectedRuleIds = (ids: string[]): void =>
+  setUserPreferences({ selectedRuleIds: ids });
 
 /**
  * Syncs localStorage with server data if server has newer info

@@ -1,16 +1,22 @@
 import { cn } from "@yapmate/components/lib/utils";
 import { Button } from "@yapmate/components/ui/button";
-import { ArrowLeftIcon, ServerIcon, UserIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  FileTextIcon,
+  ServerIcon,
+  UserIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { navigate } from "../../router";
+import { AiRulesSection } from "./ai-rules-section";
 import { McpServersSection } from "./mcp-servers-section";
 import { ProfileSection } from "./profile-section";
 
-type SettingsSection = "profile" | "models" | "mcp";
+type SettingsSection = "profile" | "models" | "mcp" | "rules";
 
-const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp"];
+const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp", "rules"];
 const SETTINGS_PATH_REGEX = /^\/settings\/([^/]+)/;
 
 /**
@@ -34,6 +40,11 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "profile", label: "Profile", icon: <UserIcon className="size-4" /> },
+  {
+    id: "rules",
+    label: "AI Rules",
+    icon: <FileTextIcon className="size-4" />,
+  },
   {
     id: "mcp",
     label: "MCP Servers",
@@ -76,6 +87,9 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
   switch (section) {
     case "profile":
       return <ProfileSection />;
+
+    case "rules":
+      return <AiRulesSection />;
 
     case "mcp":
       return <McpServersSection />;

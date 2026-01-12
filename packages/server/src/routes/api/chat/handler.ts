@@ -5,6 +5,7 @@
 
 import {
   checkGenerationLimit,
+  getUserRulesByIds,
   saveMessage as saveMessageService,
   updateActiveStreamId,
   uploadFilesInBackground,
@@ -44,6 +45,7 @@ export const chatHandler = {
       memoryEnabled,
       reasoningEffort,
       selectedMcpTools,
+      selectedRuleIds,
       id,
       regenerateMessageId,
       regenerateRole,
@@ -56,6 +58,7 @@ export const chatHandler = {
       memoryEnabled?: boolean;
       reasoningEffort?: ReasoningEffort;
       selectedMcpTools?: Array<{ mcpServerId: string; toolName: string }>;
+      selectedRuleIds?: string[];
       id: string;
       regenerateMessageId?: string;
       regenerateRole?: "user" | "assistant";
@@ -214,6 +217,12 @@ export const chatHandler = {
     const userMessage =
       message.parts.find((p) => p.type === "text")?.text || "";
 
+    // Fetch user rules if selected
+    const userRules =
+      selectedRuleIds && selectedRuleIds.length > 0
+        ? await getUserRulesByIds(userId, selectedRuleIds)
+        : [];
+
     // Store usage data to pass to onFinish
     let streamUsage: Awaited<
       ReturnType<typeof executeAiResponseWithOrchestration>
@@ -227,6 +236,10 @@ export const chatHandler = {
             memoryEnabled,
             reasoningEffort,
             selectedMcpTools,
+            userRules: userRules.map((r) => ({
+              title: r.title,
+              content: r.content,
+            })),
             messages: allMessages,
             abortSignal: abortController.signal,
             chatId: id,

@@ -3,17 +3,17 @@ name: User Rules Feature
 overview: Add user rules feature where users can create multiple custom instructions with titles. Users can select which rules to apply via a selector in chat input (similar to MCP tools). Selected rules are prepended as user messages before chat messages.
 todos:
   - id: db-schema
-    content: Create user_rules table schema with title field and run migration
-    status: pending
+    content: Create user_rules table schema + drizzle-zod schemas and run migration
+    status: completed
   - id: db-service
     content: Create user-rules service with CRUD operations
-    status: pending
+    status: completed
   - id: api-routes
-    content: Create API schemas and router for user rules
-    status: pending
+    content: Create API router for user rules (schemas from db)
+    status: completed
   - id: settings-ui
     content: Add AI Rules section to settings with rule management UI
-    status: pending
+    status: in_progress
   - id: rule-selector
     content: Create RuleSelector component for chat input (similar to ToolSelector)
     status: pending
@@ -22,7 +22,7 @@ todos:
     status: pending
   - id: chat-integration
     content: Integrate rules into chat handler and ai-response
-    status: pending
+    status: completed
 ---
 
 # User Rules Feature
@@ -70,6 +70,13 @@ flowchart LR
 Create new table `user_rules` in [`packages/db/src/schema/user-rules.ts`](packages/db/src/schema/user-rules.ts):
 
 ```typescript
+import {
+  createInsertSchema,
+  createSelectSchema,
+  createUpdateSchema,
+} from "drizzle-zod";
+import { z } from "zod";
+
 export const userRules = pgTable("user_rules", {
   id: uuid().primaryKey().defaultRandom(),
   userId: uuid()
@@ -82,6 +89,30 @@ export const userRules = pgTable("user_rules", {
   // projectId: uuid() - add later for project rules
   ...timestamps,
 });
+
+// ===============================
+// Drizzle-Zod Schemas (derive from table)
+// ===============================
+
+/** Select schema - validates data queried from database */
+export const userRuleSelectSchema = createSelectSchema(userRules);
+
+/** Insert schema with field constraints */
+export const userRuleInsertSchema = createInsertSchema(userRules, {
+  title: (schema) => schema.min(1).max(100),
+  content: (schema) => schema.min(1).max(10000),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+/** Update schema - all fields optional except constraints */
+export const userRuleUpdateSchema = createUpdateSchema(userRules, {
+  title: (schema) => schema.min(1).max(100).optional(),
+  content: (schema) => schema.min(1).max(10000).optional(),
+}).omit({ id: true, userId: true, createdAt: true });
+
+// Types derived from schemas
+export type UserRuleSelect = z.infer<typeof userRuleSelectSchema>;
+export type UserRuleInsert = z.infer<typeof userRuleInsertSchema>;
+export type UserRuleUpdate = z.infer<typeof userRuleUpdateSchema>;
 ```
 
 - Run `drizzle-kit generate` to create migration
@@ -98,40 +129,29 @@ Create [`packages/db/src/service/user-rules.ts`](packages/db/src/service/user-ru
 
 ## 3. API Routes
 
-Create schema [`packages/api/src/schemas/user-rules.ts`](packages/api/src/schemas/user-rules.ts):
-
-```typescript
-// Rule output type
-export const userRuleSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  content: z.string(),
-  order: z.number(),
-  enabled: z.boolean(),
-});
-
-// Create input
-export const createUserRuleInputSchema = z.object({
-  title: z.string().min(1).max(100),
-  content: z.string().min(1).max(10000),
-});
-
-// Update input
-export const updateUserRuleInputSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string().min(1).max(100).optional(),
-  content: z.string().min(1).max(10000).optional(),
-  enabled: z.boolean().optional(),
-  order: z.number().optional(),
-});
-```
+**No separate schema file needed** - schemas are derived from Drizzle table in `packages/db/src/schema/user-rules.ts`.
 
 Create router [`packages/api/src/routers/user-rules.ts`](packages/api/src/routers/user-rules.ts):
 
+```typescript
+import {
+  userRuleInsertSchema,
+  userRuleSelectSchema,
+  userRuleUpdateSchema,
+} from "@ai-app/db/schema/user-rules";
+
+// Use schemas directly in router:
+// - userRuleSelectSchema for output validation
+// - userRuleInsertSchema for create input
+// - userRuleUpdateSchema.extend({ id: z.uuid() }) for update input
+```
+
+Router procedures:
+
 - `list` - get user's rules (for selector and settings)
-- `create` - add rule
-- `update` - update rule
-- `delete` - delete rule
+- `create` - add rule (input: `userRuleInsertSchema`)
+- `update` - update rule (input: `userRuleUpdateSchema.extend({ id: z.uuid() })`)
+- `delete` - delete rule (input: `z.object({ id: z.uuid() })`)
 
 Register in [`packages/api/src/router.ts`](packages/api/src/router.ts)
 
@@ -228,12 +248,11 @@ messages: await convertToModelMessages(messagesWithRules),
 
 ## Key Files Summary
 
-- `packages/db/src/schema/user-rules.ts` - Create table schema
+- `packages/db/src/schema/user-rules.ts` - Table schema + drizzle-zod derived schemas
 - `packages/db/src/schema.ts` - Export schema
 - `packages/db/src/service/user-rules.ts` - Create CRUD service
 - `packages/db/src/service/index.ts` - Export service
-- `packages/api/src/schemas/user-rules.ts` - Create Zod schemas
-- `packages/api/src/routers/user-rules.ts` - Create router
+- `packages/api/src/routers/user-rules.ts` - Create router (imports schemas from db)
 - `packages/api/src/router.ts` - Register router
 - `apps/web/src/client/pages/settings/settings-layout.tsx` - Add nav item
 - `apps/web/src/client/pages/settings/ai-rules-section.tsx` - Create settings UI

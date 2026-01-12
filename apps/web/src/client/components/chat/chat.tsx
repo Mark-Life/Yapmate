@@ -20,11 +20,13 @@ import {
   getReasoningEffort,
   getSearchEnabled,
   getSelectedMcpTools,
+  getSelectedRuleIds,
   type McpToolSelection,
   setMemoryEnabled as persistMemoryEnabled,
   setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
   setSelectedMcpTools as persistSelectedMcpTools,
+  setSelectedRuleIds as persistSelectedRuleIds,
   type ReasoningEffort,
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
@@ -63,6 +65,9 @@ export const Chat = ({
   );
   const [selectedMcpTools, setSelectedMcpTools] = useState<McpToolSelection[]>(
     () => getSelectedMcpTools()
+  );
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() =>
+    getSelectedRuleIds()
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -165,6 +170,21 @@ export const Chat = ({
     [chatId, capture]
   );
 
+  /**
+   * Handles rule IDs selection change with localStorage persistence
+   */
+  const handleSelectedRuleIdsChange = useCallback(
+    (ids: string[]) => {
+      capture("rules_changed", {
+        rule_count: ids.length,
+        chat_id: chatId,
+      });
+      setSelectedRuleIds(ids);
+      persistSelectedRuleIds(ids);
+    },
+    [chatId, capture]
+  );
+
   /** Check if current model supports reasoning */
   const supportsReasoning =
     models.find((m) => m.value === model)?.supportsReasoning ?? false;
@@ -188,6 +208,7 @@ export const Chat = ({
   const reasoningEffortRef = useRef(reasoningEffort);
   const supportsReasoningRef = useRef(supportsReasoning);
   const selectedMcpToolsRef = useRef(selectedMcpTools);
+  const selectedRuleIdsRef = useRef(selectedRuleIds);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -199,6 +220,7 @@ export const Chat = ({
   reasoningEffortRef.current = reasoningEffort;
   supportsReasoningRef.current = supportsReasoning;
   selectedMcpToolsRef.current = selectedMcpTools;
+  selectedRuleIdsRef.current = selectedRuleIds;
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -220,6 +242,7 @@ export const Chat = ({
           }
           return response;
         }) as typeof fetch,
+        // TODO: fix me later - complex function
         prepareSendMessagesRequest({
           messages: allMessages,
           id: transportChatId,
@@ -246,6 +269,9 @@ export const Chat = ({
                 : {}),
               ...(selectedMcpToolsRef.current.length > 0
                 ? { selectedMcpTools: selectedMcpToolsRef.current }
+                : {}),
+              ...(selectedRuleIdsRef.current.length > 0
+                ? { selectedRuleIds: selectedRuleIdsRef.current }
                 : {}),
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
@@ -627,11 +653,13 @@ export const Chat = ({
                 onReasoningEffortChange={handleReasoningEffortChange}
                 onSearchEnabledChange={handleSearchEnabledChange}
                 onSelectedMcpToolsChange={handleSelectedMcpToolsChange}
+                onSelectedRuleIdsChange={handleSelectedRuleIdsChange}
                 onStop={handleStop}
                 onSubmit={handleSubmit}
                 reasoningEffort={reasoningEffort}
                 searchEnabled={searchEnabled}
                 selectedMcpTools={selectedMcpTools}
+                selectedRuleIds={selectedRuleIds}
                 status={status}
                 supportsReasoning={supportsReasoning}
               />

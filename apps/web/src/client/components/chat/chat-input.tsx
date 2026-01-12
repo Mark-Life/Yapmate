@@ -45,6 +45,7 @@ import type {
   ReasoningEffort,
 } from "../../hooks/use-user-preferences";
 import { ModelSelectorCombobox } from "../model-selector";
+import { RuleSelector } from "./rule-selector";
 import { TokenUsageIndicator } from "./token-usage-indicator";
 import { ToolSelector } from "./tool-selector";
 
@@ -68,6 +69,8 @@ type ChatInputProps = {
   onReasoningEffortChange: (effort: ReasoningEffort) => void;
   selectedMcpTools: McpToolSelection[];
   onSelectedMcpToolsChange: (tools: McpToolSelection[]) => void;
+  selectedRuleIds: string[];
+  onSelectedRuleIdsChange: (ids: string[]) => void;
   supportsReasoning: boolean;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
@@ -94,6 +97,8 @@ export const ChatInput = ({
   onReasoningEffortChange,
   selectedMcpTools,
   onSelectedMcpToolsChange,
+  selectedRuleIds,
+  onSelectedRuleIdsChange,
   supportsReasoning,
   status,
   onSubmit,
@@ -108,6 +113,7 @@ export const ChatInput = ({
   const previousFileCountRef = useRef(attachments.files.length);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [toolSelectorOpen, setToolSelectorOpen] = useState(false);
+  const [ruleSelectorOpen, setRuleSelectorOpen] = useState(false);
 
   /**
    * Track file attachments when they're added
@@ -216,6 +222,15 @@ export const ChatInput = ({
   );
 
   useHotkeys(
+    HOTKEYS.openRuleSelector,
+    (e) => {
+      e.preventDefault();
+      setRuleSelectorOpen(true);
+    },
+    { enableOnFormTags: true }
+  );
+
+  useHotkeys(
     HOTKEYS.toggleMemory,
     (e) => {
       e.preventDefault();
@@ -266,6 +281,12 @@ export const ChatInput = ({
             onSelectionsChange={onSelectedMcpToolsChange}
             open={toolSelectorOpen}
             selections={selectedMcpTools}
+          />
+          <RuleSelector
+            onOpenChange={setRuleSelectorOpen}
+            onSelectedRuleIdsChange={onSelectedRuleIdsChange}
+            open={ruleSelectorOpen}
+            selectedRuleIds={selectedRuleIds}
           />
           {/* Desktop: show all buttons */}
           <div className="hidden items-center gap-1 md:flex">

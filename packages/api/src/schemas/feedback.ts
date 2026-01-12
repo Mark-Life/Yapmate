@@ -13,7 +13,7 @@ export type FeedbackCategory = (typeof feedbackCategoryValues)[number];
  * Context schema for feedback submission
  */
 export const feedbackContextSchema = z.object({
-  chatId: z.string().uuid().optional(),
+  chatId: z.uuid().optional(),
   url: z.string().optional(),
   userAgent: z.string().optional(),
 });

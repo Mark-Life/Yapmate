@@ -8,4 +8,5 @@ export * from "./schema/messages";
 export * from "./schema/parts";
 // stripe.ts not exported - tables managed by Stripe Sync Engine, not Drizzle
 export * from "./schema/usage";
+export * from "./schema/user-rules";
 export * from "./schema/users";
