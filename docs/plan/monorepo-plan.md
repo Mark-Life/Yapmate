@@ -273,21 +273,21 @@ yapmate/
 
 ### 4.1 Setup Tauri
 
-- [ ] Install Tauri CLI: `bun add -D @tauri-apps/cli`
-- [ ] Initialize Tauri in `apps/desktop/`:
+- [x] Install Tauri CLI: `bun add -D @tauri-apps/cli`
+- [x] Initialize Tauri in `apps/desktop/`:
   ```bash
   cd apps/desktop && bunx tauri init
   ```
-- [ ] Configure `tauri.conf.json`:
+- [x] Configure `tauri.conf.json`:
   - App name, identifier, version
   - Window size, title
   - Dev server URL (localhost:3000)
 
 ### 4.2 Configure Build
 
-- [ ] Create `apps/desktop/package.json`
-- [ ] Configure build to use web frontend from `apps/web/dist`
-- [ ] Setup Tauri build scripts
+- [x] Create `apps/desktop/package.json`
+- [x] Configure build to use web frontend from `apps/web/dist`
+- [x] Setup Tauri build scripts
 
 ### 4.3 Add Native Features
 
