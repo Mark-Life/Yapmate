@@ -404,7 +404,11 @@ ws.onmessage = (event) => {
 
 ## Part 6: Model Message Format
 
-### 6.1 Pass usernames to model
+> **Note:** The AI SDK's `UserModelMessage` type does NOT support a `name` property.
+> The type only includes `role`, `content`, and `providerOptions`. While raw OpenAI/Anthropic
+> APIs support `name`, the AI SDK abstracts this away. We use content prefixing instead.
+
+### 6.1 Prefix usernames to message content
 
 **File:** `packages/server/src/routes/api/chat/ai-response.ts`
 
@@ -412,29 +416,76 @@ ws.onmessage = (event) => {
 // Build user name map from chat members
 const memberNames = await getChatMemberNames(chatId);
 
-// When preparing messages for model
+// When preparing messages for model - prefix username to content
 const messagesForModel = messages.map(msg => {
   if (msg.role === "user" && msg.userId) {
-    const displayName = memberNames.get(msg.userId) || "user";
+    const displayName = memberNames.get(msg.userId) || "User";
+    const prefixedContent = prefixContentWithUsername(msg.content, displayName);
     return {
       ...msg,
-      // The 'name' field is supported by OpenAI/Anthropic APIs
-      name: displayName,
+      content: prefixedContent,
     };
   }
   return msg;
 });
+
+/**
+ * Prefix username to message content.
+ * Handles both string content and array content (multimodal messages).
+ */
+function prefixContentWithUsername(
+  content: string | ContentPart[],
+  displayName: string
+): string | ContentPart[] {
+  const prefix = `[${displayName}]: `;
+
+  if (typeof content === "string") {
+    return prefix + content;
+  }
+
+  // For array content, prepend a text part with the username
+  return [
+    { type: "text", text: prefix },
+    ...content,
+  ];
+}
 ```
 
 ### 6.2 System prompt update
 
-Add context about multi-user conversation:
+Add context explaining the username format so the model understands how to interpret and respond:
 
 ```typescript
 const multiUserSystemPrompt = `
-This is a multi-user conversation. Messages from different users are labeled with their names.
-Respond to the group, acknowledging different participants when relevant.
+This is a multi-user conversation. User messages are prefixed with the sender's name in square brackets, like [Alice]: or [Bob]:.
+
+Guidelines for multi-user conversations:
+- Address users by name when responding to specific questions or comments
+- When multiple users are discussing, acknowledge different perspectives
+- If a user asks a follow-up to another user's question, maintain context
+- Be inclusive and respond to all participants appropriately
 `;
+```
+
+### 6.3 Helper to get member names
+
+**File:** `packages/db/src/service/chat-members.ts`
+
+```typescript
+/**
+ * Get a map of userId -> displayName for all members of a chat.
+ * Used when formatting messages for the model.
+ */
+export const getChatMemberNames = async (
+  chatId: string
+): Promise<Map<string, string>> => {
+  const members = await db.query.chatMembers.findMany({
+    where: eq(chatMembers.chatId, chatId),
+    columns: { userId: true, displayName: true },
+  });
+
+  return new Map(members.map(m => [m.userId, m.displayName]));
+};
 ```
 
 ---
