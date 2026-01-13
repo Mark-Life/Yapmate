@@ -197,14 +197,15 @@ export const useInvites = (chatId: string | null) => {
 
   // Create invite mutation
   const createInviteMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (ownerDisplayName?: string) => {
       if (!chatId) {
         return Promise.reject(new Error("No chat ID"));
       }
-      return rpcClient.invite.create({ chatId });
+      return rpcClient.invite.create({ chatId, ownerDisplayName });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chat-invites", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["chats"] }); // Refresh to show isMultiUser icon
     },
   });
 

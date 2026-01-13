@@ -180,6 +180,8 @@ type MapUIMessageOptions = {
   model?: string;
   metadata?: MessageMetadata;
   fileIdMap?: Map<number, string>;
+  /** User who sent this message (for user messages in multi-user chats) */
+  userId?: string;
 };
 
 /**
@@ -195,7 +197,7 @@ export const mapUIMessageToDb = (
   order: number,
   options?: MapUIMessageOptions
 ): MappedMessage => {
-  const { model, metadata, fileIdMap } = options ?? {};
+  const { model, metadata, fileIdMap, userId } = options ?? {};
   const message: MessageInsert = {
     id: uiMessage.id,
     chatId,
@@ -203,6 +205,8 @@ export const mapUIMessageToDb = (
     model: model ?? null,
     order,
     metadata: metadata ?? null,
+    // Only set userId for user messages (assistant messages don't have a userId)
+    userId: uiMessage.role === "user" ? userId : null,
   };
 
   // Filter out null parts (transient streaming markers)
@@ -318,6 +322,10 @@ export const mapDbMessageToUI = (dbMessage: DbMessageWithParts): UIMessage => {
   if (dbMessage.metadata) {
     // Preserve all metadata fields (usage, cost, etc.)
     Object.assign(metadata, dbMessage.metadata);
+  }
+  // Include userId for multi-user chat support (for username prefixing)
+  if (dbMessage.userId) {
+    metadata.userId = dbMessage.userId;
   }
 
   return {

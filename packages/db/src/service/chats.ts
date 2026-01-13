@@ -1,8 +1,9 @@
 /**
  * Chats service - CRUD operations for chat sessions
  */
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or, inArray } from "drizzle-orm";
 import { db } from "../client";
+import { chatMembers } from "../schema/chat-members";
 import { type ChatInsert, type ChatSelect, chats } from "../schema/chats";
 import { messages } from "../schema/messages";
 import { parts } from "../schema/parts";
@@ -23,15 +24,34 @@ export const getChat = async (chatId: string): Promise<ChatSelect | null> => {
 };
 
 /**
- * Gets all chats for a user, ordered by most recently updated
+ * Gets all chats for a user (owned or member), ordered by most recently updated
  * @param userId - ID of the user
  */
-export const getChatsByUser = async (userId: string): Promise<ChatSelect[]> =>
-  db
+export const getChatsByUser = async (userId: string): Promise<ChatSelect[]> => {
+  // Get chat IDs where user is a member
+  const memberChatIds = await db
+    .selectDistinct({ chatId: chatMembers.chatId })
+    .from(chatMembers)
+    .where(eq(chatMembers.userId, userId));
+
+  const memberIds = memberChatIds.map((m) => m.chatId);
+
+  // Get chats where user is owner OR member
+  if (memberIds.length === 0) {
+    // No member chats, just get owned chats
+    return db
+      .select()
+      .from(chats)
+      .where(eq(chats.userId, userId))
+      .orderBy(desc(chats.updatedAt));
+  }
+
+  return db
     .select()
     .from(chats)
-    .where(eq(chats.userId, userId))
+    .where(or(eq(chats.userId, userId), inArray(chats.id, memberIds)))
     .orderBy(desc(chats.updatedAt));
+};
 
 /** Chat with last used model from most recent assistant message */
 export type ChatWithLastModel = ChatSelect & { lastUsedModel: string | null };

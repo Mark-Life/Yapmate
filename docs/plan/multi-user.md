@@ -426,13 +426,13 @@ ws.onmessage = (event) => {
 
 ---
 
-## Part 6: Model Message Format
+## Part 6: Model Message Format ✅
 
 > **Note:** The AI SDK's `UserModelMessage` type does NOT support a `name` property.
 > The type only includes `role`, `content`, and `providerOptions`. While raw OpenAI/Anthropic
 > APIs support `name`, the AI SDK abstracts this away. We use content prefixing instead.
 
-### 6.1 Prefix usernames to message content
+### 6.1 Prefix usernames to message content ✅
 
 **File:** `packages/server/src/routes/api/chat/ai-response.ts`
 
@@ -472,7 +472,7 @@ function prefixContentWithUsername(
 }
 ```
 
-### 6.2 System prompt update
+### 6.2 System prompt update ✅
 
 Add context explaining the username format so the model understands how to interpret and respond:
 
@@ -488,7 +488,7 @@ Guidelines for multi-user conversations:
 `;
 ```
 
-### 6.3 Helper to get member names
+### 6.3 Helper to get member names ✅
 
 **File:** `packages/db/src/service/chat-members.ts`
 
@@ -511,9 +511,9 @@ export const getChatMemberNames = async (
 
 ---
 
-## Part 7: Access Control
+## Part 7: Access Control ✅
 
-### 7.1 Check membership on all operations
+### 7.1 Check membership on all operations ✅
 
 **File:** `packages/server/src/routes/api/chat/handler.ts`
 
@@ -523,9 +523,9 @@ if (chat.userId !== userId) {
   return new Response("Forbidden", { status: 403 });
 }
 
-// With membership check
-const membership = await getChatMembership(chatId, userId);
-if (!membership) {
+// With membership check (using canAccessChat which checks both owner and members)
+const hasAccess = await canAccessChat(id, userId);
+if (!hasAccess) {
   return new Response("Forbidden", { status: 403 });
 }
 ```
@@ -670,7 +670,7 @@ export const useMultiUserChat = (chatId: string) => {
 1. ✅ Add `userId` column to messages
 2. ✅ Create `chat_members` table
 3. Backfill existing chats (owner as sole member)
-4. Update handler.ts to save userId on messages
+4. ✅ Update handler.ts to save userId on messages
 
 ### Phase 2: Real-time Infrastructure ✅
 
@@ -684,7 +684,7 @@ export const useMultiUserChat = (chatId: string) => {
 1. ✅ Modify stream writer to broadcast chunks
 2. Add client-side stream reception for non-sender
 
-### Phase 4: Invite System & UI (In Progress)
+### Phase 4: Invite System & UI ✅
 
 1. ✅ Create invite Redis system (`packages/server/src/lib/redis/invite.ts`)
 2. ✅ Create membership service (`packages/db/src/service/chat-members.ts`)
@@ -698,13 +698,13 @@ export const useMultiUserChat = (chatId: string) => {
 6. ✅ Build invite modal (`apps/web/src/client/components/chat/invite-modal.tsx`)
 7. ✅ Build join chat page (`apps/web/src/client/pages/join-chat.tsx`)
 8. ✅ Create client hooks (`apps/web/src/client/hooks/use-multi-user-chat.ts`)
-9. Integrate MemberList + InviteModal into chat header UI
-10. Extend WebSocket sync to dispatch multi-user events to client
+9. ✅ Integrate MemberList + InviteModal into chat header UI
+10. ✅ Extend WebSocket sync to dispatch multi-user events to client
 
-### Phase 5: Model Integration
+### Phase 5: Model Integration ✅
 
-1. Pass displayNames to model
-2. Update system prompt for multi-user context
+1. ✅ Pass displayNames to model
+2. ✅ Update system prompt for multi-user context
 
 ---
 
@@ -752,5 +752,7 @@ export const useMultiUserChat = (chatId: string) => {
 - ✅ `packages/api/src/router.ts` - added invite and members routers
 - ✅ `apps/web/src/client/router.tsx` - added `/invite/:code` route
 - ✅ `apps/web/src/server/index.ts` - added SPA route for `/invite/*`
-- `packages/server/src/routes/api/chat/handler.ts` - membership checks, userId on save
-- `packages/server/src/routes/api/chat/ai-response.ts` - pass names to model
+- ✅ `packages/server/src/routes/api/chat/handler.ts` - membership checks, userId on save, pass isMultiUser to stream
+- ✅ `packages/server/src/routes/api/chat/ai-response.ts` - multi-user message prefixing, system prompt update
+- ✅ `packages/server/src/routes/api/chat/stream.ts` - pass isMultiUser to AI response
+- ✅ `packages/db/src/service/mapping.ts` - include userId in message metadata for multi-user support

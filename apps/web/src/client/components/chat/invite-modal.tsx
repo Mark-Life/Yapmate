@@ -175,16 +175,40 @@ export const InviteModal = ({
     isRevoking,
   } = useInvites(chatId);
 
-  const handleCreateInvite = useCallback(async () => {
-    try {
-      const result = await createInvite();
-      const url = getInviteUrl(result.code);
-      await navigator.clipboard.writeText(url);
-      toast.success("Invite link created and copied!");
-    } catch {
-      toast.error("Failed to create invite link");
+  const [needsDisplayName, setNeedsDisplayName] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState("");
+
+  const handleCreateInvite = useCallback(
+    async (ownerDisplayName?: string) => {
+      try {
+        const result = await createInvite(ownerDisplayName);
+
+        // Check if we need to prompt for display name
+        if (result.needsOwnerDisplayName) {
+          setNeedsDisplayName(true);
+          return;
+        }
+
+        // Success - copy link
+        if (result.code) {
+          const url = getInviteUrl(result.code);
+          await navigator.clipboard.writeText(url);
+          toast.success("Invite link created and copied!");
+          setNeedsDisplayName(false);
+          setDisplayNameInput("");
+        }
+      } catch {
+        toast.error("Failed to create invite link");
+      }
+    },
+    [createInvite]
+  );
+
+  const handleSubmitDisplayName = useCallback(() => {
+    if (displayNameInput.trim()) {
+      handleCreateInvite(displayNameInput.trim());
     }
-  }, [createInvite]);
+  }, [displayNameInput, handleCreateInvite]);
 
   const handleRevokeInvite = useCallback(
     async (code: string) => {
@@ -198,8 +222,20 @@ export const InviteModal = ({
     [revokeInvite]
   );
 
+  // Reset state when modal closes
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) {
+        setNeedsDisplayName(false);
+        setDisplayNameInput("");
+      }
+      onOpenChange(isOpen);
+    },
+    [onOpenChange]
+  );
+
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -213,23 +249,58 @@ export const InviteModal = ({
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-4">
-          <Button
-            className="w-full"
-            disabled={isCreating}
-            onClick={handleCreateInvite}
-          >
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Link2 className="mr-2 size-4" />
-                Create Invite Link
-              </>
-            )}
-          </Button>
+          {needsDisplayName ? (
+            <div className="flex flex-col gap-2">
+              <label className="font-medium text-sm" htmlFor="displayName">
+                Your display name
+              </label>
+              <p className="text-muted-foreground text-xs">
+                This is how other participants will see you in the chat.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  id="displayName"
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && displayNameInput.trim()) {
+                      handleSubmitDisplayName();
+                    }
+                  }}
+                  placeholder="Enter your name"
+                  value={displayNameInput}
+                />
+                <Button
+                  disabled={!displayNameInput.trim() || isCreating}
+                  onClick={handleSubmitDisplayName}
+                >
+                  {isCreating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              className="w-full"
+              disabled={isCreating}
+              onClick={() => handleCreateInvite()}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Link2 className="mr-2 size-4" />
+                  Create Invite Link
+                </>
+              )}
+            </Button>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center py-4">

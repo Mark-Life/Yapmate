@@ -5,7 +5,6 @@ import { ORPCError } from "@orpc/server";
 import {
   addChatMember,
   canAccessChat,
-  enableMultiUserChat,
   getChat,
   getChatMembers,
   getChatMembership,
@@ -61,10 +60,17 @@ export const members = {
         });
       }
 
-      // Get chat and verify it exists
+      // Get chat and verify it exists and is multi-user
       const chat = await getChat(input.chatId);
       if (!chat) {
         throw new ORPCError("NOT_FOUND", { message: "Chat not found" });
+      }
+
+      // Chat must be multi-user (invite creation enables this)
+      if (!chat.isMultiUser) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Chat is not accepting members",
+        });
       }
 
       // Determine display name
@@ -79,16 +85,6 @@ export const members = {
           });
         }
         displayName = user.firstName;
-      }
-
-      // If this is the first member being added (chat becoming multi-user)
-      if (!chat.isMultiUser) {
-        // Get owner's display name
-        const owner = await getUserById(chat.userId);
-        const ownerDisplayName = owner?.firstName || "Owner";
-
-        // Enable multi-user mode and add owner as first member
-        await enableMultiUserChat(input.chatId, chat.userId, ownerDisplayName);
       }
 
       // Add the new member

@@ -4,6 +4,7 @@
  */
 
 import {
+  canAccessChat,
   checkGenerationLimit,
   getUserRulesByIds,
   saveMessage as saveMessageService,
@@ -70,12 +71,13 @@ export const chatHandler = {
       return new Response("Chat ID is required", { status: 400 });
     }
 
-    // Verify chat exists and belongs to user
+    // Verify chat exists and user has access (owner or member)
     const chat = await getChat(id);
     if (!chat) {
       return new Response("Chat not found", { status: 404 });
     }
-    if (chat.userId !== userId) {
+    const hasAccess = await canAccessChat(id, userId);
+    if (!hasAccess) {
       return new Response("Forbidden", { status: 403 });
     }
 
@@ -152,10 +154,11 @@ export const chatHandler = {
       isFirstMessage = previousMessages.length === 0;
       const messageOrder = previousMessages.length;
 
-      // Save message with file IDs and model (model selected when user sent the message)
+      // Save message with file IDs, model, and userId (for multi-user chat attribution)
       await saveMessageService(id, message, messageOrder, {
         fileIdMap: fileIdByPartIndex,
         model,
+        userId,
       });
 
       // Save MCP tool selections on first message (syncs client state to DB)
@@ -251,6 +254,7 @@ export const chatHandler = {
             userMessage,
             writer,
             chunkIndex,
+            isMultiUser: chat.isMultiUser,
           });
         } catch (err) {
           await handleStreamError(streamId, id, err);
