@@ -8,7 +8,7 @@ import {
   DefaultChatTransport,
   lastAssistantMessageIsCompleteWithApprovalResponses,
 } from "ai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
@@ -30,6 +30,7 @@ import {
   type ReasoningEffort,
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
+import { useMultiUserChat } from "../../hooks/use-multi-user-chat";
 import { rpcClient } from "../../lib/rpc-client";
 import { generateUUID } from "../../lib/uuid";
 import { DragDropZone } from "../drag-drop-zone";
@@ -74,6 +75,22 @@ export const Chat = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash";
+
+  // Get member info for multi-user chat avatars
+  const { members, isMultiUser } = useMultiUserChat({
+    chatId: initialId ?? chatId,
+    enabled: Boolean(initialId), // Only fetch for existing chats
+  });
+
+  // Create a map of userId -> displayName for message avatars
+  const memberNames = useMemo(() => {
+    if (!isMultiUser || members.length === 0) return undefined;
+    const map = new Map<string, string>();
+    for (const member of members) {
+      map.set(member.userId, member.displayName);
+    }
+    return map;
+  }, [isMultiUser, members]);
 
   // For new chats, generate ID client-side; track if chat exists in DB
   const [chatId] = useState(() => initialId ?? generateUUID());
@@ -650,6 +667,7 @@ export const Chat = ({
           ) : (
             <MessagesHistory
               addToolApprovalResponse={addToolApprovalResponse}
+              memberNames={memberNames}
               messages={messages}
               onEdit={handleEdit}
               onRegenerate={handleRegenerate}

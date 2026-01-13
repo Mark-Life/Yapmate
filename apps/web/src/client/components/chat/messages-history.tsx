@@ -8,6 +8,7 @@ import {
   Message,
   MessageAttachment,
 } from "@yapmate/components/ai-elements/message";
+import { Avatar, AvatarFallback } from "@yapmate/components/ui/avatar";
 import {
   Reasoning,
   ReasoningContent,
@@ -35,6 +36,8 @@ type MessagesHistoryProps = {
     approved: boolean;
   }) => void;
   disabled?: boolean;
+  /** Map of userId to displayName for multi-user chat avatars */
+  memberNames?: Map<string, string>;
   messages: ChatUIMessage[];
   onEdit?: (messageId: string, editedText: string) => void;
   onRegenerate: (
@@ -214,12 +217,27 @@ const hasVisibleContent = (message: ChatUIMessage): boolean =>
       (p.type === "reasoning" && p.text.trim())
   );
 
+/** Regex for splitting name into parts */
+const WHITESPACE_REGEX = /\s+/;
+
+/** Get initials from display name */
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(WHITESPACE_REGEX);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const lastPart = parts.at(-1);
+  return (parts[0][0] + (lastPart?.[0] ?? "")).toUpperCase();
+};
+
 /**
  * Renders the conversation history with messages, reasoning, and file attachments
  */
+
 export const MessagesHistory = ({
   addToolApprovalResponse,
   disabled = false,
+  memberNames,
   messages,
   onEdit,
   onRegenerate,
@@ -283,65 +301,91 @@ export const MessagesHistory = ({
     <Conversation className="h-full">
       <ConversationContent>
         <div className="mx-auto w-full max-w-4xl px-4 pt-12 pb-34">
-          {messages.map((message, messageIndex) => (
-            <div className="flex flex-col gap-2" key={message.id}>
-              {message.parts.map((part, i) => {
-                const partId = `${message.id}-${i}`;
-                const isCopied = copiedPartId === partId;
-                const isLastPart = i === message.parts.length - 1;
-                const isLastMessage = messageIndex === messages.length - 1;
+          {messages.map((message, messageIndex) => {
+            // Get sender info for multi-user chat avatars
+            const userId =
+              message.role === "user"
+                ? (message.metadata as { userId?: string })?.userId
+                : undefined;
+            const senderName = userId ? memberNames?.get(userId) : undefined;
+            const showAvatar =
+              memberNames !== undefined &&
+              message.role === "user" &&
+              senderName !== undefined;
 
-                switch (part.type) {
-                  case "text":
-                    return (
-                      <TextPart
-                        disabled={disabled}
-                        feedback={feedbackByMessage[message.id] ?? null}
-                        groupedModels={groupedModels}
-                        isCopied={isCopied}
-                        isEditing={editingMessageId === message.id}
-                        key={partId}
-                        message={message}
-                        onCancelEdit={() => setEditingMessageId(null)}
-                        onCopy={handleCopy}
-                        onEdit={onEdit}
-                        onFeedback={handleFeedback}
-                        onRegenerate={onRegenerate}
-                        onStartEdit={setEditingMessageId}
-                        part={part}
-                        partId={partId}
-                        status={status}
-                      />
-                    );
-                  case "reasoning":
-                    return renderReasoningPart({
-                      message,
-                      part,
-                      partId,
-                      partIndex: i,
-                      isLastPart,
-                      isLastMessage,
-                      status,
-                    });
-                  case "file":
-                    return renderFilePart({ message, part, partId });
-                  default:
-                    // Handle tool parts (type starts with "tool-" or "dynamic-tool")
-                    if (
-                      part.type.startsWith("tool-") ||
-                      part.type === "dynamic-tool"
-                    ) {
-                      return renderToolPart({
-                        addToolApprovalResponse,
-                        part: part as ToolUIPart | DynamicToolPart,
+            return (
+              <div className="flex flex-col gap-2" key={message.id}>
+                {/* Show avatar with sender name for user messages in multi-user chats */}
+                {showAvatar ? (
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      {senderName}
+                    </span>
+                    <Avatar className="size-6">
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(senderName)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                ) : null}
+                {message.parts.map((part, i) => {
+                  const partId = `${message.id}-${i}`;
+                  const isCopied = copiedPartId === partId;
+                  const isLastPart = i === message.parts.length - 1;
+                  const isLastMessage = messageIndex === messages.length - 1;
+
+                  switch (part.type) {
+                    case "text":
+                      return (
+                        <TextPart
+                          disabled={disabled}
+                          feedback={feedbackByMessage[message.id] ?? null}
+                          groupedModels={groupedModels}
+                          isCopied={isCopied}
+                          isEditing={editingMessageId === message.id}
+                          key={partId}
+                          message={message}
+                          onCancelEdit={() => setEditingMessageId(null)}
+                          onCopy={handleCopy}
+                          onEdit={onEdit}
+                          onFeedback={handleFeedback}
+                          onRegenerate={onRegenerate}
+                          onStartEdit={setEditingMessageId}
+                          part={part}
+                          partId={partId}
+                          status={status}
+                        />
+                      );
+                    case "reasoning":
+                      return renderReasoningPart({
+                        message,
+                        part,
                         partId,
+                        partIndex: i,
+                        isLastPart,
+                        isLastMessage,
+                        status,
                       });
-                    }
-                    return null;
-                }
-              })}
-            </div>
-          ))}
+                    case "file":
+                      return renderFilePart({ message, part, partId });
+                    default:
+                      // Handle tool parts (type starts with "tool-" or "dynamic-tool")
+                      if (
+                        part.type.startsWith("tool-") ||
+                        part.type === "dynamic-tool"
+                      ) {
+                        return renderToolPart({
+                          addToolApprovalResponse,
+                          part: part as ToolUIPart | DynamicToolPart,
+                          partId,
+                        });
+                      }
+                      return null;
+                  }
+                })}
+              </div>
+            );
+          })}
           {showLoader ? <Loader /> : null}
         </div>
       </ConversationContent>

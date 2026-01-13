@@ -92,12 +92,8 @@
           "name": "chat_members_chatId_chats_id_fk",
           "tableFrom": "chat_members",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -105,12 +101,8 @@
           "name": "chat_members_userId_users_id_fk",
           "tableFrom": "chat_members",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -120,10 +112,7 @@
         "chat_members_chat_user_unique": {
           "name": "chat_members_chat_user_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "chatId",
-            "userId"
-          ]
+          "columns": ["chatId", "userId"]
         }
       },
       "policies": {},
@@ -251,12 +240,8 @@
           "name": "chats_userId_users_id_fk",
           "tableFrom": "chats",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -324,12 +309,8 @@
           "name": "feedback_userId_users_id_fk",
           "tableFrom": "feedback",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -461,12 +442,8 @@
           "name": "files_userId_users_id_fk",
           "tableFrom": "files",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -575,12 +552,8 @@
           "name": "chat_mcp_tools_chatId_chats_id_fk",
           "tableFrom": "chat_mcp_tools",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -588,12 +561,8 @@
           "name": "chat_mcp_tools_mcpServerId_mcp_servers_id_fk",
           "tableFrom": "chat_mcp_tools",
           "tableTo": "mcp_servers",
-          "columnsFrom": [
-            "mcpServerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mcpServerId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -716,12 +685,8 @@
           "name": "mcp_servers_userId_users_id_fk",
           "tableFrom": "mcp_servers",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -824,12 +789,8 @@
           "name": "mcp_tools_mcpServerId_mcp_servers_id_fk",
           "tableFrom": "mcp_tools",
           "tableTo": "mcp_servers",
-          "columnsFrom": [
-            "mcpServerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mcpServerId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -966,12 +927,8 @@
           "name": "messages_chatId_chats_id_fk",
           "tableFrom": "messages",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -979,12 +936,8 @@
           "name": "messages_userId_users_id_fk",
           "tableFrom": "messages",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1179,12 +1132,8 @@
           "name": "parts_messageId_messages_id_fk",
           "tableFrom": "parts",
           "tableTo": "messages",
-          "columnsFrom": [
-            "messageId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["messageId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1192,12 +1141,8 @@
           "name": "parts_file_id_files_id_fk",
           "tableFrom": "parts",
           "tableTo": "files",
-          "columnsFrom": [
-            "file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["file_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1399,12 +1344,8 @@
           "name": "usage_records_userId_users_id_fk",
           "tableFrom": "usage_records",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1412,12 +1353,8 @@
           "name": "usage_records_chatId_chats_id_fk",
           "tableFrom": "usage_records",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1507,12 +1444,8 @@
           "name": "user_rules_userId_users_id_fk",
           "tableFrom": "user_rules",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1598,11 +1531,7 @@
     "public.feedback_category": {
       "name": "feedback_category",
       "schema": "public",
-      "values": [
-        "bug",
-        "feature",
-        "general"
-      ]
+      "values": ["bug", "feature", "general"]
     }
   },
   "schemas": {},

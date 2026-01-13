@@ -162,9 +162,7 @@ const prefixContentWithUsername = (
  * Extracts text content from UIMessage parts for prefixing.
  * Returns the message parts as a format suitable for content prefixing.
  */
-const extractMessageContent = (
-  msg: UIMessage
-): string | ContentPart[] => {
+const extractMessageContent = (msg: UIMessage): string | ContentPart[] => {
   // Check if message has multimodal content (images, files, etc.)
   const hasMultimodalParts = msg.parts.some(
     (p) => p.type !== "text" && p.type !== "reasoning"
