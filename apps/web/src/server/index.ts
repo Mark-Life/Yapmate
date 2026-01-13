@@ -583,14 +583,24 @@ const server = serve<WsClientData>({
           case "typing":
             // Publish typing event to chat channel
             if (data.displayName) {
-              await publishTypingEvent(data.chatId, userId, data.displayName, true);
+              await publishTypingEvent(
+                data.chatId,
+                userId,
+                data.displayName,
+                true
+              );
             }
             break;
 
           case "stop_typing":
             // Publish stop typing event to chat channel
             if (data.displayName) {
-              await publishTypingEvent(data.chatId, userId, data.displayName, false);
+              await publishTypingEvent(
+                data.chatId,
+                userId,
+                data.displayName,
+                false
+              );
             }
             break;
 

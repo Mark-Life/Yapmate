@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@yapmate/components/ui/tooltip";
-import { Crown, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import type { ChatMember } from "../../hooks/use-multi-user-chat";
 
 type MemberListProps = {
@@ -62,17 +62,13 @@ const MemberAvatar = ({
           </AvatarFallback>
         </Avatar>
         <OnlineIndicator isOnline={member.isOnline} />
-        {member.role === "owner" && (
-          <Crown className="absolute -top-1 -right-1 size-3 text-yellow-500" />
-        )}
       </div>
     </TooltipTrigger>
     <TooltipContent>
       <div className="flex flex-col gap-0.5">
         <span className="font-medium">{member.displayName}</span>
         <span className="text-muted-foreground text-xs">
-          {member.role === "owner" ? "Owner" : "Member"}
-          {member.isOnline ? " · Online" : ""}
+          {member.isOnline ? "Online" : "Offline"}
           {isTyping ? " · Typing..." : ""}
         </span>
       </div>
@@ -150,9 +146,6 @@ const FullMemberList = ({
                 <span className="text-muted-foreground text-xs">Typing...</span>
               ) : null}
             </div>
-            {member.role === "owner" && (
-              <Crown className="size-4 text-yellow-500" />
-            )}
           </div>
         );
       })}

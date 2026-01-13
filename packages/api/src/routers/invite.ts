@@ -61,7 +61,11 @@ export const invite = {
         }
 
         // Enable multi-user mode and add owner as first member
-        await enableMultiUserChat(input.chatId, context.userId, ownerDisplayName);
+        await enableMultiUserChat(
+          input.chatId,
+          context.userId,
+          ownerDisplayName
+        );
       }
 
       const code = await createInvite(input.chatId, context.userId);
