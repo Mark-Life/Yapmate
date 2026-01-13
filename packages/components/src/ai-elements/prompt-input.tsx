@@ -12,6 +12,7 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -1390,6 +1391,11 @@ export type PromptInputTranscribeButtonProps = ComponentProps<
   onTranscriptionChange?: (text: string) => void;
 };
 
+// Recording limits
+const MAX_RECORDING_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB (Groq limit is 25MB)
+const TRANSCRIPTION_TIMEOUT_MS = 60 * 1000; // 60 seconds
+
 /**
  * Button that records audio and transcribes it using Groq Whisper API
  * Records audio via MediaRecorder, sends to server, and populates input
@@ -1405,11 +1411,16 @@ export const PromptInputTranscribeButton = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * Cleanup function to stop recording and release media stream
    */
   const cleanup = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (mediaRecorderRef.current?.state !== "inactive") {
       mediaRecorderRef.current?.stop();
     }
@@ -1451,6 +1462,13 @@ export const PromptInputTranscribeButton = ({
 
       mediaRecorder.onstop = async () => {
         setIsRecording(false);
+
+        // Clear the recording timer
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+
         setIsTranscribing(true);
 
         try {
@@ -1458,30 +1476,78 @@ export const PromptInputTranscribeButton = ({
             type: mediaRecorder.mimeType,
           });
 
+          // Validate file size
+          if (audioBlob.size > MAX_FILE_SIZE_BYTES) {
+            const sizeMB = (audioBlob.size / (1024 * 1024)).toFixed(1);
+            toast.error(
+              `Recording too large (${sizeMB}MB). Please record a shorter message (max 20MB).`
+            );
+            return;
+          }
+
+          // Check for empty recording
+          if (audioBlob.size === 0) {
+            toast.error("No audio recorded. Please try again.");
+            return;
+          }
+
           const formData = new FormData();
           formData.append("audio", audioBlob, "recording.webm");
 
-          const response = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
+          // Create abort controller for timeout
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => {
+            abortController.abort();
+          }, TRANSCRIPTION_TIMEOUT_MS);
 
-          if (!response.ok) {
-            throw new Error("Transcription failed");
-          }
+          try {
+            const response = await fetch("/api/transcribe", {
+              method: "POST",
+              body: formData,
+              signal: abortController.signal,
+            });
 
-          const { text } = await response.json();
+            clearTimeout(timeoutId);
 
-          if (text && controller) {
-            const currentValue = controller.textInput.value;
-            const newValue = currentValue + (currentValue ? " " : "") + text;
-            controller.textInput.setInput(newValue);
-            onTranscriptionChange?.(newValue);
-          } else if (text) {
-            onTranscriptionChange?.(text);
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(
+                errorData.error || `Transcription failed (${response.status})`
+              );
+            }
+
+            const { text } = await response.json();
+
+            if (text && controller) {
+              const currentValue = controller.textInput.value;
+              const newValue =
+                currentValue + (currentValue ? " " : "") + text;
+              controller.textInput.setInput(newValue);
+              onTranscriptionChange?.(newValue);
+            } else if (text) {
+              onTranscriptionChange?.(text);
+            } else {
+              toast.error("No speech detected. Please try again.");
+            }
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof Error) {
+              if (fetchError.name === "AbortError") {
+                toast.error(
+                  "Transcription timed out. Please try a shorter recording."
+                );
+              } else {
+                throw fetchError;
+              }
+            }
           }
         } catch (error) {
           console.error("Transcription error:", error);
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to transcribe audio. Please try again."
+          );
         } finally {
           setIsTranscribing(false);
           cleanup();
@@ -1490,6 +1556,7 @@ export const PromptInputTranscribeButton = ({
 
       mediaRecorder.onerror = (event) => {
         console.error("MediaRecorder error:", event);
+        toast.error("Recording error. Please try again.");
         setIsRecording(false);
         setIsTranscribing(false);
         cleanup();
@@ -1498,8 +1565,23 @@ export const PromptInputTranscribeButton = ({
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
+
+      // Set max duration timer
+      recordingTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          toast.warning("Maximum recording time reached (5 minutes).");
+          mediaRecorderRef.current.stop();
+        }
+      }, MAX_RECORDING_DURATION_MS);
     } catch (error) {
       console.error("Failed to start recording:", error);
+      if (error instanceof Error && error.name === "NotAllowedError") {
+        toast.error(
+          "Microphone access denied. Please allow microphone access in your browser settings."
+        );
+      } else {
+        toast.error("Failed to access microphone. Please try again.");
+      }
     }
   }, [controller, onTranscriptionChange, cleanup]);
 

@@ -7,6 +7,9 @@ import { experimental_transcribe as transcribe } from "ai";
 import { groqClient } from "../../lib/groq";
 import { getCurrentUserId } from "../../lib/supabase";
 
+// Groq Whisper has a 25MB limit, we use 20MB for safety margin
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
 /**
  * Transcribes audio using Groq Whisper API
  */
@@ -25,6 +28,17 @@ export const transcribeHandler = {
         return Response.json(
           { error: "Audio file is required" },
           { status: 400 }
+        );
+      }
+
+      // Validate file size
+      if (audioFile.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (audioFile.size / (1024 * 1024)).toFixed(1);
+        return Response.json(
+          {
+            error: `File too large (${sizeMB}MB). Maximum size is 20MB.`,
+          },
+          { status: 413 }
         );
       }
 
