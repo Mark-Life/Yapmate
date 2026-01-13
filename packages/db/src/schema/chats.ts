@@ -2,13 +2,14 @@
  * Chats table - stores chat sessions with branching support
  */
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import {
   createInsertSchema,
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
 import { z } from "zod";
+import { chatMembers } from "./chat-members";
 import { timestamps } from "./columns.helpers";
 import { users } from "./users";
 
@@ -37,6 +38,8 @@ export const chats = pgTable(
      * null when no stream is active
      */
     activeStreamId: text(),
+    /** Whether this chat has multiple users */
+    isMultiUser: boolean().default(false).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -46,7 +49,7 @@ export const chats = pgTable(
   ]
 );
 
-export const chatsRelations = relations(chats, ({ one }) => ({
+export const chatsRelations = relations(chats, ({ one, many }) => ({
   user: one(users, {
     fields: [chats.userId],
     references: [users.id],
@@ -56,6 +59,7 @@ export const chatsRelations = relations(chats, ({ one }) => ({
     references: [chats.id],
     relationName: "branches",
   }),
+  members: many(chatMembers),
 }));
 
 /** Insert type for chats table */

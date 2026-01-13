@@ -1,5 +1,6 @@
 /** Re-export all schemas for Drizzle */
 
+export * from "./schema/chat-members";
 export * from "./schema/chats";
 export * from "./schema/feedback";
 export * from "./schema/files";

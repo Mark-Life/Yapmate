@@ -328,6 +328,7 @@ const server = serve<WsClientData>({
     "/chat": index,
     "/chat/*": index,
     "/checkout/*": index,
+    "/invite/*": index,
 
     // Auth routes
     "/auth/callback": callbackHandler.GET,

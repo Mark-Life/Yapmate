@@ -187,7 +187,9 @@ export const syncMessages = async (
     // Step 1: Delete stale messages (order >= new message count)
     await tx
       .delete(messages)
-      .where(and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length)));
+      .where(
+        and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length))
+      );
 
     // Step 2: Upsert all messages
     for (const msg of messagesToUpsert) {
@@ -666,7 +668,9 @@ export const completeStreamAtomic = async (
     // Step 1: Delete stale messages (order >= new message count)
     await tx
       .delete(messages)
-      .where(and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length)));
+      .where(
+        and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length))
+      );
 
     // Step 2: Upsert all messages
     for (const msg of messagesToUpsert) {

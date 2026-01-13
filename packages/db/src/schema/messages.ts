@@ -13,6 +13,7 @@ import {
 import { chats } from "./chats";
 import { timestamps } from "./columns.helpers";
 import { parts } from "./parts";
+import { users } from "./users";
 
 /** Valid message roles */
 export const MESSAGE_ROLES = ["user", "assistant", "system", "tool"] as const;
@@ -71,6 +72,8 @@ export const messages = pgTable(
     order: integer().notNull(),
     /** Usage metrics, cost, and generation info */
     metadata: jsonb().$type<MessageMetadata>(),
+    /** User who sent this message (null for assistant messages) */
+    userId: uuid().references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (table) => [
@@ -84,6 +87,10 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   chat: one(chats, {
     fields: [messages.chatId],
     references: [chats.id],
+  }),
+  user: one(users, {
+    fields: [messages.userId],
+    references: [users.id],
   }),
   parts: many(parts),
 }));

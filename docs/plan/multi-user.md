@@ -30,9 +30,9 @@ Typing: Redis Pub/Sub (chat:${chatId}:typing)
 
 ---
 
-## Part 1: Schema Changes
+## Part 1: Schema Changes ✅
 
-### 1.1 Add `userId` to messages table
+### 1.1 Add `userId` to messages table ✅
 
 **File:** `packages/db/src/schema/messages.ts`
 
@@ -48,11 +48,12 @@ export const messages = pgTable("messages", {
 ```
 
 **Migration strategy:**
+
 - Add column as nullable
 - Backfill existing user messages: `UPDATE messages SET userId = (SELECT userId FROM chats WHERE chats.id = messages.chatId) WHERE role = 'user'`
 - Keep nullable (assistant messages don't have userId)
 
-### 1.2 Create `chat_members` table
+### 1.2 Create `chat_members` table ✅
 
 **File:** `packages/db/src/schema/chat-members.ts` (new file)
 
@@ -60,30 +61,40 @@ export const messages = pgTable("messages", {
 export const MEMBER_ROLES = ["owner", "member"] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 
-export const chatMembers = pgTable("chat_members", {
-  id: uuid().primaryKey().defaultRandom(),
-  chatId: uuid().notNull().references(() => chats.id, { onDelete: "cascade" }),
-  userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" }),
-  role: text().$type<MemberRole>().notNull().default("member"),
-  /** Display name in this chat (required for multi-user) */
-  displayName: text().notNull(),
-  ...timestamps,
-}, (table) => [
-  index("chat_members_chat_id_idx").on(table.chatId),
-  index("chat_members_user_id_idx").on(table.userId),
-  // Unique constraint: user can only be member once per chat
-  unique("chat_members_chat_user_unique").on(table.chatId, table.userId),
-]);
+export const chatMembers = pgTable(
+  "chat_members",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    chatId: uuid()
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text().$type<MemberRole>().notNull().default("member"),
+    /** Display name in this chat (required for multi-user) */
+    displayName: text().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("chat_members_chat_id_idx").on(table.chatId),
+    index("chat_members_user_id_idx").on(table.userId),
+    // Unique constraint: user can only be member once per chat
+    unique("chat_members_chat_user_unique").on(table.chatId, table.userId),
+  ]
+);
 ```
 
 **Why `displayName` on chat_members (not users)?**
+
 - User might want different names in different chats
 - Avoids requiring global name change
 - Captured at join time
 
-### 1.3 Add `isMultiUser` flag to chats (optional)
+### 1.3 Add `isMultiUser` flag to chats ✅
 
 Could help with:
+
 - UI decisions (show member list or not)
 - Query optimization (skip member lookups for single-user chats)
 
@@ -95,15 +106,16 @@ isMultiUser: boolean().default(false).notNull(),
 ### 1.4 Require displayName for multi-user participation
 
 **Enforcement:** When user tries to join/create a multi-user chat:
+
 1. Check if they have `firstName` in users table
 2. If not, prompt them to enter a display name
 3. Store in `chat_members.displayName`
 
 ---
 
-## Part 2: Real-Time Infrastructure (Redis + WebSocket)
+## Part 2: Real-Time Infrastructure (Redis + WebSocket) ✅
 
-### 2.1 Extend WebSocket event types
+### 2.1 Extend WebSocket event types ✅
 
 **File:** `packages/server/src/lib/websocket/types.ts`
 
@@ -120,7 +132,7 @@ export type WsEventType =
   | "member_typing"
   | "member_stopped_typing"
   | "presence_update"
-  | "stream_chunk";      // For broadcasting AI response to all members
+  | "stream_chunk"; // For broadcasting AI response to all members
 
 export type WsEvent = {
   type: WsEventType;
@@ -136,7 +148,7 @@ export type WsEvent = {
 };
 ```
 
-### 2.2 Add chat-level channel subscription
+### 2.2 Add chat-level channel subscription ✅
 
 **File:** `packages/server/src/lib/websocket/redis-bridge.ts`
 
@@ -171,7 +183,7 @@ export const publishChatEvent = async (
 };
 ```
 
-### 2.3 Track which chats each WebSocket is watching
+### 2.3 Track which chats each WebSocket is watching ✅
 
 **File:** `packages/server/src/lib/websocket/manager.ts`
 
@@ -183,7 +195,10 @@ const userConnections = new Map<string, Set<ServerWebSocket<WsClientData>>>();
 const chatConnections = new Map<string, Set<ServerWebSocket<WsClientData>>>();
 
 // New: WebSocket -> Set<chatIds> (for cleanup)
-const connectionChats = new WeakMap<ServerWebSocket<WsClientData>, Set<string>>();
+const connectionChats = new WeakMap<
+  ServerWebSocket<WsClientData>,
+  Set<string>
+>();
 
 export const joinChat = async (
   chatId: string,
@@ -229,25 +244,27 @@ export const broadcastToChat = (chatId: string, event: WsEvent): void => {
 
 ---
 
-## Part 3: Presence System
+## Part 3: Presence System ✅
 
-### 3.1 Redis keys for presence
+### 3.1 Redis keys for presence ✅
 
 ```
 chat:{chatId}:presence:{userId} = { displayName, lastSeen } (TTL: 60s)
 ```
 
-### 3.2 Presence heartbeat
+### 3.2 Presence heartbeat ✅
 
 Client sends heartbeat every 30s while chat is open:
 
 ```typescript
 // Client
 setInterval(() => {
-  ws.send(JSON.stringify({
-    type: "heartbeat",
-    chatId
-  }));
+  ws.send(
+    JSON.stringify({
+      type: "heartbeat",
+      chatId,
+    })
+  );
 }, 30000);
 ```
 
@@ -259,18 +276,23 @@ if (message.type === "heartbeat") {
   await redis.set(
     `chat:${chatId}:presence:${userId}`,
     JSON.stringify({ displayName, lastSeen: Date.now() }),
-    "EX", 60  // 60 second TTL
+    "EX",
+    60 // 60 second TTL
   );
 }
 ```
 
-### 3.3 Get online members
+### 3.3 Get online members ✅
 
 ```typescript
-export const getOnlineMembers = async (chatId: string): Promise<Array<{
-  userId: string;
-  displayName: string;
-}>> => {
+export const getOnlineMembers = async (
+  chatId: string
+): Promise<
+  Array<{
+    userId: string;
+    displayName: string;
+  }>
+> => {
   const pattern = `chat:${chatId}:presence:*`;
   const keys = await redis.keys(pattern);
 
@@ -288,11 +310,12 @@ export const getOnlineMembers = async (chatId: string): Promise<Array<{
 
 ---
 
-## Part 4: Typing Indicators
+## Part 4: Typing Indicators ✅
 
-### 4.1 Typing events via Redis Pub/Sub
+### 4.1 Typing events via Redis Pub/Sub ✅
 
 When user starts typing:
+
 ```typescript
 await publishChatEvent(chatId, {
   type: "member_typing",
@@ -303,6 +326,7 @@ await publishChatEvent(chatId, {
 ```
 
 When user stops typing (debounced, ~2s after last keystroke):
+
 ```typescript
 await publishChatEvent(chatId, {
   type: "member_stopped_typing",
@@ -319,10 +343,10 @@ const [typingUsers, setTypingUsers] = useState<Map<string, string>>();
 
 // On typing event
 if (event.type === "member_typing") {
-  setTypingUsers(prev => new Map(prev).set(event.userId, event.displayName));
+  setTypingUsers((prev) => new Map(prev).set(event.userId, event.displayName));
 }
 if (event.type === "member_stopped_typing") {
-  setTypingUsers(prev => {
+  setTypingUsers((prev) => {
     const next = new Map(prev);
     next.delete(event.userId);
     return next;
@@ -332,7 +356,7 @@ if (event.type === "member_stopped_typing") {
 
 ---
 
-## Part 5: Streaming to Multiple Users
+## Part 5: Streaming to Multiple Users ✅
 
 ### 5.1 Current flow (single user)
 
@@ -356,7 +380,7 @@ User A sends message
   → Publish message_created to chat channel
 ```
 
-### 5.3 Implementation changes
+### 5.3 Implementation changes ✅
 
 **File:** `packages/server/src/routes/api/chat/stream.ts`
 
@@ -375,7 +399,7 @@ const writer = {
       chunk: chunk.data,
       chunkIndex: chunk.index,
     });
-  }
+  },
 };
 ```
 
@@ -417,7 +441,7 @@ ws.onmessage = (event) => {
 const memberNames = await getChatMemberNames(chatId);
 
 // When preparing messages for model - prefix username to content
-const messagesForModel = messages.map(msg => {
+const messagesForModel = messages.map((msg) => {
   if (msg.role === "user" && msg.userId) {
     const displayName = memberNames.get(msg.userId) || "User";
     const prefixedContent = prefixContentWithUsername(msg.content, displayName);
@@ -444,10 +468,7 @@ function prefixContentWithUsername(
   }
 
   // For array content, prepend a text part with the username
-  return [
-    { type: "text", text: prefix },
-    ...content,
-  ];
+  return [{ type: "text", text: prefix }, ...content];
 }
 ```
 
@@ -484,7 +505,7 @@ export const getChatMemberNames = async (
     columns: { userId: true, displayName: true },
   });
 
-  return new Map(members.map(m => [m.userId, m.displayName]));
+  return new Map(members.map((m) => [m.userId, m.displayName]));
 };
 ```
 
@@ -509,17 +530,14 @@ if (!membership) {
 }
 ```
 
-### 7.2 Membership service functions
+### 7.2 Membership service functions ✅
 
 **File:** `packages/db/src/service/chat-members.ts` (new)
 
 ```typescript
 export const getChatMembership = async (chatId: string, userId: string) => {
   return db.query.chatMembers.findFirst({
-    where: and(
-      eq(chatMembers.chatId, chatId),
-      eq(chatMembers.userId, userId)
-    ),
+    where: and(eq(chatMembers.chatId, chatId), eq(chatMembers.userId, userId)),
   });
 };
 
@@ -545,13 +563,15 @@ export const addChatMember = async (
 
 export const removeChatMember = async (chatId: string, userId: string) => {
   // Only owner can remove, and can't remove themselves
-  return db.delete(chatMembers).where(
-    and(
-      eq(chatMembers.chatId, chatId),
-      eq(chatMembers.userId, userId),
-      ne(chatMembers.role, "owner")
-    )
-  );
+  return db
+    .delete(chatMembers)
+    .where(
+      and(
+        eq(chatMembers.chatId, chatId),
+        eq(chatMembers.userId, userId),
+        ne(chatMembers.role, "owner")
+      )
+    );
 };
 ```
 
@@ -580,18 +600,22 @@ POST /api/chat/:id/presence
   - Heartbeat for presence
 ```
 
-### 8.2 Invite system options
+### 8.2 Invite system options ✅
 
 **Option A: Direct user ID**
+
 - Owner enters email/username
 - Server looks up user, adds to chat_members
 
-**Option B: Invite link**
+**Option B: Invite link** ✅ (Implemented)
+
 - Generate unique code, store in Redis with TTL (24h)
 - `chat:{chatId}:invite:{code} = { createdBy, expiresAt }`
 - Anyone with link can join
 
 Recommend **Option B** for simplicity and not requiring user lookup.
+
+**File:** `packages/server/src/lib/redis/invite.ts`
 
 ---
 
@@ -604,7 +628,9 @@ Recommend **Option B** for simplicity and not requiring user lookup.
 export const useMultiUserChat = (chatId: string) => {
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [onlineMembers, setOnlineMembers] = useState<Set<string>>(new Set());
-  const [typingMembers, setTypingMembers] = useState<Map<string, string>>(new Map());
+  const [typingMembers, setTypingMembers] = useState<Map<string, string>>(
+    new Map()
+  );
 
   // WebSocket subscription
   useEffect(() => {
@@ -639,28 +665,44 @@ export const useMultiUserChat = (chatId: string) => {
 
 ## Part 10: Migration & Rollout
 
-### Phase 1: Schema & Backend
-1. Add `userId` column to messages
-2. Create `chat_members` table
+### Phase 1: Schema & Backend ✅
+
+1. ✅ Add `userId` column to messages
+2. ✅ Create `chat_members` table
 3. Backfill existing chats (owner as sole member)
 4. Update handler.ts to save userId on messages
 
-### Phase 2: Real-time Infrastructure
-1. Extend WebSocket types
-2. Add chat-level channel subscription
-3. Implement presence system
-4. Implement typing indicators
+### Phase 2: Real-time Infrastructure ✅
 
-### Phase 3: Multi-user Streaming
-1. Modify stream writer to broadcast chunks
+1. ✅ Extend WebSocket types
+2. ✅ Add chat-level channel subscription
+3. ✅ Implement presence system
+4. ✅ Implement typing indicators
+
+### Phase 3: Multi-user Streaming ✅
+
+1. ✅ Modify stream writer to broadcast chunks
 2. Add client-side stream reception for non-sender
 
-### Phase 4: Invite System & UI
-1. Create invite endpoints
-2. Build member list UI
-3. Build invite/join flow
+### Phase 4: Invite System & UI (In Progress)
+
+1. ✅ Create invite Redis system (`packages/server/src/lib/redis/invite.ts`)
+2. ✅ Create membership service (`packages/db/src/service/chat-members.ts`)
+3. ✅ Create invite API endpoints (ORPC)
+   - `packages/api/src/schemas/invite.ts` - Zod schemas
+   - `packages/api/src/routers/invite.ts` - create, list, revoke, validate
+4. ✅ Create members API endpoints (ORPC)
+   - `packages/api/src/schemas/members.ts` - Zod schemas
+   - `packages/api/src/routers/members.ts` - join, list, remove, leave
+5. ✅ Build member list UI (`apps/web/src/client/components/chat/member-list.tsx`)
+6. ✅ Build invite modal (`apps/web/src/client/components/chat/invite-modal.tsx`)
+7. ✅ Build join chat page (`apps/web/src/client/pages/join-chat.tsx`)
+8. ✅ Create client hooks (`apps/web/src/client/hooks/use-multi-user-chat.ts`)
+9. Integrate MemberList + InviteModal into chat header UI
+10. Extend WebSocket sync to dispatch multi-user events to client
 
 ### Phase 5: Model Integration
+
 1. Pass displayNames to model
 2. Update system prompt for multi-user context
 
@@ -683,20 +725,32 @@ export const useMultiUserChat = (chatId: string) => {
 ## File Changes Summary
 
 ### New Files
-- `packages/db/src/schema/chat-members.ts`
-- `packages/db/src/service/chat-members.ts`
-- `packages/server/src/routes/api/chat/members.ts`
-- `packages/server/src/routes/api/chat/invite.ts`
-- `packages/web/src/hooks/useMultiUserChat.ts`
-- `packages/web/src/components/chat/MemberList.tsx`
-- `packages/web/src/components/chat/InviteModal.tsx`
+
+- ✅ `packages/db/src/schema/chat-members.ts`
+- ✅ `packages/db/src/service/chat-members.ts`
+- ✅ `packages/server/src/lib/redis/invite.ts`
+- ✅ `packages/api/src/schemas/invite.ts` - Zod schemas for invite operations
+- ✅ `packages/api/src/schemas/members.ts` - Zod schemas for member operations
+- ✅ `packages/api/src/routers/invite.ts` - ORPC procedures: create, list, revoke, validate
+- ✅ `packages/api/src/routers/members.ts` - ORPC procedures: join, list, remove, leave
+- ✅ `apps/web/src/client/hooks/use-multi-user-chat.ts` - useMultiUserChat, useInvites, useJoinChat
+- ✅ `apps/web/src/client/components/chat/member-list.tsx` - MemberList, TypingIndicator
+- ✅ `apps/web/src/client/components/chat/invite-modal.tsx` - InviteModal
+- ✅ `apps/web/src/client/pages/join-chat.tsx` - JoinChatPage for invite links
 
 ### Modified Files
-- `packages/db/src/schema/messages.ts` - add userId
-- `packages/db/src/schema/index.ts` - export chat-members
-- `packages/server/src/lib/websocket/types.ts` - new event types
-- `packages/server/src/lib/websocket/manager.ts` - chat connections
-- `packages/server/src/lib/websocket/redis-bridge.ts` - chat channels
+
+- ✅ `packages/db/src/schema/messages.ts` - add userId
+- ✅ `packages/db/src/schema/chats.ts` - add isMultiUser flag
+- ✅ `packages/db/src/service/index.ts` - export chat-members service
+- ✅ `packages/server/src/lib/websocket/types.ts` - new event types
+- ✅ `packages/server/src/lib/websocket/manager.ts` - chat connections
+- ✅ `packages/server/src/lib/websocket/redis-bridge.ts` - chat channels, presence, typing
+- ✅ `packages/server/src/lib/websocket/index.ts` - export new functions
+- ✅ `packages/server/src/routes/api/chat/stream.ts` - broadcast chunks
+- ✅ `packages/server/src/routes/api/chat/title.ts` - broadcast title to chat channel
+- ✅ `packages/api/src/router.ts` - added invite and members routers
+- ✅ `apps/web/src/client/router.tsx` - added `/invite/:code` route
+- ✅ `apps/web/src/server/index.ts` - added SPA route for `/invite/*`
 - `packages/server/src/routes/api/chat/handler.ts` - membership checks, userId on save
-- `packages/server/src/routes/api/chat/stream.ts` - broadcast chunks
 - `packages/server/src/routes/api/chat/ai-response.ts` - pass names to model
