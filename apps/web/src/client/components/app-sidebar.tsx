@@ -55,6 +55,7 @@ import {
   PencilIcon,
   SettingsIcon,
   TrashIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatContext } from "../contexts/chat-context";
@@ -70,6 +71,7 @@ type Chat = {
   id: string;
   title: string | null;
   updatedAt: Date | null;
+  isMultiUser?: boolean;
 };
 
 type AppSidebarProps = {
@@ -327,6 +329,9 @@ export const AppSidebar = ({
                               onMouseEnter={() => onPrefetch?.(chat.id)}
                               tooltip={chat.id}
                             >
+                              {chat.isMultiUser ? (
+                                <UsersIcon className="size-4 shrink-0 text-muted-foreground" />
+                              ) : null}
                               <span className="select-none truncate text-sm">
                                 {chat.title ?? "New chat"}
                               </span>

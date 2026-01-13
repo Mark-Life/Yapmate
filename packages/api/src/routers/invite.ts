@@ -4,6 +4,7 @@
 import { ORPCError } from "@orpc/server";
 import {
   canAccessChat,
+  enableMultiUserChat,
   getChat,
   getChatMembers,
   getUserById,
@@ -29,6 +30,7 @@ export const invite = {
   /**
    * Create a new invite link for a chat
    * Only chat owner can create invites
+   * If chat is not yet multi-user, enables it with owner as first member
    */
   create: protectedProcedure
     .input(createInviteInputSchema)
@@ -44,6 +46,24 @@ export const invite = {
         throw new ORPCError("FORBIDDEN", { message: "Forbidden" });
       }
 
+      // If chat is not yet multi-user, enable it now
+      if (!chat.isMultiUser) {
+        const owner = await getUserById(context.userId);
+        let ownerDisplayName = input.ownerDisplayName?.trim();
+
+        // If no display name provided, try to use firstName
+        if (!ownerDisplayName) {
+          if (!owner?.firstName) {
+            // Need owner to provide display name
+            return { needsOwnerDisplayName: true };
+          }
+          ownerDisplayName = owner.firstName;
+        }
+
+        // Enable multi-user mode and add owner as first member
+        await enableMultiUserChat(input.chatId, context.userId, ownerDisplayName);
+      }
+
       const code = await createInvite(input.chatId, context.userId);
 
       return {
@@ -54,7 +74,7 @@ export const invite = {
 
   /**
    * List all active invites for a chat
-   * Only chat owner can view invites
+   * Only chat owner can view invites (returns empty for non-owners)
    */
   list: protectedProcedure
     .input(listInvitesInputSchema)
@@ -65,9 +85,9 @@ export const invite = {
         throw new ORPCError("NOT_FOUND", { message: "Chat not found" });
       }
 
-      // Only owner can list invites
+      // Only owner can list invites - return empty for non-owners
       if (chat.userId !== context.userId) {
-        throw new ORPCError("FORBIDDEN", { message: "Forbidden" });
+        return { invites: [] };
       }
 
       const invites = await getActiveInvites(input.chatId);

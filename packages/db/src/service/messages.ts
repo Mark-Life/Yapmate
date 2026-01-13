@@ -146,6 +146,8 @@ type SaveMessageOptions = {
   model?: string;
   metadata?: MessageMetadata;
   fileIdMap?: Map<number, string>;
+  /** User who sent this message (for user messages in multi-user chats) */
+  userId?: string;
 };
 
 /**
@@ -334,6 +336,7 @@ export const saveMessage = async (
       model: options?.model,
       metadata: options?.metadata,
       fileIdMap: options?.fileIdMap,
+      userId: options?.userId,
     }
   );
 

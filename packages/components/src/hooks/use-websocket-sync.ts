@@ -11,10 +11,31 @@ interface QueryClient {
   invalidateQueries: (options: { queryKey: unknown[] }) => void;
 }
 
+type WsEventType =
+  // Existing events
+  | "chat_created"
+  | "chat_updated"
+  | "message_created"
+  | "stream_started"
+  // Multi-user events
+  | "member_joined"
+  | "member_left"
+  | "member_typing"
+  | "member_stopped_typing"
+  | "presence_update"
+  | "stream_chunk";
+
 type WsEvent = {
-  type: "chat_created" | "chat_updated" | "message_created" | "stream_started";
+  type: WsEventType;
   chatId?: string;
+  userId?: string;
+  displayName?: string;
   hasActiveStream?: boolean;
+  // For stream chunks
+  chunk?: unknown;
+  chunkIndex?: number;
+  // For presence
+  onlineMembers?: Array<{ userId: string; displayName: string }>;
 };
 
 type UseWebSocketSyncOptions = {
@@ -93,6 +114,26 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
         // Trigger stream resume if viewing this chat
         if (data.chatId && data.chatId === currentChatId && onStreamStarted) {
           onStreamStarted(data.chatId);
+        }
+        break;
+
+      // Multi-user events - dispatch to window for useMultiUserChat hook
+      case "member_joined":
+      case "member_left":
+      case "presence_update":
+      case "member_typing":
+      case "member_stopped_typing":
+        window.dispatchEvent(
+          new CustomEvent("multi-user-event", { detail: data })
+        );
+        break;
+
+      case "stream_chunk":
+        // Dispatch stream chunk for other users viewing the chat
+        if (data.chatId) {
+          window.dispatchEvent(
+            new CustomEvent("stream-chunk", { detail: data })
+          );
         }
         break;
 

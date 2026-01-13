@@ -158,6 +158,8 @@ type ExecuteAiResponseWithOrchestrationOptions = {
     Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
   >[0]["writer"];
   chunkIndex: { current: number };
+  /** Whether this is a multi-user chat (enables username prefixing) */
+  isMultiUser?: boolean;
 };
 
 /**
@@ -184,6 +186,7 @@ export const executeAiResponseWithOrchestration = async (
     userMessage,
     writer,
     chunkIndex,
+    isMultiUser,
   } = options;
 
   // Resolve MCP tools for this chat
@@ -270,6 +273,7 @@ export const executeAiResponseWithOrchestration = async (
       assistantMessageId,
       userId,
       mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
+      isMultiUser,
     });
 
     // Process chunks: publish to Redis, broadcast to chat, and write to client

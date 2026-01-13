@@ -15,8 +15,13 @@ import { getCurrentUserId } from "@yapmate/server/lib/supabase";
 import {
   addConnection,
   initializeRedisBridge,
+  joinChat,
+  leaveChat,
+  publishTypingEvent,
   removeConnection,
+  updatePresence,
   type WsClientData,
+  type WsIncomingMessage,
 } from "@yapmate/server/lib/websocket";
 import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
 import { checkoutHandler } from "@yapmate/server/routes/api/checkout/handler";
@@ -538,18 +543,60 @@ const server = serve<WsClientData>({
       await removeConnection(userId, wsConnection);
       // console.log(`[WS] Client disconnected: user ${userId}`);
     },
-    message(
+    async message(
       wsConnection: ServerWebSocket<WsClientData>,
       message: string | Buffer
     ) {
-      // Handle ping/pong for keepalive
       try {
-        const data =
+        const data: WsIncomingMessage | { type: "ping" } =
           typeof message === "string"
             ? JSON.parse(message)
             : JSON.parse(message.toString());
-        if (data.type === "ping") {
-          wsConnection.send(JSON.stringify({ type: "pong" }));
+
+        const userId = wsConnection.data.userId;
+
+        switch (data.type) {
+          case "ping":
+            wsConnection.send(JSON.stringify({ type: "pong" }));
+            break;
+
+          case "join_chat":
+            // User opened a chat - join the room and update presence
+            await joinChat(data.chatId, wsConnection);
+            if (data.displayName) {
+              await updatePresence(data.chatId, userId, data.displayName);
+            }
+            break;
+
+          case "leave_chat":
+            // User closed a chat - leave the room
+            await leaveChat(data.chatId, wsConnection);
+            break;
+
+          case "heartbeat":
+            // Update presence TTL to keep user "online"
+            if (data.displayName) {
+              await updatePresence(data.chatId, userId, data.displayName);
+            }
+            break;
+
+          case "typing":
+            // Publish typing event to chat channel
+            if (data.displayName) {
+              await publishTypingEvent(data.chatId, userId, data.displayName, true);
+            }
+            break;
+
+          case "stop_typing":
+            // Publish stop typing event to chat channel
+            if (data.displayName) {
+              await publishTypingEvent(data.chatId, userId, data.displayName, false);
+            }
+            break;
+
+          default:
+            // Unknown message type, ignore
+            break;
         }
       } catch {
         // Ignore invalid messages

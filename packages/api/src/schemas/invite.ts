@@ -8,6 +8,8 @@ import { z } from "zod";
 /** Create a new invite for a chat */
 export const createInviteInputSchema = z.object({
   chatId: z.string().uuid(),
+  /** Owner's display name (required if chat not yet multi-user and owner has no firstName) */
+  ownerDisplayName: z.string().min(1).max(50).optional(),
 });
 
 /** List active invites for a chat */
@@ -37,8 +39,10 @@ export const inviteSchema = z.object({
 
 /** Create invite response */
 export const createInviteOutputSchema = z.object({
-  code: z.string(),
-  expiresAt: z.number(),
+  code: z.string().optional(),
+  expiresAt: z.number().optional(),
+  /** If true, client should prompt for owner's display name and retry */
+  needsOwnerDisplayName: z.boolean().optional(),
 });
 
 /** List invites response */

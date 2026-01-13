@@ -2,7 +2,7 @@
  * Stream resume API route handler
  * Handles GET for /api/chat/:id/stream
  */
-import { getChat } from "@yapmate/db/service";
+import { canAccessChat, getChat } from "@yapmate/db/service";
 import {
   getBufferedChunks,
   getStreamStatus,
@@ -19,8 +19,10 @@ export const streamResumeHandler = {
 
     const { id } = req.params;
 
+    // Verify chat exists and user has access (owner or member)
     const chat = await getChat(id);
-    if (!chat || chat.userId !== userId) {
+    const hasAccess = chat ? await canAccessChat(id, userId) : false;
+    if (!chat || !hasAccess) {
       return new Response("Forbidden", { status: 403 });
     }
 

@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import { canAccessChat } from "@yapmate/db/service";
 import {
   getChat,
   loadChatMessages,
@@ -19,14 +20,15 @@ export const messages = {
   list: protectedProcedure
     .input(listMessagesInputSchema)
     .handler(async ({ input, context }) => {
-      // Verify chat exists and belongs to user
+      // Verify chat exists and user has access (owner or member)
       const chat = await getChat(input.chatId);
       if (!chat) {
         throw new ORPCError("NOT_FOUND", {
           message: "Chat not found",
         });
       }
-      if (chat.userId !== context.userId) {
+      const hasAccess = await canAccessChat(input.chatId, context.userId);
+      if (!hasAccess) {
         throw new ORPCError("FORBIDDEN", {
           message: "Forbidden",
         });
@@ -53,10 +55,13 @@ export const messages = {
       // Fetch messages for each chat in parallel
       await Promise.all(
         input.chatIds.map(async (chatId: string) => {
-          // Verify chat exists and belongs to user
+          // Verify chat exists and user has access (owner or member)
           const chat = await getChat(chatId);
-          if (!chat || chat.userId !== context.userId) {
-            // Skip chats that don't exist or don't belong to user
+          const hasAccess = chat
+            ? await canAccessChat(chatId, context.userId)
+            : false;
+          if (!chat || !hasAccess) {
+            // Skip chats that don't exist or user doesn't have access to
             return;
           }
 

@@ -6,16 +6,23 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@yapmate/components/ui/sidebar";
-import { MessageCircleQuestionIcon, PlusIcon } from "lucide-react";
+import {
+  MessageCircleQuestionIcon,
+  PlusIcon,
+  UserPlusIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
+import { InviteModal } from "../components/chat/invite-modal";
+import { MemberList } from "../components/chat/member-list";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HotkeysCheatsheet } from "../components/hotkeys-cheatsheet";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
 import { HOTKEYS } from "../hooks/use-hotkeys-config";
+import { useMultiUserChat } from "../hooks/use-multi-user-chat";
 import { syncWithServer } from "../hooks/use-user-preferences";
 import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
@@ -123,14 +130,21 @@ const GlobalHotkeys = () => {
 };
 
 /**
- * Header controls - sidebar trigger + feedback button + new chat button
+ * Header controls - sidebar trigger + feedback button + new chat button + multi-user controls
  */
 const HeaderControls = () => {
-  const { navigateToNew } = useChatContext();
+  const { navigateToNew, currentChatId } = useChatContext();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const { members, typingMembers, isMultiUser } = useMultiUserChat({
+    chatId: currentChatId,
+    enabled: Boolean(currentChatId),
+  });
 
   return (
     <>
+      {/* Left controls */}
       <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
         <SidebarTrigger />
         <Button
@@ -146,7 +160,37 @@ const HeaderControls = () => {
           <span className="sr-only">New Chat</span>
         </Button>
       </div>
+
+      {/* Right controls - multi-user */}
+      {currentChatId ? (
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
+          {isMultiUser ? (
+            <MemberList
+              compact
+              members={members}
+              typingMembers={typingMembers}
+            />
+          ) : null}
+          <Button
+            className="size-7"
+            onClick={() => setInviteOpen(true)}
+            title="Invite people"
+            variant="ghost"
+          >
+            <UserPlusIcon className="size-4" />
+            <span className="sr-only">Invite People</span>
+          </Button>
+        </div>
+      ) : null}
+
       <FeedbackDialog onOpenChange={setFeedbackOpen} open={feedbackOpen} />
+      {currentChatId ? (
+        <InviteModal
+          chatId={currentChatId}
+          onOpenChange={setInviteOpen}
+          open={inviteOpen}
+        />
+      ) : null}
     </>
   );
 };
