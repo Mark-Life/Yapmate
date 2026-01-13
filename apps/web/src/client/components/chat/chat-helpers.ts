@@ -3,6 +3,27 @@ import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import { getLastUsedModel } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
 
+/**
+ * Fetches fresh messages from DB and updates both state and cache
+ * Used when resuming a stream to ensure we have the correct baseline
+ */
+const refreshMessagesFromDb = async (
+  chatId: string,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>,
+  queryClient: QueryClient
+): Promise<void> => {
+  try {
+    const freshMessages = await rpcClient.messages.list({ chatId });
+    // Update local state with fresh messages
+    setMessages(freshMessages);
+    // Update cache so future reads are consistent
+    queryClient.setQueryData(["chat-messages", chatId], freshMessages);
+  } catch (error) {
+    console.error("Failed to refresh messages from DB:", error);
+    // Continue anyway - stream will still work, just might have stale baseline
+  }
+};
+
 type Model = { value: string };
 
 /**
@@ -292,6 +313,15 @@ const fetchStreamResponse = async (
 
 /**
  * Resumes an active stream on mount
+ *
+ * IMPORTANT: This function fetches fresh messages from DB before processing
+ * stream chunks. This is critical for scenarios like regeneration where:
+ * 1. User clicks regenerate (server deletes old messages)
+ * 2. User navigates away (React Query cache still has stale data)
+ * 3. User returns (cache returns stale messages)
+ * 4. Without refresh, stream chunks append to stale messages = duplicates
+ *
+ * By fetching fresh messages first, we ensure the correct baseline.
  */
 export const resumeStream = async (
   chatId: string,
@@ -307,6 +337,15 @@ export const resumeStream = async (
 
     const reader = res.body?.getReader();
     if (!reader) {
+      return;
+    }
+
+    // CRITICAL: Refresh messages from DB before processing stream
+    // This ensures we have the correct baseline (e.g., after regeneration deleted old messages)
+    // Without this, we'd append stream chunks to stale cached messages
+    await refreshMessagesFromDb(chatId, setMessages, queryClient);
+
+    if (isCancelled.current) {
       return;
     }
 

@@ -141,6 +141,24 @@ export const updateActiveStreamId = async (
 };
 
 /**
+ * Updates the active stream ID within a transaction
+ * Used for atomic operations that need to update stream ID along with other data
+ * @param tx - Database transaction
+ * @param chatId - ID of the chat
+ * @param streamId - Active stream ID, or null to clear
+ */
+export const updateActiveStreamIdTx = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  chatId: string,
+  streamId: string | null
+): Promise<void> => {
+  await tx
+    .update(chats)
+    .set({ activeStreamId: streamId, updatedAt: new Date() })
+    .where(eq(chats.id, chatId));
+};
+
+/**
  * Touches a chat (updates updatedAt timestamp)
  * Useful when adding messages to keep sort order correct
  * @param chatId - ID of the chat

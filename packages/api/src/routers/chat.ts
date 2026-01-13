@@ -1,9 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import {
-  getChat,
-  savePartialAssistantMessage,
-  updateActiveStreamId,
-} from "@yapmate/db/service";
+import { abortStreamAtomic, getChat } from "@yapmate/db/service";
 import { abortStream } from "@yapmate/server/lib/redis/controller";
 import {
   getBufferedChunks,
@@ -18,6 +14,13 @@ import { stopChatInputSchema, stopChatResponseSchema } from "../schemas/chat";
 export const chat = {
   /**
    * Stop an active stream for a chat
+   *
+   * IMPORTANT: This handler uses an atomic transaction to save partial message
+   * and clear stream state together. This prevents data corruption if any step fails:
+   * - Either partial message is saved AND stream is cleared
+   * - Or the entire operation is rolled back
+   *
+   * Redis status is updated AFTER the DB transaction commits to ensure consistency.
    */
   stop: protectedProcedure
     .input(stopChatInputSchema)
@@ -38,14 +41,16 @@ export const chat = {
       const wasAborted = abortStream(streamId);
 
       if (wasAborted) {
-        await setStreamStatus(streamId, "aborted");
-        await updateActiveStreamId(input.chatId, null);
-
-        // Save partial message to DB
+        // Get buffered chunks before they expire
         const chunks = await getBufferedChunks(streamId);
-        if (chunks.length > 0) {
-          await savePartialAssistantMessage(input.chatId, chunks);
-        }
+
+        // ATOMIC: Save partial message + clear activeStreamId in single transaction
+        // This prevents partial state where message is saved but stream ID isn't cleared
+        await abortStreamAtomic(input.chatId, chunks);
+
+        // Only update Redis status AFTER DB transaction commits successfully
+        // This ensures Redis reflects the true DB state
+        await setStreamStatus(streamId, "aborted");
       }
 
       return { stopped: wasAborted };

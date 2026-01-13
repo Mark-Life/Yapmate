@@ -7,6 +7,7 @@ import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { UIMessage } from "ai";
 import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../client";
+import { chats } from "../schema/chats";
 import { type MessageMetadata, messages } from "../schema/messages";
 import { parts } from "../schema/parts";
 import { getFileAccessUrl, getFilesByIds } from "./files";
@@ -150,6 +151,10 @@ type SaveMessageOptions = {
 /**
  * Syncs messages for a chat - deletes stale messages and saves new/updated ones
  * Used for regeneration scenarios where messages after a certain point need to be removed
+ *
+ * IMPORTANT: This operation is atomic - both delete and save happen in a single transaction.
+ * If either operation fails, the entire operation is rolled back to prevent data loss.
+ *
  * @param chatId - ID of the chat
  * @param uiMessages - Array of UIMessages to save
  * @param options - Optional metadata per message (keyed by message id)
@@ -159,10 +164,75 @@ export const syncMessages = async (
   uiMessages: UIMessage[],
   options?: Record<string, SaveMessageOptions>
 ): Promise<void> => {
-  // Delete messages with order >= messages.length (stale messages after regeneration point)
-  await deleteMessagesFromOrder(chatId, uiMessages.length);
-  // Save the messages (upsert handles new and updated)
-  await saveMessages(chatId, uiMessages, options);
+  if (uiMessages.length === 0) {
+    // Just delete all messages for this chat if no messages to save
+    await deleteMessagesFromOrder(chatId, 0);
+    return;
+  }
+
+  // Map all messages and parts upfront (outside transaction for efficiency)
+  const mapped = uiMessages.map((msg, idx) => {
+    const opts = options?.[msg.id];
+    return mapUIMessageToDb(msg, chatId, idx, {
+      model: opts?.model,
+      metadata: opts?.metadata,
+    });
+  });
+
+  const messagesToUpsert = mapped.map((m) => m.message);
+  const partsToInsert = mapped.flatMap((m) => m.parts);
+
+  // Single atomic transaction: delete stale messages AND save new ones
+  await db.transaction(async (tx) => {
+    // Step 1: Delete stale messages (order >= new message count)
+    await tx
+      .delete(messages)
+      .where(and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length)));
+
+    // Step 2: Upsert all messages
+    for (const msg of messagesToUpsert) {
+      await tx
+        .insert(messages)
+        .values(msg)
+        .onConflictDoUpdate({
+          target: messages.id,
+          set: {
+            role: msg.role,
+            model: msg.model,
+            order: msg.order,
+            metadata: msg.metadata,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    // Step 3: Handle parts
+    const messageIds = messagesToUpsert
+      .map((m) => m.id)
+      .filter(Boolean) as string[];
+
+    // Check if we have new file parts to insert
+    const hasNewFileParts = partsToInsert.some((p) => p.type === "file");
+
+    if (messageIds.length > 0) {
+      if (hasNewFileParts) {
+        // Initial save: delete all parts
+        await tx.delete(parts).where(inArray(parts.messageId, messageIds));
+      } else {
+        // Re-save: preserve file parts, delete others
+        await tx
+          .delete(parts)
+          .where(
+            and(inArray(parts.messageId, messageIds), ne(parts.type, "file"))
+          );
+      }
+    }
+
+    // Step 4: Insert new parts
+    if (partsToInsert.length > 0) {
+      await tx.insert(parts).values(partsToInsert);
+    }
+  });
 };
 
 /**
@@ -474,5 +544,174 @@ export const savePartialAssistantMessage = async (
       textContent,
       reasoningContent
     );
+  });
+};
+
+/**
+ * Atomically aborts a stream by saving partial message and clearing stream state.
+ *
+ * This function performs all DB operations in a single transaction to prevent
+ * data corruption from partial failures. If any step fails, the entire operation
+ * is rolled back.
+ *
+ * Operations performed atomically:
+ * 1. Save partial assistant message (if chunks have content)
+ * 2. Clear activeStreamId on the chat
+ * 3. Update chat's updatedAt timestamp
+ *
+ * @param chatId - ID of the chat
+ * @param chunks - Stream chunks from Redis buffer (may be empty)
+ * @returns true if partial message was saved, false otherwise
+ */
+export const abortStreamAtomic = async (
+  chatId: string,
+  chunks: StreamChunk[]
+): Promise<boolean> => {
+  const { textContent, reasoningContent } = extractContentFromChunks(chunks);
+  const hasContent = Boolean(textContent || reasoningContent);
+
+  // Single atomic transaction for all DB operations
+  await db.transaction(async (tx) => {
+    // Step 1: Save partial message if there's content
+    if (hasContent) {
+      const dbMessageId = Bun.randomUUIDv7();
+
+      // Get current message count for order
+      const existingMessages = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(eq(messages.chatId, chatId));
+      const order = Number(existingMessages[0]?.count ?? 0);
+
+      // Insert message
+      await tx.insert(messages).values({
+        id: dbMessageId,
+        chatId,
+        role: "assistant",
+        order,
+      });
+
+      // Insert parts
+      await insertPartialMessageParts(
+        tx,
+        dbMessageId,
+        textContent,
+        reasoningContent
+      );
+    }
+
+    // Step 2: Clear activeStreamId and touch chat
+    await tx
+      .update(chats)
+      .set({ activeStreamId: null, updatedAt: new Date() })
+      .where(eq(chats.id, chatId));
+  });
+
+  return hasContent;
+};
+
+// ─── Atomic Stream Completion ─────────────────────────────────────────────────
+
+/** Options for saving a message in atomic operations */
+type AtomicSaveMessageOptions = {
+  model?: string;
+  metadata?: MessageMetadata;
+};
+
+/**
+ * Atomically completes a stream by saving messages and clearing stream state.
+ *
+ * This function performs all operations in a single database transaction to prevent
+ * data corruption from partial failures. If any step fails, the entire operation
+ * is rolled back.
+ *
+ * Operations performed atomically:
+ * 1. Delete stale messages (for regeneration scenarios)
+ * 2. Upsert all messages with their parts
+ * 3. Clear activeStreamId on the chat
+ * 4. Update chat's updatedAt timestamp
+ *
+ * @param chatId - ID of the chat
+ * @param uiMessages - Array of UIMessages to save
+ * @param options - Optional metadata per message (keyed by message id)
+ */
+export const completeStreamAtomic = async (
+  chatId: string,
+  uiMessages: UIMessage[],
+  options?: Record<string, AtomicSaveMessageOptions>
+): Promise<void> => {
+  if (uiMessages.length === 0) {
+    // Just clear stream state if no messages
+    await db
+      .update(chats)
+      .set({ activeStreamId: null, updatedAt: new Date() })
+      .where(eq(chats.id, chatId));
+    return;
+  }
+
+  // Map all messages and parts upfront (outside transaction for efficiency)
+  const mapped = uiMessages.map((msg, idx) => {
+    const opts = options?.[msg.id];
+    return mapUIMessageToDb(msg, chatId, idx, {
+      model: opts?.model,
+      metadata: opts?.metadata,
+    });
+  });
+
+  const messagesToUpsert = mapped.map((m) => m.message);
+  const partsToInsert = mapped.flatMap((m) => m.parts);
+
+  // Single atomic transaction: save messages + clear stream state
+  await db.transaction(async (tx) => {
+    // Step 1: Delete stale messages (order >= new message count)
+    await tx
+      .delete(messages)
+      .where(and(eq(messages.chatId, chatId), gte(messages.order, uiMessages.length)));
+
+    // Step 2: Upsert all messages
+    for (const msg of messagesToUpsert) {
+      await tx
+        .insert(messages)
+        .values(msg)
+        .onConflictDoUpdate({
+          target: messages.id,
+          set: {
+            role: msg.role,
+            model: msg.model,
+            order: msg.order,
+            metadata: msg.metadata,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    // Step 3: Handle parts
+    const messageIds = messagesToUpsert
+      .map((m) => m.id)
+      .filter(Boolean) as string[];
+
+    const hasNewFileParts = partsToInsert.some((p) => p.type === "file");
+
+    if (messageIds.length > 0) {
+      if (hasNewFileParts) {
+        await tx.delete(parts).where(inArray(parts.messageId, messageIds));
+      } else {
+        await tx
+          .delete(parts)
+          .where(
+            and(inArray(parts.messageId, messageIds), ne(parts.type, "file"))
+          );
+      }
+    }
+
+    if (partsToInsert.length > 0) {
+      await tx.insert(parts).values(partsToInsert);
+    }
+
+    // Step 4: Clear activeStreamId and touch chat (atomic with message save)
+    await tx
+      .update(chats)
+      .set({ activeStreamId: null, updatedAt: new Date() })
+      .where(eq(chats.id, chatId));
   });
 };

@@ -214,6 +214,8 @@ export const Chat = ({
   const editMessageIdRef = useRef<string | undefined>(undefined);
   const editedTextRef = useRef<string | undefined>(undefined);
   const isResumingStreamRef = useRef(false);
+  // Store previous messages for error rollback (optimistic update recovery)
+  const previousMessagesRef = useRef<ChatUIMessage[] | null>(null);
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
   memoryEnabledRef.current = memoryEnabled;
@@ -324,6 +326,8 @@ export const Chat = ({
       }
     },
     onFinish: ({ messages: finishedMessages }) => {
+      // Clear previous messages - operation succeeded, no rollback needed
+      previousMessagesRef.current = null;
       // Manually update messages state to ensure UI reflects completed stream
       setMessages(finishedMessages);
       // Track message completion
@@ -348,6 +352,15 @@ export const Chat = ({
       });
     },
     onError: (error) => {
+      // Rollback optimistic updates if we have stored previous messages
+      // This restores the UI to match the actual DB state after a failed operation
+      if (previousMessagesRef.current) {
+        setMessages(previousMessagesRef.current);
+        previousMessagesRef.current = null;
+        // Refresh from DB to ensure consistency
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+      }
+
       // Handle 402 Payment Required (rate limit exceeded)
       if (
         error &&
@@ -540,6 +553,9 @@ export const Chat = ({
       role?: "user" | "assistant",
       selectedModel?: string
     ) => {
+      // Store current messages for rollback on error (optimistic update recovery)
+      previousMessagesRef.current = [...messages];
+
       capture("message_regenerated", {
         chat_id: chatId,
         message_id: messageId,
@@ -577,6 +593,9 @@ export const Chat = ({
    */
   const handleEdit = useCallback(
     (messageId: string, editedText: string) => {
+      // Store current messages for rollback on error (optimistic update recovery)
+      previousMessagesRef.current = [...messages];
+
       capture("message_edited", {
         chat_id: chatId,
         message_id: messageId,

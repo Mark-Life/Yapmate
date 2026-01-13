@@ -5,8 +5,9 @@
 
 import type { MCPClient } from "@ai-sdk/mcp";
 import {
+  abortStreamAtomic,
+  completeStreamAtomic,
   getChat,
-  savePartialAssistantMessage,
   updateActiveStreamId,
 } from "@yapmate/db/service";
 import type { UIMessage } from "ai";
@@ -23,7 +24,6 @@ import {
   executeAiResponse,
   type ReasoningEffort,
 } from "./ai-response";
-import { saveChatMessages } from "./store";
 import { generateAndPublishTitle } from "./title";
 
 /**
@@ -66,6 +66,12 @@ export const processStreamChunks = async (
 /**
  * Handles stream errors
  * Saves partial message for non-abort errors, cleans up stream state
+ *
+ * IMPORTANT: For non-abort errors, this function uses an atomic transaction
+ * to save partial message and clear stream state together. This prevents
+ * data corruption if any step fails.
+ *
+ * Redis status is updated AFTER the DB transaction commits to ensure consistency.
  */
 export const handleStreamError = async (
   streamId: string,
@@ -82,17 +88,22 @@ export const handleStreamError = async (
     // Other error - save partial content before marking error
     try {
       const chunks = await getBufferedChunks(streamId);
-      if (chunks.length > 0) {
-        await savePartialAssistantMessage(chatId, chunks);
-      }
+      // ATOMIC: Save partial message + clear activeStreamId in single transaction
+      await abortStreamAtomic(chatId, chunks);
     } catch (saveError) {
       console.error(
         `[Stream ${streamId}] Error saving partial message:`,
         saveError
       );
+      // Even if save fails, try to clear stream state
+      try {
+        await updateActiveStreamId(chatId, null);
+      } catch {
+        // Ignore - best effort cleanup
+      }
     }
+    // Only update Redis status AFTER DB operations
     await setStreamStatus(streamId, "error");
-    await updateActiveStreamId(chatId, null);
     unregisterStream(streamId);
     throw err;
   }
@@ -269,6 +280,13 @@ type HandleStreamFinishOptions = {
 
 /**
  * Handles onFinish callback for stream
+ *
+ * IMPORTANT: This function uses an atomic transaction to save messages and clear
+ * stream state together. This prevents data corruption if any step fails:
+ * - Either all messages are saved AND stream is cleared
+ * - Or the entire operation is rolled back
+ *
+ * Redis status is updated AFTER the DB transaction commits to ensure consistency.
  */
 export const handleStreamFinish = async (
   options: HandleStreamFinishOptions
@@ -298,8 +316,12 @@ export const handleStreamFinish = async (
       }
     }
 
-    await saveChatMessages(chatId, finalMessages, messageOptions);
-    await updateActiveStreamId(chatId, null);
+    // ATOMIC: Save messages + clear activeStreamId in single transaction
+    // This prevents partial state where messages are saved but stream ID isn't cleared
+    await completeStreamAtomic(chatId, finalMessages, messageOptions);
+
+    // Only update Redis status AFTER DB transaction commits successfully
+    // This ensures Redis reflects the true DB state
     await setStreamStatus(streamId, "complete");
     unregisterStream(streamId);
 
