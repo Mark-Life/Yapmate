@@ -10,7 +10,12 @@
     "generate:custom": "bun --env-file ../../.env.local drizzle-kit generate --custom",
     "migrate": "bun --env-file ../../.env.local drizzle-kit migrate",
     "studio": "bun --env-file ../../.env.local drizzle-kit studio",
-    "pull": "bun --env-file ../../.env.local drizzle-kit pull"
+    "pull": "bun --env-file ../../.env.local drizzle-kit pull",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:sync": "bash src/scripts/sync_supabase_remote_to_local.sh",
+    "supabase:setup": "bun run supabase:start && sleep 3 && bun run supabase:sync"
   },
   "dependencies": {
     "@yapmate/server": "workspace:*",
