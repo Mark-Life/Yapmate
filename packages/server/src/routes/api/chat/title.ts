@@ -6,7 +6,7 @@ import { streamText } from "ai";
 import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
 import { publishStreamChunk } from "../../../lib/redis/stream";
-import { publishUserEvent } from "../../../lib/websocket";
+import { publishChatEvent, publishUserEvent } from "../../../lib/websocket";
 import { updateChatTitle } from "./store";
 
 const TITLE_GENERATION_MODEL = "mistralai/mistral-7b-instruct-v0.3";
@@ -126,23 +126,41 @@ export const generateAndPublishTitle = async (
     await updateChatTitle(chatId, title);
 
     // Publish WebSocket event to notify all clients about title update
+    // 1. User channel (for backward compatibility)
     await publishUserEvent(userId, {
       type: "chat_updated",
       chatId,
     });
 
+    // 2. Chat channel (for multi-user sync)
+    await publishChatEvent(chatId, {
+      type: "chat_updated",
+      chatId,
+    });
+
+    const currentIndex = chunkIndex.current;
     const titleChunk = {
       type: "data-chat-title" as const,
       data: { title },
       transient: true,
     };
     writer.write(titleChunk);
+
     // Publish title to Redis for resume purposes
     await publishStreamChunk(streamId, {
       type: titleChunk.type,
       data: titleChunk.data,
-      index: chunkIndex.current,
+      index: currentIndex,
     });
+
+    // Broadcast title chunk to chat channel for multi-user sync
+    await publishChatEvent(chatId, {
+      type: "stream_chunk",
+      chatId,
+      chunk: titleChunk,
+      chunkIndex: currentIndex,
+    });
+
     chunkIndex.current += 1;
   } catch (error) {
     console.error("Title generation failed:", error);

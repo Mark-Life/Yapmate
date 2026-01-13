@@ -3,17 +3,48 @@
  */
 
 export type WsEventType =
+  // Existing events
   | "chat_created"
   | "chat_updated"
   | "message_created"
-  | "stream_started";
+  | "stream_started"
+  // Multi-user events
+  | "member_joined"
+  | "member_left"
+  | "member_typing"
+  | "member_stopped_typing"
+  | "presence_update"
+  | "stream_chunk";
 
 export type WsEvent = {
   type: WsEventType;
   chatId?: string;
+  userId?: string;
+  displayName?: string;
   hasActiveStream?: boolean;
+  // For stream chunks
+  chunk?: unknown;
+  chunkIndex?: number;
+  // For presence
+  onlineMembers?: Array<{ userId: string; displayName: string }>;
 };
 
 export type WsClientData = {
   userId: string;
+};
+
+/**
+ * Incoming WebSocket message types from clients
+ */
+export type WsIncomingMessageType =
+  | "join_chat"
+  | "leave_chat"
+  | "heartbeat"
+  | "typing"
+  | "stop_typing";
+
+export type WsIncomingMessage = {
+  type: WsIncomingMessageType;
+  chatId: string;
+  displayName?: string;
 };

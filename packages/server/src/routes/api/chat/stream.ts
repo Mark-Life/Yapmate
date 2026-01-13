@@ -18,7 +18,7 @@ import {
   publishStreamChunk,
   setStreamStatus,
 } from "../../../lib/redis/stream";
-import { publishUserEvent } from "../../../lib/websocket";
+import { publishChatEvent, publishUserEvent } from "../../../lib/websocket";
 import {
   type AiResponseUsage,
   executeAiResponse,
@@ -27,25 +27,46 @@ import {
 import { generateAndPublishTitle } from "./title";
 
 /**
- * Processes stream chunks: publishes to Redis and writes to client
+ * Options for processing stream chunks
  */
-export const processStreamChunks = async (
-  uiStream: Awaited<ReturnType<typeof executeAiResponse>>["uiStream"],
+type ProcessStreamChunksOptions = {
+  uiStream: Awaited<ReturnType<typeof executeAiResponse>>["uiStream"];
   writer: Parameters<
     Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
-  >[0]["writer"],
-  streamId: string,
-  chunkIndex: { current: number }
+  >[0]["writer"];
+  streamId: string;
+  chatId: string;
+  chunkIndex: { current: number };
+};
+
+/**
+ * Processes stream chunks: publishes to Redis, broadcasts to chat channel, and writes to client
+ */
+export const processStreamChunks = async (
+  options: ProcessStreamChunksOptions
 ): Promise<void> => {
+  const { uiStream, writer, streamId, chatId, chunkIndex } = options;
   let writerActive = true;
 
   for await (const chunk of uiStream) {
+    const currentIndex = chunkIndex.current;
+
     // Always publish to Redis (for other clients/resume)
     await publishStreamChunk(streamId, {
       type: (chunk as { type?: string }).type ?? "unknown",
       data: chunk,
-      index: chunkIndex.current,
+      index: currentIndex,
     });
+
+    // Broadcast to chat channel for multi-user sync
+    // Other users watching this chat will receive the chunk via WebSocket
+    await publishChatEvent(chatId, {
+      type: "stream_chunk",
+      chatId,
+      chunk,
+      chunkIndex: currentIndex,
+    });
+
     chunkIndex.current += 1;
 
     // Write to current client (may fail if client disconnected)
@@ -186,6 +207,7 @@ export const executeAiResponseWithOrchestration = async (
 
     // Send MCP errors as custom chunks if any
     if (mcpErrors.length > 0) {
+      const currentIndex = chunkIndex.current;
       const errorChunk = {
         type: "data-mcp-error" as const,
         data: {
@@ -195,8 +217,17 @@ export const executeAiResponseWithOrchestration = async (
       await publishStreamChunk(streamId, {
         type: errorChunk.type,
         data: errorChunk.data,
-        index: chunkIndex.current,
+        index: currentIndex,
       });
+
+      // Broadcast to chat channel for multi-user sync
+      await publishChatEvent(chatId, {
+        type: "stream_chunk",
+        chatId,
+        chunk: errorChunk,
+        chunkIndex: currentIndex,
+      });
+
       chunkIndex.current += 1;
       try {
         writer.write(errorChunk);
@@ -241,11 +272,17 @@ export const executeAiResponseWithOrchestration = async (
       mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
     });
 
-    // Process chunks: publish to Redis and write to client
+    // Process chunks: publish to Redis, broadcast to chat, and write to client
     // This MUST complete for onFinish to fire
     // We iterate over the stream ourselves, which ensures it completes
     // even if the client disconnects (writer.write will fail silently)
-    await processStreamChunks(uiStream, writer, streamId, chunkIndex);
+    await processStreamChunks({
+      uiStream,
+      writer,
+      streamId,
+      chatId,
+      chunkIndex,
+    });
 
     // Get usage after stream is consumed (usage promise resolves when stream finishes)
     const usage = await getUsage();
@@ -326,7 +363,7 @@ export const handleStreamFinish = async (
     unregisterStream(streamId);
 
     // Publish message_created event for real-time sync
-    // Get userId from chat if not provided
+    // 1. Publish to user channel (for backward compatibility / single-user)
     const finalUserId = userId ?? (await getChat(chatId))?.userId;
     if (finalUserId) {
       await publishUserEvent(finalUserId, {
@@ -334,6 +371,13 @@ export const handleStreamFinish = async (
         chatId,
       });
     }
+
+    // 2. Publish to chat channel (for multi-user sync)
+    // Other users watching this chat will be notified to refresh messages
+    await publishChatEvent(chatId, {
+      type: "message_created",
+      chatId,
+    });
   } catch (error) {
     console.error(`[Stream ${streamId}] Error in onFinish:`, error);
     await setStreamStatus(streamId, "error");

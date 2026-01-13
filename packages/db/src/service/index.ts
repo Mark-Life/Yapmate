@@ -3,6 +3,7 @@
  * @fileoverview Barrel file for service layer exports
  */
 
+export * from "./chat-members";
 export * from "./chats";
 export * from "./feedback";
 export * from "./file-upload";

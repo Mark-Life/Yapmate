@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "./contexts/user-context";
 import { ChatLayout } from "./pages/chat-layout";
 import { CheckoutSuccessPage } from "./pages/checkout-success";
+import { JoinChatPage } from "./pages/join-chat";
 import { LoginPage } from "./pages/login";
 import { MobileAuthPage } from "./pages/mobile-auth";
 import { NotFoundPage } from "./pages/not-found";
@@ -52,7 +53,8 @@ export const Router = () => {
         pathname === "/" ||
         pathname.startsWith("/chat") ||
         pathname.startsWith("/checkout") ||
-        pathname.startsWith("/settings");
+        pathname.startsWith("/settings") ||
+        pathname.startsWith("/invite");
       if (isProtectedRoute) {
         // Preserve current URL params as redirect parameter
         const currentSearch = window.location.search;
@@ -98,6 +100,15 @@ export const Router = () => {
       return <AuthLoading />;
     }
     return <SettingsLayout />;
+  }
+
+  // Invite page - requires authentication
+  if (pathname.startsWith("/invite/")) {
+    if (!user) {
+      return <AuthLoading />;
+    }
+    const code = pathname.replace("/invite/", "");
+    return <JoinChatPage code={code} />;
   }
 
   // Protected routes - only render if authenticated
