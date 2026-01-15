@@ -157,13 +157,13 @@ const MemberRow = ({
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">
               {member.displayName}
-              {isCurrentUser && (
+              {isCurrentUser ? (
                 <span className="ml-1 text-muted-foreground text-xs">
                   (you)
                 </span>
-              )}
+              ) : null}
             </span>
-            {isCurrentUser && (
+            {isCurrentUser ? (
               <Button
                 className="size-6"
                 onClick={() => setIsEditing(true)}
@@ -173,7 +173,7 @@ const MemberRow = ({
               >
                 <Pencil className="size-3" />
               </Button>
-            )}
+            ) : null}
           </div>
         )}
         <span className="text-muted-foreground text-xs">

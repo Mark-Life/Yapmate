@@ -8,8 +8,8 @@ import {
   Keyboard,
   type LucideIcon,
   Mic,
-  Paperclip,
   Plug,
+  Users,
 } from "lucide-react";
 import { useCallback } from "react";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
@@ -43,22 +43,21 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
       "Switch between models from top providers. Pick the best for each task.",
   },
   {
+    icon: Mic,
+    title: "Voice Input",
+    description: "Speak your prompts naturally with built-in voice support.",
+  },
+  {
     icon: Globe,
     title: "Web Search",
     description:
       "Get up-to-date answers with real-time web search integration.",
   },
   {
-    icon: Mic,
-    title: "Voice Input",
-    description: "Speak your prompts naturally with built-in voice support.",
-  },
-
-  {
-    icon: DatabaseIcon,
-    title: "User Memory",
+    icon: Users,
+    title: "Multi-User Chats",
     description:
-      "Persistent memory across conversations to remember your preferences and context.",
+      "Collaborate with others in the same chat. Multiple people can chat with AI together on shared projects.",
   },
   {
     icon: Plug,
@@ -67,21 +66,22 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
       "Connect external tools and services via HTTP Model Context Protocol.",
   },
   {
-    icon: Paperclip,
-    title: "Share Files",
-    description: "Upload images and documents directly in your conversations.",
-  },
-  {
-    icon: FileText,
-    title: "User Rules",
+    icon: DatabaseIcon,
+    title: "User Memory",
     description:
-      "Set up custom rules that are automatically appended or prepended to your messages.",
+      "Persistent memory across conversations to remember your preferences and context.",
   },
   {
     icon: Keyboard,
     title: "Hotkeys",
     description:
       "Navigate and control the app efficiently with customizable keyboard shortcuts.",
+  },
+  {
+    icon: FileText,
+    title: "User Rules",
+    description:
+      "Set up custom rules that are automatically appended or prepended to your messages.",
   },
   {
     icon: Cloud,
