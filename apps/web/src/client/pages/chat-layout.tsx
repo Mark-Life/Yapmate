@@ -17,6 +17,7 @@ import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { InviteModal } from "../components/chat/invite-modal";
 import { MemberList } from "../components/chat/member-list";
+import { MembersModal } from "../components/chat/members-modal";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HotkeysCheatsheet } from "../components/hotkeys-cheatsheet";
@@ -136,11 +137,25 @@ const HeaderControls = () => {
   const { navigateToNew, currentChatId } = useChatContext();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const supabase = createClient();
 
   const { members, typingMembers, isMultiUser } = useMultiUserChat({
     chatId: currentChatId,
     enabled: Boolean(currentChatId),
   });
+
+  // Get current user ID
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUserId(session?.user?.id ?? null);
+    };
+    fetchUserId();
+  }, [supabase.auth]);
 
   return (
     <>
@@ -165,11 +180,18 @@ const HeaderControls = () => {
       {currentChatId ? (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-2 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
           {isMultiUser ? (
-            <MemberList
-              compact
-              members={members}
-              typingMembers={typingMembers}
-            />
+            <button
+              className="cursor-pointer rounded-md p-1 transition-colors hover:bg-muted/50"
+              onClick={() => setMembersOpen(true)}
+              title="View members"
+              type="button"
+            >
+              <MemberList
+                compact
+                members={members}
+                typingMembers={typingMembers}
+              />
+            </button>
           ) : null}
           <Button
             className="size-7"
@@ -185,11 +207,20 @@ const HeaderControls = () => {
 
       <FeedbackDialog onOpenChange={setFeedbackOpen} open={feedbackOpen} />
       {currentChatId ? (
-        <InviteModal
-          chatId={currentChatId}
-          onOpenChange={setInviteOpen}
-          open={inviteOpen}
-        />
+        <>
+          <InviteModal
+            chatId={currentChatId}
+            onOpenChange={setInviteOpen}
+            open={inviteOpen}
+          />
+          <MembersModal
+            chatId={currentChatId}
+            currentUserId={userId}
+            members={members}
+            onOpenChange={setMembersOpen}
+            open={membersOpen}
+          />
+        </>
       ) : null}
     </>
   );

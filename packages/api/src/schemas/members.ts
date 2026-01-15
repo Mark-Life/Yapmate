@@ -28,6 +28,12 @@ export const leaveChatInputSchema = z.object({
   chatId: z.string().uuid(),
 });
 
+/** Update display name in a chat */
+export const updateDisplayNameInputSchema = z.object({
+  chatId: z.string().uuid(),
+  displayName: z.string().min(1).max(50),
+});
+
 // ─── Output Schemas ──────────────────────────────────────────────────────────
 
 /** Single member info */
@@ -56,6 +62,9 @@ export type JoinChatInput = z.infer<typeof joinChatInputSchema>;
 export type ListMembersInput = z.infer<typeof listMembersInputSchema>;
 export type RemoveMemberInput = z.infer<typeof removeMemberInputSchema>;
 export type LeaveChatInput = z.infer<typeof leaveChatInputSchema>;
+export type UpdateDisplayNameInput = z.infer<
+  typeof updateDisplayNameInputSchema
+>;
 export type Member = z.infer<typeof memberSchema>;
 export type JoinChatOutput = z.infer<typeof joinChatOutputSchema>;
 export type ListMembersOutput = z.infer<typeof listMembersOutputSchema>;

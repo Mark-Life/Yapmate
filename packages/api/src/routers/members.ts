@@ -10,6 +10,7 @@ import {
   getChatMembership,
   getUserById,
   removeChatMember,
+  updateMemberDisplayName,
 } from "@yapmate/db/service";
 import { validateInviteByCode } from "@yapmate/server/lib/redis/invite";
 import {
@@ -24,6 +25,7 @@ import {
   listMembersInputSchema,
   listMembersOutputSchema,
   removeMemberInputSchema,
+  updateDisplayNameInputSchema,
 } from "../schemas/members";
 
 export const members = {
@@ -243,5 +245,37 @@ export const members = {
       });
 
       return { success: true };
+    }),
+
+  /**
+   * Update own display name in a chat
+   */
+  updateDisplayName: protectedProcedure
+    .input(updateDisplayNameInputSchema)
+    .handler(async ({ input, context }) => {
+      // Verify user is a member of this chat
+      const membership = await getChatMembership(input.chatId, context.userId);
+      if (!membership) {
+        throw new ORPCError("FORBIDDEN", {
+          message: "Not a member of this chat",
+        });
+      }
+
+      // Update the display name
+      await updateMemberDisplayName(
+        input.chatId,
+        context.userId,
+        input.displayName
+      );
+
+      // Publish member_updated event to notify other users
+      await publishChatEvent(input.chatId, {
+        type: "member_updated",
+        chatId: input.chatId,
+        userId: context.userId,
+        displayName: input.displayName,
+      });
+
+      return { success: true, displayName: input.displayName };
     }),
 };

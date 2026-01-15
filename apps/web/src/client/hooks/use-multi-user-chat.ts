@@ -122,6 +122,7 @@ export const useMultiUserChat = ({
       switch (data.type) {
         case "member_joined":
         case "member_left":
+        case "member_updated":
         case "presence_update":
           queryClient.invalidateQueries({ queryKey: ["chat-members", chatId] });
           break;
@@ -267,5 +268,30 @@ export const useJoinChat = () => {
     joinChat: joinMutation.mutateAsync,
     isJoining: joinMutation.isPending,
     joinError: joinMutation.error,
+  };
+};
+
+/**
+ * Hook for updating display name in a chat
+ */
+export const useUpdateDisplayName = (chatId: string | null) => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (displayName: string) => {
+      if (!chatId) {
+        return Promise.reject(new Error("No chat ID"));
+      }
+      return rpcClient.members.updateDisplayName({ chatId, displayName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-members", chatId] });
+    },
+  });
+
+  return {
+    updateDisplayName: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
+    updateError: mutation.error,
   };
 };
