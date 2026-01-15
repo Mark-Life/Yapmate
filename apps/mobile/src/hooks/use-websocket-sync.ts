@@ -5,6 +5,7 @@
 
 import type { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 
 type WsEvent = {
   type: "chat_created" | "chat_updated" | "message_created" | "stream_started";
@@ -17,7 +18,6 @@ type UseWebSocketSyncOptions = {
   getToken: () => Promise<string | null>;
   queryClient: ReturnType<typeof useQueryClient>;
   currentChatId?: string;
-  onStreamStarted?: (chatId: string) => void;
   enabled?: boolean;
 };
 
@@ -31,7 +31,6 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
     getToken,
     queryClient,
     currentChatId,
-    onStreamStarted,
     enabled = true,
   } = options;
 
@@ -85,9 +84,13 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
         break;
 
       case "stream_started":
-        // Trigger stream resume if viewing this chat
-        if (data.chatId && data.chatId === currentChatId && onStreamStarted) {
-          onStreamStarted(data.chatId);
+        // Dispatch stream started event for any chat
+        // The consumer (Chat component) will filter by chatId
+        // This avoids stale closure issues with currentChatId
+        if (data.chatId) {
+          eventTarget.dispatchEvent(
+            createCustomEvent("stream-started", { chatId: data.chatId })
+          );
         }
         break;
 
@@ -225,7 +228,7 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
   };
 
   // Connect on mount and when enabled changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: connect/disconnect functions are stable refs, getToken/queryClient/currentChatId/onStreamStarted are intentionally excluded to avoid unnecessary reconnections
+  // biome-ignore lint/correctness/useExhaustiveDependencies: connect/disconnect functions are stable refs, getToken/queryClient/currentChatId are intentionally excluded to avoid unnecessary reconnections
   useEffect(() => {
     if (enabled) {
       connect();

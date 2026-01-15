@@ -45,7 +45,6 @@ type UseWebSocketSyncOptions = {
   currentChatId?: string;
   /** Display name for presence and typing indicators */
   displayName?: string;
-  onStreamStarted?: (chatId: string) => void;
   enabled?: boolean;
 };
 
@@ -81,7 +80,6 @@ export const useWebSocketSync = (
     queryClient,
     currentChatId,
     displayName,
-    onStreamStarted,
     enabled = true,
   } = options;
 
@@ -145,9 +143,13 @@ export const useWebSocketSync = (
         break;
 
       case "stream_started":
-        // Trigger stream resume if viewing this chat
-        if (data.chatId && data.chatId === currentChatId && onStreamStarted) {
-          onStreamStarted(data.chatId);
+        // Dispatch stream started event for any chat
+        // The consumer (Chat component) will filter by chatId
+        // This avoids stale closure issues with currentChatId
+        if (data.chatId) {
+          window.dispatchEvent(
+            new CustomEvent("stream-started", { detail: data })
+          );
         }
         break;
 

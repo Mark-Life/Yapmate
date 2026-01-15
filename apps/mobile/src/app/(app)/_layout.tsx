@@ -8,7 +8,6 @@ import { DrawerProvider } from "@/contexts/drawer-context";
 import { UserProvider } from "@/contexts/user-context";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
 import { generateWebSocketUrl } from "@/lib/api-url";
-import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -17,14 +16,6 @@ import { supabase } from "@/lib/supabase";
 const AppLayoutInner = () => {
   const queryClient = useQueryClient();
   const { currentChatId } = useChatContext();
-
-  /**
-   * Handles stream started event - dispatches custom event for Chat component
-   */
-  const handleStreamStarted = (chatId: string) => {
-    // Dispatch custom event that Chat component can listen to
-    eventTarget.dispatchEvent(createCustomEvent("stream-started", { chatId }));
-  };
 
   // WebSocket real-time sync
   useWebSocketSync({
@@ -37,7 +28,6 @@ const AppLayoutInner = () => {
     },
     queryClient,
     currentChatId: currentChatId ?? undefined,
-    onStreamStarted: handleStreamStarted,
   });
 
   return (
