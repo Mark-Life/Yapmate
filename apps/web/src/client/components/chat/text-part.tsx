@@ -200,10 +200,14 @@ const MessageActionsContent = ({
 };
 
 type TextPartProps = {
+  /** Avatar element to render next to the message bubble */
+  avatar?: React.ReactNode;
   disabled?: boolean;
   feedback: FeedbackState;
   isCopied: boolean;
   isEditing: boolean;
+  /** True when this message is from another user in multi-user chat */
+  isOtherUser?: boolean;
   message: ChatUIMessage;
   onCancelEdit: () => void;
   onCopy: (text: string, partId: string) => void;
@@ -217,6 +221,8 @@ type TextPartProps = {
   onStartEdit: (messageId: string) => void;
   part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
   partId: string;
+  /** Sender name for multi-user chat display */
+  senderName?: string;
   status: ChatStatus;
   groupedModels: Array<{
     provider: string;
@@ -228,10 +234,12 @@ type TextPartProps = {
  * Renders a text message part with actions
  */
 export const TextPart = ({
+  avatar,
   disabled = false,
   feedback,
   isCopied,
   isEditing,
+  isOtherUser = false,
   message,
   onCancelEdit,
   onCopy,
@@ -241,6 +249,7 @@ export const TextPart = ({
   onStartEdit,
   part,
   partId,
+  senderName,
   status,
   groupedModels,
 }: TextPartProps) => {
@@ -298,28 +307,57 @@ export const TextPart = ({
   const canEdit = isUser && onEdit && !disabled;
   const hasChanges = editedText.trim() !== part.text.trim();
 
+  // For other users in multi-user chat, override the default user styling
+  const messageClassName = isOtherUser ? "is-other-user" : undefined;
+  const alignRight = isUser && !isOtherUser;
+
   return (
-    <Message from={message.role}>
-      <MessageContent>
-        {isEditing ? (
-          <Textarea
-            className={cn(
-              "field-sizing-content min-h-5 w-full resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:ring-0",
-              isUser ? "text-primary-foreground" : "text-foreground"
-            )}
-            onChange={(e) => setEditedText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            ref={textareaRef}
-            value={editedText}
-          />
-        ) : (
-          <MessageResponse>{part.text}</MessageResponse>
+    <Message
+      className={messageClassName}
+      from={isOtherUser ? "assistant" : message.role}
+    >
+      {/* Row container for avatar + bubble alignment */}
+      <div
+        className={cn(
+          "flex items-end gap-2",
+          alignRight ? "flex-row-reverse" : "flex-row"
         )}
-      </MessageContent>
-      {(message.role === "user" || message.role === "assistant") && (
-        <MessageActions
-          className={message.role === "user" ? "ml-auto" : undefined}
+      >
+        {/* Avatar aligned to bottom of bubble */}
+        {avatar ? <div className="shrink-0">{avatar}</div> : null}
+
+        <MessageContent
+          className={cn(
+            isOtherUser && "rounded-sm bg-muted px-3 py-1 text-foreground"
+          )}
         >
+          {/* Sender name inside bubble for other users in multi-user chats */}
+          {senderName && isOtherUser ? (
+            <span className="font-medium text-primary text-xs">
+              {senderName}
+            </span>
+          ) : null}
+          {isEditing ? (
+            <Textarea
+              className={cn(
+                "field-sizing-content min-h-5 w-full resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:ring-0",
+                isUser && !isOtherUser
+                  ? "text-primary-foreground"
+                  : "text-foreground"
+              )}
+              onChange={(e) => setEditedText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              ref={textareaRef}
+              value={editedText}
+            />
+          ) : (
+            <MessageResponse>{part.text}</MessageResponse>
+          )}
+        </MessageContent>
+      </div>
+
+      {(message.role === "user" || message.role === "assistant") && (
+        <MessageActions className={alignRight ? "ml-auto" : undefined}>
           <MessageActionsContent
             canEdit={Boolean(canEdit && hasChanges)}
             feedback={feedback}

@@ -8,6 +8,7 @@ import { rpcClient } from "../lib/rpc-client";
 import { createClient } from "../lib/supabase/client";
 
 type User = {
+  id: string;
   email: string | undefined;
   hideEmailInUi: boolean;
 };
@@ -77,11 +78,13 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     }
     if (settings) {
       return {
+        id: authUser.id,
         email: authUser.email,
         hideEmailInUi: settings.hideEmailInUi,
       };
     }
     return {
+      id: authUser.id,
       email: authUser.email,
       hideEmailInUi: false, // Default until settings load
     };

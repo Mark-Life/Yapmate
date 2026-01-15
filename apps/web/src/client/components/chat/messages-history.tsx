@@ -8,7 +8,6 @@ import {
   Message,
   MessageAttachment,
 } from "@yapmate/components/ai-elements/message";
-import { Avatar, AvatarFallback } from "@yapmate/components/ui/avatar";
 import {
   Reasoning,
   ReasoningContent,
@@ -21,9 +20,16 @@ import {
   ToolInput,
   ToolOutput,
 } from "@yapmate/components/ai-elements/tool";
+import { cn } from "@yapmate/components/lib/utils";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@yapmate/components/ui/avatar";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import type { ChatStatus, ToolUIPart } from "ai";
 import { useEffect, useMemo, useState } from "react";
+import { useUser } from "../../contexts/user-context";
 import { useModels } from "../../hooks/use-models";
 import { sendFeedback } from "../../lib/langfuse";
 import type { FeedbackState } from "./feedback-buttons";
@@ -249,6 +255,8 @@ export const MessagesHistory = ({
     Record<string, FeedbackState>
   >({});
   const { models } = useModels();
+  const { user } = useUser();
+  const currentUserId = user?.id;
 
   const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
 
@@ -300,7 +308,7 @@ export const MessagesHistory = ({
   return (
     <Conversation className="h-full">
       <ConversationContent>
-        <div className="mx-auto w-full max-w-4xl px-4 pt-12 pb-34">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-12 pb-34">
           {messages.map((message, messageIndex) => {
             // Get sender info for multi-user chat avatars
             const userId =
@@ -308,26 +316,56 @@ export const MessagesHistory = ({
                 ? (message.metadata as { userId?: string })?.userId
                 : undefined;
             const senderName = userId ? memberNames?.get(userId) : undefined;
-            const showAvatar =
-              memberNames !== undefined &&
+            const isMultiUser = memberNames !== undefined;
+            const isCurrentUser = userId === currentUserId;
+            const isOtherUser =
+              message.role === "user" && !isCurrentUser && isMultiUser;
+            const showUserAvatar =
+              isMultiUser &&
               message.role === "user" &&
               senderName !== undefined;
+            const isAssistant = message.role === "assistant";
+
+            // Build avatar element for text parts
+            const userAvatar = showUserAvatar ? (
+              <Avatar className="size-6">
+                <AvatarFallback
+                  className={cn(
+                    "text-[10px]",
+                    isCurrentUser
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {getInitials(senderName)}
+                </AvatarFallback>
+              </Avatar>
+            ) : null;
+
+            // Extract provider from model string (e.g., "openai/gpt-4" → "openai")
+            const modelProvider = isAssistant
+              ? (message.metadata as { model?: string })?.model?.split("/")[0]
+              : undefined;
+
+            const assistantAvatar = isAssistant ? (
+              <Avatar className="size-6 bg-muted">
+                {modelProvider ? (
+                  <AvatarImage
+                    alt={modelProvider}
+                    className="dark:invert"
+                    src={`https://models.dev/logos/${modelProvider}.svg`}
+                  />
+                ) : null}
+                <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                  AI
+                </AvatarFallback>
+              </Avatar>
+            ) : null;
+
+            const avatar = userAvatar ?? assistantAvatar;
 
             return (
-              <div className="flex flex-col gap-2" key={message.id}>
-                {/* Show avatar with sender name for user messages in multi-user chats */}
-                {showAvatar ? (
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">
-                      {senderName}
-                    </span>
-                    <Avatar className="size-6">
-                      <AvatarFallback className="text-[10px]">
-                        {getInitials(senderName)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                ) : null}
+              <div className="flex w-full flex-col gap-2" key={message.id}>
                 {message.parts.map((part, i) => {
                   const partId = `${message.id}-${i}`;
                   const isCopied = copiedPartId === partId;
@@ -338,11 +376,13 @@ export const MessagesHistory = ({
                     case "text":
                       return (
                         <TextPart
+                          avatar={avatar}
                           disabled={disabled}
                           feedback={feedbackByMessage[message.id] ?? null}
                           groupedModels={groupedModels}
                           isCopied={isCopied}
                           isEditing={editingMessageId === message.id}
+                          isOtherUser={isOtherUser}
                           key={partId}
                           message={message}
                           onCancelEdit={() => setEditingMessageId(null)}
@@ -353,6 +393,7 @@ export const MessagesHistory = ({
                           onStartEdit={setEditingMessageId}
                           part={part}
                           partId={partId}
+                          senderName={senderName}
                           status={status}
                         />
                       );
