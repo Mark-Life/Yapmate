@@ -231,6 +231,9 @@ export const useWebSocketSync = (
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WsEvent | { type: "pong" };
+          if (data.type !== "pong") {
+            console.log("[WS Client] Received message:", data.type, data);
+          }
           handleMessage(data);
         } catch (error) {
           console.error("[WS] Error parsing message:", error);

@@ -114,8 +114,14 @@ export const useMultiUserChat = ({
       }>
     ) => {
       const data = event.detail;
+      console.log(
+        `[useMultiUserChat] Received event: ${data.type}, eventChatId: ${data.chatId}, hookChatId: ${chatId}`
+      );
 
       if (data.chatId !== chatId) {
+        console.log(
+          `[useMultiUserChat] Ignoring - chatId mismatch: ${data.chatId} !== ${chatId}`
+        );
         return;
       }
 
@@ -128,6 +134,9 @@ export const useMultiUserChat = ({
           break;
 
         case "member_typing":
+          console.log(
+            `[useMultiUserChat] Handling typing: userId=${data.userId}, displayName=${data.displayName}`
+          );
           if (data.userId && data.displayName) {
             handleTypingStart(data.userId, data.displayName);
           }

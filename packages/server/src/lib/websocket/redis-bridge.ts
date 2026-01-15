@@ -14,6 +14,7 @@ import type { WsEvent } from "./types";
 
 let subscriber: Awaited<ReturnType<typeof createSubscriber>> | null = null;
 const subscribedChannels = new Set<string>();
+const pendingSubscriptions = new Set<string>(); // Prevent race conditions
 
 /**
  * Initializes Redis subscriber
@@ -137,8 +138,14 @@ export const ensureChatChannelSubscribed = async (
   }
 
   const channel = `chat:${chatId}`;
+
+  // Already subscribed
   if (subscribedChannels.has(channel)) {
-    console.log(`[Redis Bridge] Already subscribed to ${channel}`);
+    return;
+  }
+
+  // Subscription in progress (prevent race condition)
+  if (pendingSubscriptions.has(channel)) {
     return;
   }
 
@@ -147,26 +154,33 @@ export const ensureChatChannelSubscribed = async (
     return;
   }
 
-  console.log(`[Redis Bridge] Subscribing to ${channel}`);
-  await subscriber.subscribe(channel, (message) => {
-    console.log(`[Redis Bridge] Received message on ${channel}: ${message}`);
-    try {
-      const event = JSON.parse(message) as WsEvent;
-      const connectionCount = getChatConnectionCount(chatId);
-      console.log(
-        `[Redis Bridge] Broadcasting to chat ${chatId}, connections: ${connectionCount}`
-      );
-      broadcastToChat(chatId, event);
-    } catch (error) {
-      console.error(
-        `[Redis Bridge] Error parsing message from ${channel}:`,
-        error
-      );
-    }
-  });
+  // Mark as pending before async operation
+  pendingSubscriptions.add(channel);
 
-  subscribedChannels.add(channel);
-  console.log(`[Redis Bridge] Subscribed to ${channel}`);
+  try {
+    console.log(`[Redis Bridge] Subscribing to ${channel}`);
+    await subscriber.subscribe(channel, (message) => {
+      console.log(`[Redis Bridge] Received message on ${channel}: ${message}`);
+      try {
+        const event = JSON.parse(message) as WsEvent;
+        const connectionCount = getChatConnectionCount(chatId);
+        console.log(
+          `[Redis Bridge] Broadcasting to chat ${chatId}, connections: ${connectionCount}`
+        );
+        broadcastToChat(chatId, event);
+      } catch (error) {
+        console.error(
+          `[Redis Bridge] Error parsing message from ${channel}:`,
+          error
+        );
+      }
+    });
+
+    subscribedChannels.add(channel);
+    console.log(`[Redis Bridge] Subscribed to ${channel}`);
+  } finally {
+    pendingSubscriptions.delete(channel);
+  }
 };
 
 /**
