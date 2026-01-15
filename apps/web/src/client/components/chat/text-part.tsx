@@ -46,6 +46,7 @@ import { getProviderDisplayName } from "./model-utils";
 
 type MessageActionsContentProps = {
   canEdit: boolean;
+  canSave: boolean;
   feedback: FeedbackState;
   groupedModels: Array<{
     provider: string;
@@ -72,6 +73,7 @@ type MessageActionsContentProps = {
  */
 const MessageActionsContent = ({
   canEdit,
+  canSave,
   feedback,
   groupedModels,
   isCopied,
@@ -101,7 +103,7 @@ const MessageActionsContent = ({
           <XIcon className="size-3" />
         </MessageAction>
         <MessageAction
-          disabled={!canEdit}
+          disabled={!canSave}
           label="Save"
           onClick={onEdit}
           tooltip="Save changes"
@@ -304,7 +306,8 @@ export const TextPart = ({
   };
 
   const isUser = message.role === "user";
-  const canEdit = isUser && onEdit && !disabled;
+  // Users can only edit their own messages, not other users' messages in multi-user chat
+  const canEdit = isUser && onEdit && !disabled && !isOtherUser;
   const hasChanges = editedText.trim() !== part.text.trim();
 
   // For other users in multi-user chat, override the default user styling
@@ -359,7 +362,8 @@ export const TextPart = ({
       {(message.role === "user" || message.role === "assistant") && (
         <MessageActions className={alignRight ? "ml-auto" : undefined}>
           <MessageActionsContent
-            canEdit={Boolean(canEdit && hasChanges)}
+            canEdit={Boolean(canEdit)}
+            canSave={Boolean(canEdit && hasChanges)}
             feedback={feedback}
             groupedModels={groupedModels}
             isCopied={isCopied}
