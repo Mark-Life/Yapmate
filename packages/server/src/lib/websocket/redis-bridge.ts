@@ -158,15 +158,9 @@ export const ensureChatChannelSubscribed = async (
   pendingSubscriptions.add(channel);
 
   try {
-    console.log(`[Redis Bridge] Subscribing to ${channel}`);
     await subscriber.subscribe(channel, (message) => {
-      console.log(`[Redis Bridge] Received message on ${channel}: ${message}`);
       try {
         const event = JSON.parse(message) as WsEvent;
-        const connectionCount = getChatConnectionCount(chatId);
-        console.log(
-          `[Redis Bridge] Broadcasting to chat ${chatId}, connections: ${connectionCount}`
-        );
         broadcastToChat(chatId, event);
       } catch (error) {
         console.error(
@@ -177,7 +171,6 @@ export const ensureChatChannelSubscribed = async (
     });
 
     subscribedChannels.add(channel);
-    console.log(`[Redis Bridge] Subscribed to ${channel}`);
   } finally {
     pendingSubscriptions.delete(channel);
   }
@@ -215,10 +208,7 @@ export const publishChatEvent = async (
   const payload = JSON.stringify(event);
 
   try {
-    const result = await redis.publish(channel, payload);
-    console.log(
-      `[Redis Bridge] Published to ${channel}, subscribers: ${result}`
-    );
+    await redis.publish(channel, payload);
   } catch (error) {
     console.error(`[Redis Bridge] Error publishing to ${channel}:`, error);
   }
@@ -320,9 +310,6 @@ export const publishTypingEvent = async (
   displayName: string,
   isTyping: boolean
 ): Promise<void> => {
-  console.log(
-    `[Redis Bridge] Publishing typing event: chat=${chatId}, user=${userId}, typing=${isTyping}`
-  );
   await publishChatEvent(chatId, {
     type: isTyping ? "member_typing" : "member_stopped_typing",
     chatId,

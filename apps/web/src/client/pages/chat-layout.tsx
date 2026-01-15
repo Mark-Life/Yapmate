@@ -9,15 +9,15 @@ import {
 import {
   MessageCircleQuestionIcon,
   PlusIcon,
-  UserPlusIcon,
+  // UserPlusIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
 import { InviteModal } from "../components/chat/invite-modal";
-import { MemberList } from "../components/chat/member-list";
-import { MembersModal } from "../components/chat/members-modal";
+// import { MemberList } from "../components/chat/member-list";
+// import { MembersModal } from "../components/chat/members-modal";
 import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HotkeysCheatsheet } from "../components/hotkeys-cheatsheet";
@@ -137,25 +137,25 @@ const HeaderControls = () => {
   const { navigateToNew, currentChatId } = useChatContext();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const supabase = createClient();
+  // const [membersOpen, setMembersOpen] = useState(false);
+  // const [userId, setUserId] = useState<string | null>(null);
+  // const supabase = createClient();
 
-  const { members, typingMembers, isMultiUser } = useMultiUserChat({
-    chatId: currentChatId,
-    enabled: Boolean(currentChatId),
-  });
+  // const { members, typingMembers, isMultiUser } = useMultiUserChat({
+  //   chatId: currentChatId,
+  //   enabled: Boolean(currentChatId),
+  // });
 
   // Get current user ID
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setUserId(session?.user?.id ?? null);
-    };
-    fetchUserId();
-  }, [supabase.auth]);
+  // useEffect(() => {
+  //   const fetchUserId = async () => {
+  //     const {
+  //       data: { session },
+  //     } = await supabase.auth.getSession();
+  //     setUserId(session?.user?.id ?? null);
+  //   };
+  //   fetchUserId();
+  // }, [supabase.auth]);
 
   return (
     <>
@@ -177,7 +177,7 @@ const HeaderControls = () => {
       </div>
 
       {/* Right controls - multi-user */}
-      {currentChatId ? (
+      {/* {currentChatId ? (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-2 rounded-lg bg-background/60 p-1 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
           {isMultiUser ? (
             <button
@@ -203,7 +203,7 @@ const HeaderControls = () => {
             <span className="sr-only">Invite People</span>
           </Button>
         </div>
-      ) : null}
+      ) : null} */}
 
       <FeedbackDialog onOpenChange={setFeedbackOpen} open={feedbackOpen} />
       {currentChatId ? (
@@ -213,13 +213,13 @@ const HeaderControls = () => {
             onOpenChange={setInviteOpen}
             open={inviteOpen}
           />
-          <MembersModal
+          {/* <MembersModal
             chatId={currentChatId}
             currentUserId={userId}
             members={members}
             onOpenChange={setMembersOpen}
             open={membersOpen}
-          />
+          /> */}
         </>
       ) : null}
     </>

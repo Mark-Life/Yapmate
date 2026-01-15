@@ -161,13 +161,6 @@ export const chatHandler = {
         userId,
       });
 
-      // Notify other users in the chat that a new message was created
-      // This ensures real-time sync in multi-user chats
-      await publishChatEvent(id, {
-        type: "message_created",
-        chatId: id,
-      });
-
       // Save MCP tool selections on first message (syncs client state to DB)
       if (isFirstMessage && selectedMcpTools && selectedMcpTools.length > 0) {
         await setChatToolSelections(

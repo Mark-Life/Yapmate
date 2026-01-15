@@ -210,7 +210,6 @@ export const useWebSocketSync = (
       const ws = new WebSocket(url.toString());
 
       ws.onopen = () => {
-        console.log("[WS Client] Connected, joining chat if needed");
         isConnectingRef.current = false;
         setReconnectAttempts(0);
         setIsWsReady(true); // Signal that WS is ready
@@ -233,9 +232,6 @@ export const useWebSocketSync = (
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WsEvent | { type: "pong" };
-          if (data.type !== "pong") {
-            console.log("[WS Client] Received message:", data.type, data);
-          }
           handleMessage(data);
         } catch (error) {
           console.error("[WS] Error parsing message:", error);
@@ -248,7 +244,6 @@ export const useWebSocketSync = (
       };
 
       ws.onclose = () => {
-        console.log("[WS Client] Disconnected");
         isConnectingRef.current = false;
         setIsWsReady(false);
 
@@ -326,9 +321,6 @@ export const useWebSocketSync = (
    */
   const joinChatRoom = useCallback(
     (chatId: string) => {
-      console.log(
-        `[WS Client] Joining chat ${chatId} with displayName: ${displayName}`
-      );
       sendWsMessage({ type: "join_chat", chatId, displayName });
     },
     [sendWsMessage, displayName]
@@ -478,9 +470,6 @@ export const useWebSocketSync = (
   // Join chat when WebSocket becomes ready (initial connect or reconnect)
   useEffect(() => {
     if (isWsReady && currentChatId) {
-      console.log(
-        `[WS Client] WebSocket ready, joining chat ${currentChatId}`
-      );
       joinChatRoom(currentChatId);
     }
   }, [isWsReady, currentChatId, joinChatRoom]);
@@ -499,9 +488,6 @@ export const useWebSocketSync = (
       currentChatId &&
       wsRef.current?.readyState === WebSocket.OPEN
     ) {
-      console.log(
-        `[WS Client] displayName became available (${displayName}), re-joining chat ${currentChatId}`
-      );
       joinChatRoom(currentChatId);
     }
 

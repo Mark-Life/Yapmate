@@ -536,12 +536,10 @@ const server = serve<WsClientData>({
     async open(wsConnection: ServerWebSocket<WsClientData>) {
       const userId = wsConnection.data.userId;
       await addConnection(userId, wsConnection);
-      console.log(`[WS] Client connected: user ${userId}`);
     },
     async close(wsConnection: ServerWebSocket<WsClientData>) {
       const userId = wsConnection.data.userId;
       await removeConnection(userId, wsConnection);
-      console.log(`[WS] Client disconnected: user ${userId}`);
     },
     async message(
       wsConnection: ServerWebSocket<WsClientData>,
@@ -562,7 +560,6 @@ const server = serve<WsClientData>({
 
           case "join_chat":
             // User opened a chat - join the room and update presence
-            console.log(`[WS] User ${userId} joining chat ${data.chatId}`);
             await joinChat(data.chatId, wsConnection);
             if (data.displayName) {
               await updatePresence(data.chatId, userId, data.displayName);
@@ -571,7 +568,6 @@ const server = serve<WsClientData>({
 
           case "leave_chat":
             // User closed a chat - leave the room
-            console.log(`[WS] User ${userId} leaving chat ${data.chatId}`);
             await leaveChat(data.chatId, wsConnection);
             break;
 
@@ -584,9 +580,6 @@ const server = serve<WsClientData>({
 
           case "typing":
             // Publish typing event to chat channel
-            console.log(
-              `[WS] User ${userId} typing in chat ${data.chatId}, displayName: ${data.displayName}`
-            );
             if (data.displayName) {
               await publishTypingEvent(
                 data.chatId,
@@ -599,7 +592,6 @@ const server = serve<WsClientData>({
 
           case "stop_typing":
             // Publish stop typing event to chat channel
-            console.log(`[WS] User ${userId} stopped typing in chat ${data.chatId}`);
             if (data.displayName) {
               await publishTypingEvent(
                 data.chatId,
