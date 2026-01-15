@@ -138,16 +138,24 @@ export const ensureChatChannelSubscribed = async (
 
   const channel = `chat:${chatId}`;
   if (subscribedChannels.has(channel)) {
+    console.log(`[Redis Bridge] Already subscribed to ${channel}`);
     return;
   }
 
   if (!subscriber) {
+    console.error(`[Redis Bridge] No subscriber available for ${channel}`);
     return;
   }
 
+  console.log(`[Redis Bridge] Subscribing to ${channel}`);
   await subscriber.subscribe(channel, (message) => {
+    console.log(`[Redis Bridge] Received message on ${channel}: ${message}`);
     try {
       const event = JSON.parse(message) as WsEvent;
+      const connectionCount = getChatConnectionCount(chatId);
+      console.log(
+        `[Redis Bridge] Broadcasting to chat ${chatId}, connections: ${connectionCount}`
+      );
       broadcastToChat(chatId, event);
     } catch (error) {
       console.error(
@@ -158,6 +166,7 @@ export const ensureChatChannelSubscribed = async (
   });
 
   subscribedChannels.add(channel);
+  console.log(`[Redis Bridge] Subscribed to ${channel}`);
 };
 
 /**
@@ -192,7 +201,10 @@ export const publishChatEvent = async (
   const payload = JSON.stringify(event);
 
   try {
-    await redis.publish(channel, payload);
+    const result = await redis.publish(channel, payload);
+    console.log(
+      `[Redis Bridge] Published to ${channel}, subscribers: ${result}`
+    );
   } catch (error) {
     console.error(`[Redis Bridge] Error publishing to ${channel}:`, error);
   }
@@ -294,6 +306,9 @@ export const publishTypingEvent = async (
   displayName: string,
   isTyping: boolean
 ): Promise<void> => {
+  console.log(
+    `[Redis Bridge] Publishing typing event: chat=${chatId}, user=${userId}, typing=${isTyping}`
+  );
   await publishChatEvent(chatId, {
     type: isTyping ? "member_typing" : "member_stopped_typing",
     chatId,
