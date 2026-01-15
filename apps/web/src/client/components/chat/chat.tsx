@@ -76,8 +76,8 @@ export const Chat = ({
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash";
 
-  // Get member info for multi-user chat avatars
-  const { members, isMultiUser } = useMultiUserChat({
+  // Get member info for multi-user chat avatars and typing indicators
+  const { members, isMultiUser, typingMembers } = useMultiUserChat({
     chatId: initialId ?? null,
     enabled: Boolean(initialId), // Only fetch for existing chats
   });
@@ -674,6 +674,7 @@ export const Chat = ({
               onEdit={handleEdit}
               onRegenerate={handleRegenerate}
               status={status}
+              typingMembers={typingMembers}
             />
           )}
 

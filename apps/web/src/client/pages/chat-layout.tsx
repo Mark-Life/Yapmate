@@ -270,11 +270,35 @@ const ChatContainer = () => {
 
 /**
  * WebSocket sync component - must be inside ChatProvider
+ * Handles real-time sync, presence, and typing indicators
  */
 const WebSocketSync = () => {
   const queryClient = useQueryClient();
   const { currentChatId } = useChatContext();
   const supabase = createClient();
+
+  // Get members to find current user's display name
+  const { members } = useMultiUserChat({
+    chatId: currentChatId,
+    enabled: Boolean(currentChatId),
+  });
+
+  // Get current user ID from session
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUserId(session?.user?.id ?? null);
+    };
+    fetchUserId();
+  }, [supabase.auth]);
+
+  // Find current user's display name from members list
+  const displayName = userId
+    ? members.find((m) => m.userId === userId)?.displayName
+    : undefined;
 
   /**
    * Handles stream started event - dispatches custom event for Chat component
@@ -287,7 +311,7 @@ const WebSocketSync = () => {
   }, []);
 
   // WebSocket real-time sync
-  useWebSocketSync({
+  const { sendTyping, sendStopTyping } = useWebSocketSync({
     wsUrl: `${
       window.location.protocol === "https:" ? "wss:" : "ws:"
     }//${window.location.host}/ws`,
@@ -299,8 +323,28 @@ const WebSocketSync = () => {
     },
     queryClient,
     currentChatId: currentChatId ?? undefined,
+    displayName,
     onStreamStarted: handleStreamStarted,
   });
+
+  // Listen for typing events from ChatInput
+  useEffect(() => {
+    const handleUserTyping = () => {
+      sendTyping();
+    };
+
+    const handleUserStopTyping = () => {
+      sendStopTyping();
+    };
+
+    window.addEventListener("user-typing", handleUserTyping);
+    window.addEventListener("user-stop-typing", handleUserStopTyping);
+
+    return () => {
+      window.removeEventListener("user-typing", handleUserTyping);
+      window.removeEventListener("user-stop-typing", handleUserStopTyping);
+    };
+  }, [sendTyping, sendStopTyping]);
 
   return null;
 };

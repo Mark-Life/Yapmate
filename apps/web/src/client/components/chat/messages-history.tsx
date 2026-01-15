@@ -33,6 +33,7 @@ import { useUser } from "../../contexts/user-context";
 import { useModels } from "../../hooks/use-models";
 import { sendFeedback } from "../../lib/langfuse";
 import type { FeedbackState } from "./feedback-buttons";
+import { TypingIndicator } from "./member-list";
 import { groupModelsByProvider } from "./model-utils";
 import { TextPart } from "./text-part";
 
@@ -52,6 +53,8 @@ type MessagesHistoryProps = {
     model?: string
   ) => void;
   status: ChatStatus;
+  /** Map of userId to displayName for typing indicators in multi-user chat */
+  typingMembers?: Map<string, string>;
 };
 
 type RenderReasoningPartProps = {
@@ -248,6 +251,7 @@ export const MessagesHistory = ({
   onEdit,
   onRegenerate,
   status,
+  typingMembers,
 }: MessagesHistoryProps) => {
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -317,7 +321,11 @@ export const MessagesHistory = ({
                 : undefined;
             const senderName = userId ? memberNames?.get(userId) : undefined;
             const isMultiUser = memberNames !== undefined;
-            const isCurrentUser = userId === currentUserId;
+            // If userId is undefined for a user message, assume it's the current user
+            // (new messages don't have userId in metadata until saved server-side)
+            const isCurrentUser =
+              message.role === "user" &&
+              (userId === undefined || userId === currentUserId);
             const isOtherUser =
               message.role === "user" && !isCurrentUser && isMultiUser;
             const showUserAvatar =
@@ -356,7 +364,7 @@ export const MessagesHistory = ({
                     src={`https://models.dev/logos/${modelProvider}.svg`}
                   />
                 ) : null}
-                <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                <AvatarFallback className="bg-muted text-[10px] text-muted-foreground">
                   AI
                 </AvatarFallback>
               </Avatar>
@@ -427,6 +435,20 @@ export const MessagesHistory = ({
               </div>
             );
           })}
+          {typingMembers && typingMembers.size > 0 ? (
+            <TypingIndicator
+              typingMembers={
+                // Filter out current user - don't show "You are typing"
+                currentUserId
+                  ? new Map(
+                      [...typingMembers].filter(
+                        ([userId]) => userId !== currentUserId
+                      )
+                    )
+                  : typingMembers
+              }
+            />
+          ) : null}
           {showLoader ? <Loader /> : null}
         </div>
       </ConversationContent>

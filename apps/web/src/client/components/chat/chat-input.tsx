@@ -239,11 +239,20 @@ export const ChatInput = ({
     { enableOnFormTags: true }
   );
 
+  /**
+   * Handle submit with stop typing event
+   */
+  const handleSubmit = (message: PromptInputMessage) => {
+    // Stop typing indicator when submitting
+    window.dispatchEvent(new CustomEvent("user-stop-typing"));
+    onSubmit(message);
+  };
+
   return (
     <PromptInput
       className="rounded-md border border-primary/10 bg-primary/3"
       multiple
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       <PromptInputAutoFocus focusKey={chatId} />
       {hasAttachments ? (
@@ -256,8 +265,18 @@ export const ChatInput = ({
       <PromptInputBody>
         <PromptInputTextarea
           className="min-h-8 pb-0 md:min-h-8"
-          onBlur={() => onFocusChange?.(false)}
-          onChange={(e) => onInputChange(e.target.value)}
+          onBlur={() => {
+            onFocusChange?.(false);
+            // Send stop typing when blurring
+            window.dispatchEvent(new CustomEvent("user-stop-typing"));
+          }}
+          onChange={(e) => {
+            onInputChange(e.target.value);
+            // Send typing event when user types
+            if (e.target.value.length > 0) {
+              window.dispatchEvent(new CustomEvent("user-typing"));
+            }
+          }}
           onFocus={() => onFocusChange?.(true)}
           value={input}
         />
