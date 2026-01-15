@@ -86,6 +86,7 @@ export const useWebSocketSync = (
   } = options;
 
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [isWsReady, setIsWsReady] = useState(false); // Track when WS is ready
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -209,9 +210,10 @@ export const useWebSocketSync = (
       const ws = new WebSocket(url.toString());
 
       ws.onopen = () => {
-        // console.log("[WS] Connected");
+        console.log("[WS Client] Connected, joining chat if needed");
         isConnectingRef.current = false;
         setReconnectAttempts(0);
+        setIsWsReady(true); // Signal that WS is ready
 
         // Send ping to keep connection alive
         const pingInterval = setInterval(() => {
@@ -246,8 +248,9 @@ export const useWebSocketSync = (
       };
 
       ws.onclose = () => {
-        // console.log("[WS] Disconnected");
+        console.log("[WS Client] Disconnected");
         isConnectingRef.current = false;
+        setIsWsReady(false);
 
         // Clear ping interval
         const pingInterval = (
@@ -472,17 +475,15 @@ export const useWebSocketSync = (
     };
   }, [currentChatId, joinChatRoom, leaveChatRoom, sendHeartbeat]);
 
-  // Re-join chat when WebSocket reconnects
+  // Join chat when WebSocket becomes ready (initial connect or reconnect)
   useEffect(() => {
-    if (
-      currentChatId &&
-      wsRef.current?.readyState === WebSocket.OPEN &&
-      reconnectAttempts === 0
-    ) {
-      // WebSocket just connected, join the current chat
+    if (isWsReady && currentChatId) {
+      console.log(
+        `[WS Client] WebSocket ready, joining chat ${currentChatId}`
+      );
       joinChatRoom(currentChatId);
     }
-  }, [reconnectAttempts, currentChatId, joinChatRoom]);
+  }, [isWsReady, currentChatId, joinChatRoom]);
 
   // Re-join with displayName when it becomes available after initial join
   // This handles the case where user joins via invite and displayName loads later
