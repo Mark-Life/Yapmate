@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { YapIconAnimated } from "../../assets/yap-icon-animated";
 import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { useModels } from "../../hooks/use-models";
+import { useMultiUserChat } from "../../hooks/use-multi-user-chat";
 import { usePostHog } from "../../hooks/use-posthog";
 import {
   getMemoryEnabled,
@@ -30,7 +31,6 @@ import {
   type ReasoningEffort,
   setLastUsedModel,
 } from "../../hooks/use-user-preferences";
-import { useMultiUserChat } from "../../hooks/use-multi-user-chat";
 import { rpcClient } from "../../lib/rpc-client";
 import { generateUUID } from "../../lib/uuid";
 import { DragDropZone } from "../drag-drop-zone";
@@ -78,13 +78,15 @@ export const Chat = ({
 
   // Get member info for multi-user chat avatars
   const { members, isMultiUser } = useMultiUserChat({
-    chatId: initialId ?? chatId,
+    chatId: initialId ?? null,
     enabled: Boolean(initialId), // Only fetch for existing chats
   });
 
   // Create a map of userId -> displayName for message avatars
   const memberNames = useMemo(() => {
-    if (!isMultiUser || members.length === 0) return undefined;
+    if (!isMultiUser || members.length === 0) {
+      return;
+    }
     const map = new Map<string, string>();
     for (const member of members) {
       map.set(member.userId, member.displayName);
