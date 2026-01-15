@@ -22,7 +22,7 @@ export const streamResumeHandler = {
     // Verify chat exists and user has access (owner or member)
     const chat = await getChat(id);
     const hasAccess = chat ? await canAccessChat(id, userId) : false;
-    if (!chat || !hasAccess) {
+    if (!(chat && hasAccess)) {
       return new Response("Forbidden", { status: 403 });
     }
 

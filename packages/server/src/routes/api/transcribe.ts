@@ -3,6 +3,7 @@
  * Handles POST for /api/transcribe using Groq Whisper
  */
 
+import { checkGenerationLimit } from "@yapmate/db/service";
 import { experimental_transcribe as transcribe } from "ai";
 import { groqClient } from "../../lib/groq";
 import { getCurrentUserId } from "../../lib/supabase";
@@ -19,6 +20,19 @@ export const transcribeHandler = {
       const userId = await getCurrentUserId(req);
       if (!userId) {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Check generation limit - transcription consumes API quota
+      const { allowed, count, limit } = await checkGenerationLimit(userId);
+      if (!allowed) {
+        return Response.json(
+          {
+            error: "generation_limit_exceeded",
+            count,
+            limit,
+          },
+          { status: 402 }
+        );
       }
 
       const formData = await req.formData();
