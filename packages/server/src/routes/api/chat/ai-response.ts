@@ -129,7 +129,7 @@ const MULTI_USER_SYSTEM_PROMPT = `
 This is a multi-user conversation. User messages are prefixed with the sender's name in square brackets, like [Alice]: or [Bob]:.
 
 Guidelines for multi-user conversations:
-- Address users by name when responding to specific questions or comments
+- Address users by name when responding to specific questions or comments. Do no use square brackets – they are not part of the name, but a Symbol to indicate the user
 - When multiple users are discussing, acknowledge different perspectives
 - If a user asks a follow-up to another user's question, maintain context
 - Be inclusive and respond to all participants appropriately

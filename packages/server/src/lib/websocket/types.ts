@@ -11,6 +11,7 @@ export type WsEventType =
   // Multi-user events
   | "member_joined"
   | "member_left"
+  | "member_updated"
   | "member_typing"
   | "member_stopped_typing"
   | "presence_update"
