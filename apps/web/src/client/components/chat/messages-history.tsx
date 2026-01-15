@@ -42,6 +42,8 @@ type MessagesHistoryProps = {
     id: string;
     approved: boolean;
   }) => void;
+  /** Current model selected in chat input (used as fallback for streaming messages) */
+  currentModel?: string;
   disabled?: boolean;
   /** Map of userId to displayName for multi-user chat avatars */
   memberNames?: Map<string, string>;
@@ -245,6 +247,7 @@ const getInitials = (name: string): string => {
 
 export const MessagesHistory = ({
   addToolApprovalResponse,
+  currentModel,
   disabled = false,
   memberNames,
   messages,
@@ -351,8 +354,14 @@ export const MessagesHistory = ({
             ) : null;
 
             // Extract provider from model string (e.g., "openai/gpt-4" → "openai")
+            // For the last message, use currentModel as fallback (metadata.model may not be saved yet during streaming)
+            const isLastMessage = messageIndex === messages.length - 1;
+            const metadataModel = (message.metadata as { model?: string })
+              ?.model;
+            const effectiveModel =
+              metadataModel ?? (isLastMessage ? currentModel : undefined);
             const modelProvider = isAssistant
-              ? (message.metadata as { model?: string })?.model?.split("/")[0]
+              ? effectiveModel?.split("/")[0]
               : undefined;
 
             const assistantAvatar = isAssistant ? (
@@ -378,7 +387,6 @@ export const MessagesHistory = ({
                   const partId = `${message.id}-${i}`;
                   const isCopied = copiedPartId === partId;
                   const isLastPart = i === message.parts.length - 1;
-                  const isLastMessage = messageIndex === messages.length - 1;
 
                   switch (part.type) {
                     case "text":
