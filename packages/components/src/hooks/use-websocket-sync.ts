@@ -320,6 +320,9 @@ export const useWebSocketSync = (
    */
   const joinChatRoom = useCallback(
     (chatId: string) => {
+      console.log(
+        `[WS Client] Joining chat ${chatId} with displayName: ${displayName}`
+      );
       sendWsMessage({ type: "join_chat", chatId, displayName });
     },
     [sendWsMessage, displayName]
@@ -349,7 +352,7 @@ export const useWebSocketSync = (
    * Sends a typing indicator to the current chat
    */
   const sendTyping = useCallback(() => {
-    if (!currentChatId || !displayName) {
+    if (!(currentChatId && displayName)) {
       return;
     }
 
@@ -384,7 +387,7 @@ export const useWebSocketSync = (
    * Sends a stop typing indicator to the current chat
    */
   const sendStopTyping = useCallback(() => {
-    if (!currentChatId || !displayName) {
+    if (!(currentChatId && displayName)) {
       return;
     }
 
@@ -478,14 +481,38 @@ export const useWebSocketSync = (
     }
   }, [reconnectAttempts, currentChatId, joinChatRoom]);
 
-  // Clear typing state on unmount
+  // Re-join with displayName when it becomes available after initial join
+  // This handles the case where user joins via invite and displayName loads later
+  const previousDisplayNameRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    return () => {
+    const wasUndefined = previousDisplayNameRef.current === undefined;
+    const isNowDefined = displayName !== undefined;
+
+    // If displayName just became available and we're in a chat, re-join to update presence
+    if (
+      wasUndefined &&
+      isNowDefined &&
+      currentChatId &&
+      wsRef.current?.readyState === WebSocket.OPEN
+    ) {
+      console.log(
+        `[WS Client] displayName became available (${displayName}), re-joining chat ${currentChatId}`
+      );
+      joinChatRoom(currentChatId);
+    }
+
+    previousDisplayNameRef.current = displayName;
+  }, [displayName, currentChatId, joinChatRoom]);
+
+  // Clear typing state on unmount
+  useEffect(
+    () => () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   return { sendTyping, sendStopTyping };
 };

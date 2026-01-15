@@ -80,9 +80,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-only: Service worker and manifest must always be fresh
+  // Network-only: Service worker, manifest, API, and WebSocket must bypass cache
   if (
     url.pathname === "/sw.js" ||
+    url.pathname === "/ws" ||
     url.pathname.endsWith(".webmanifest") ||
     url.pathname.startsWith("/api/")
   ) {
