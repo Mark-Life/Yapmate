@@ -44,6 +44,101 @@ import { useEffect, useRef, useState } from "react";
 import { FeedbackButtons, type FeedbackState } from "./feedback-buttons";
 import { getProviderDisplayName } from "./model-utils";
 
+type EditActionsProps = {
+  canSave: boolean;
+  onCancelEdit: () => void;
+  onEdit: () => void;
+};
+
+/**
+ * Renders edit mode action buttons (Cancel and Save)
+ */
+const EditActions = ({ canSave, onCancelEdit, onEdit }: EditActionsProps) => (
+  <>
+    <MessageAction
+      label="Cancel"
+      onClick={onCancelEdit}
+      tooltip="Cancel editing"
+    >
+      <XIcon className="size-3" />
+    </MessageAction>
+    <MessageAction disabled={!canSave} label="Save" onClick={onEdit} tooltip="Save changes">
+      <CheckIcon className="size-3" />
+    </MessageAction>
+  </>
+);
+
+type RegenerateWithModelMenuProps = {
+  groupedModels: Array<{
+    provider: string;
+    items: Array<{ name: string; value: string }>;
+  }>;
+  onModelSelect: (modelValue: string) => void;
+  onRegenerate: () => void;
+};
+
+/**
+ * Renders the retry button with context menu for model selection
+ */
+const RegenerateWithModelMenu = ({
+  groupedModels,
+  onModelSelect,
+  onRegenerate,
+}: RegenerateWithModelMenuProps) => (
+  <ContextMenu>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ContextMenuTrigger asChild>
+            <MessageAction label="Retry" onClick={onRegenerate}>
+              <RefreshCcwIcon className="size-3" />
+            </MessageAction>
+          </ContextMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent hideArrow side="bottom">
+          <p>Right click to select another model</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+    <ContextMenuContent className="w-64 p-0">
+      <ContextMenuLabel className="px-3 py-2">
+        Regenerate with model
+      </ContextMenuLabel>
+      <ContextMenuSeparator />
+      <Command className="max-h-[300px]">
+        <ModelSelectorInput
+          className="rounded-none border-0"
+          placeholder="Search models..."
+        />
+        <ModelSelectorList className="max-h-[250px]">
+          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+          {groupedModels.map((group) => (
+            <ModelSelectorGroup key={group.provider}>
+              <div className="cmdk-group-heading pb-1 pl-2">
+                {getProviderDisplayName(group.provider)}
+              </div>
+              {group.items.map((item) => (
+                <ModelSelectorItem
+                  key={item.value}
+                  onSelect={() => onModelSelect(item.value)}
+                  value={`${item.name} ${group.provider} ${item.value}`}
+                >
+                  <ModelSelectorLogo
+                    provider={
+                      group.provider as ModelSelectorLogoProps["provider"]
+                    }
+                  />
+                  <ModelSelectorName>{item.name}</ModelSelectorName>
+                </ModelSelectorItem>
+              ))}
+            </ModelSelectorGroup>
+          ))}
+        </ModelSelectorList>
+      </Command>
+    </ContextMenuContent>
+  </ContextMenu>
+);
+
 type MessageActionsContentProps = {
   canEdit: boolean;
   canSave: boolean;
@@ -92,25 +187,10 @@ const MessageActionsContent = ({
   status,
 }: MessageActionsContentProps) => {
   const isDisabled = status === "streaming" || status === "submitted";
+
   if (isEditing) {
     return (
-      <>
-        <MessageAction
-          label="Cancel"
-          onClick={onCancelEdit}
-          tooltip="Cancel editing"
-        >
-          <XIcon className="size-3" />
-        </MessageAction>
-        <MessageAction
-          disabled={!canSave}
-          label="Save"
-          onClick={onEdit}
-          tooltip="Save changes"
-        >
-          <CheckIcon className="size-3" />
-        </MessageAction>
-      </>
+      <EditActions canSave={canSave} onCancelEdit={onCancelEdit} onEdit={onEdit} />
     );
   }
 
@@ -127,58 +207,11 @@ const MessageActionsContent = ({
           <CopyIcon className="size-3" />
         )}
       </MessageAction>
-      <ContextMenu>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ContextMenuTrigger asChild>
-                <MessageAction label="Retry" onClick={onRegenerate}>
-                  <RefreshCcwIcon className="size-3" />
-                </MessageAction>
-              </ContextMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent hideArrow side="bottom">
-              <p>Right click to select another model</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <ContextMenuContent className="w-64 p-0">
-          <ContextMenuLabel className="px-3 py-2">
-            Regenerate with model
-          </ContextMenuLabel>
-          <ContextMenuSeparator />
-          <Command className="max-h-[300px]">
-            <ModelSelectorInput
-              className="rounded-none border-0"
-              placeholder="Search models..."
-            />
-            <ModelSelectorList className="max-h-[250px]">
-              <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-              {groupedModels.map((group) => (
-                <ModelSelectorGroup key={group.provider}>
-                  <div className="cmdk-group-heading pb-1 pl-2">
-                    {getProviderDisplayName(group.provider)}
-                  </div>
-                  {group.items.map((item) => (
-                    <ModelSelectorItem
-                      key={item.value}
-                      onSelect={() => onModelSelect(item.value)}
-                      value={`${item.name} ${group.provider} ${item.value}`}
-                    >
-                      <ModelSelectorLogo
-                        provider={
-                          group.provider as ModelSelectorLogoProps["provider"]
-                        }
-                      />
-                      <ModelSelectorName>{item.name}</ModelSelectorName>
-                    </ModelSelectorItem>
-                  ))}
-                </ModelSelectorGroup>
-              ))}
-            </ModelSelectorList>
-          </Command>
-        </ContextMenuContent>
-      </ContextMenu>
+      <RegenerateWithModelMenu
+        groupedModels={groupedModels}
+        onModelSelect={onModelSelect}
+        onRegenerate={onRegenerate}
+      />
       {canEdit ? (
         <MessageAction
           disabled={isDisabled}
@@ -200,6 +233,58 @@ const MessageActionsContent = ({
     </>
   );
 };
+
+type TextPartMessageContentProps = {
+  editedText: string;
+  isEditing: boolean;
+  isOtherUser: boolean;
+  isUser: boolean;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  partText: string;
+  senderName?: string;
+  setEditedText: (text: string) => void;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+};
+
+/**
+ * Renders the message content area (either editing textarea or text display)
+ */
+const TextPartMessageContent = ({
+  editedText,
+  isEditing,
+  isOtherUser,
+  isUser,
+  onKeyDown,
+  partText,
+  senderName,
+  setEditedText,
+  textareaRef,
+}: TextPartMessageContentProps) => (
+  <MessageContent
+    className={cn(
+      isOtherUser && "rounded-sm bg-muted px-3 py-1 text-foreground"
+    )}
+  >
+    {/* Sender name inside bubble for other users in multi-user chats */}
+    {senderName && isOtherUser ? (
+      <span className="font-medium text-primary text-xs">{senderName}</span>
+    ) : null}
+    {isEditing ? (
+      <Textarea
+        className={cn(
+          "field-sizing-content min-h-5 w-full resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:ring-0",
+          isUser && !isOtherUser ? "text-primary-foreground" : "text-foreground"
+        )}
+        onChange={(e) => setEditedText(e.target.value)}
+        onKeyDown={onKeyDown}
+        ref={textareaRef}
+        value={editedText}
+      />
+    ) : (
+      <MessageResponse>{partText}</MessageResponse>
+    )}
+  </MessageContent>
+);
 
 type TextPartProps = {
   /** Avatar element to render next to the message bubble */
@@ -329,34 +414,17 @@ export const TextPart = ({
         {/* Avatar aligned to bottom of bubble */}
         {avatar ? <div className="shrink-0">{avatar}</div> : null}
 
-        <MessageContent
-          className={cn(
-            isOtherUser && "rounded-sm bg-muted px-3 py-1 text-foreground"
-          )}
-        >
-          {/* Sender name inside bubble for other users in multi-user chats */}
-          {senderName && isOtherUser ? (
-            <span className="font-medium text-primary text-xs">
-              {senderName}
-            </span>
-          ) : null}
-          {isEditing ? (
-            <Textarea
-              className={cn(
-                "field-sizing-content min-h-5 w-full resize-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none focus-visible:ring-0",
-                isUser && !isOtherUser
-                  ? "text-primary-foreground"
-                  : "text-foreground"
-              )}
-              onChange={(e) => setEditedText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              ref={textareaRef}
-              value={editedText}
-            />
-          ) : (
-            <MessageResponse>{part.text}</MessageResponse>
-          )}
-        </MessageContent>
+        <TextPartMessageContent
+          editedText={editedText}
+          isEditing={isEditing}
+          isOtherUser={isOtherUser}
+          isUser={isUser}
+          onKeyDown={handleKeyDown}
+          partText={part.text}
+          senderName={senderName}
+          setEditedText={setEditedText}
+          textareaRef={textareaRef}
+        />
       </div>
 
       {(message.role === "user" || message.role === "assistant") && (

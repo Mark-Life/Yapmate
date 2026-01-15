@@ -499,3 +499,86 @@ export const handleEdit = (options: HandleEditOptions): void => {
   // Trigger regeneration from the edited message
   regenerate({ messageId });
 };
+
+type MessageRequestRefs = {
+  modelRef: React.MutableRefObject<string>;
+  searchEnabledRef: React.MutableRefObject<boolean>;
+  memoryEnabledRef: React.MutableRefObject<boolean>;
+  reasoningEffortRef: React.MutableRefObject<string>;
+  supportsReasoningRef: React.MutableRefObject<boolean>;
+  selectedMcpToolsRef: React.MutableRefObject<unknown[]>;
+  selectedRuleIdsRef: React.MutableRefObject<string[]>;
+  regenerateMessageIdRef: React.MutableRefObject<string | undefined>;
+  regenerateRoleRef: React.MutableRefObject<"user" | "assistant" | undefined>;
+  editMessageIdRef: React.MutableRefObject<string | undefined>;
+  editedTextRef: React.MutableRefObject<string | undefined>;
+};
+
+/**
+ * Creates the request body for sending messages
+ * Extracts and clears ref values for regeneration/edit operations
+ */
+export const createMessageRequestBody = (
+  allMessages: unknown[],
+  transportChatId: string,
+  refs: MessageRequestRefs
+): Record<string, unknown> => {
+  const {
+    modelRef,
+    searchEnabledRef,
+    memoryEnabledRef,
+    reasoningEffortRef,
+    supportsReasoningRef,
+    selectedMcpToolsRef,
+    selectedRuleIdsRef,
+    regenerateMessageIdRef,
+    regenerateRoleRef,
+    editMessageIdRef,
+    editedTextRef,
+  } = refs;
+
+  // Extract and clear regeneration/edit refs
+  const regenerateMessageId = regenerateMessageIdRef.current;
+  const regenerateRole = regenerateRoleRef.current;
+  const editMessageId = editMessageIdRef.current;
+  const editedText = editedTextRef.current;
+
+  regenerateMessageIdRef.current = undefined;
+  regenerateRoleRef.current = undefined;
+  editMessageIdRef.current = undefined;
+  editedTextRef.current = undefined;
+
+  // Build the request body
+  const body: Record<string, unknown> = {
+    message: allMessages.at(-1),
+    id: transportChatId,
+    model: modelRef.current,
+    searchEnabled: searchEnabledRef.current,
+    memoryEnabled: memoryEnabledRef.current,
+  };
+
+  // Add optional fields
+  if (supportsReasoningRef.current) {
+    body.reasoningEffort = reasoningEffortRef.current;
+  }
+
+  if (selectedMcpToolsRef.current.length > 0) {
+    body.selectedMcpTools = selectedMcpToolsRef.current;
+  }
+
+  if (selectedRuleIdsRef.current.length > 0) {
+    body.selectedRuleIds = selectedRuleIdsRef.current;
+  }
+
+  if (regenerateMessageId) {
+    body.regenerateMessageId = regenerateMessageId;
+    body.regenerateRole = regenerateRole;
+  }
+
+  if (editMessageId && editedText) {
+    body.editMessageId = editMessageId;
+    body.editedText = editedText;
+  }
+
+  return body;
+};

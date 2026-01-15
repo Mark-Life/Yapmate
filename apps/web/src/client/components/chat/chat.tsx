@@ -36,6 +36,7 @@ import { generateUUID } from "../../lib/uuid";
 import { DragDropZone } from "../drag-drop-zone";
 import {
   createChat,
+  createMessageRequestBody,
   determineDefaultModel,
   handleEdit as handleEditHelper,
   handleRegenerate as handleRegenerateHelper,
@@ -263,44 +264,24 @@ export const Chat = ({
           }
           return response;
         }) as typeof fetch,
-        // TODO: fix me later - complex function
         prepareSendMessagesRequest({
           messages: allMessages,
           id: transportChatId,
         }) {
-          // Use refs to get latest values
-          const regenerateMessageId = regenerateMessageIdRef.current;
-          const regenerateRole = regenerateRoleRef.current;
-          const editMessageId = editMessageIdRef.current;
-          const editedText = editedTextRef.current;
-          // Clear after use
-          regenerateMessageIdRef.current = undefined;
-          regenerateRoleRef.current = undefined;
-          editMessageIdRef.current = undefined;
-          editedTextRef.current = undefined;
           return {
-            body: {
-              message: allMessages.at(-1),
-              id: transportChatId,
-              model: modelRef.current,
-              searchEnabled: searchEnabledRef.current,
-              memoryEnabled: memoryEnabledRef.current,
-              ...(supportsReasoningRef.current
-                ? { reasoningEffort: reasoningEffortRef.current }
-                : {}),
-              ...(selectedMcpToolsRef.current.length > 0
-                ? { selectedMcpTools: selectedMcpToolsRef.current }
-                : {}),
-              ...(selectedRuleIdsRef.current.length > 0
-                ? { selectedRuleIds: selectedRuleIdsRef.current }
-                : {}),
-              ...(regenerateMessageId
-                ? { regenerateMessageId, regenerateRole }
-                : {}),
-              ...(editMessageId && editedText
-                ? { editMessageId, editedText }
-                : {}),
-            },
+            body: createMessageRequestBody(allMessages, transportChatId, {
+              modelRef,
+              searchEnabledRef,
+              memoryEnabledRef,
+              reasoningEffortRef,
+              supportsReasoningRef,
+              selectedMcpToolsRef,
+              selectedRuleIdsRef,
+              regenerateMessageIdRef,
+              regenerateRoleRef,
+              editMessageIdRef,
+              editedTextRef,
+            }),
           };
         },
       })
