@@ -241,6 +241,148 @@ const getInitials = (name: string): string => {
   return (parts[0][0] + (lastPart?.[0] ?? "")).toUpperCase();
 };
 
+type MessageSenderInfo = {
+  userId: string | undefined;
+  senderName: string | undefined;
+  isMultiUser: boolean;
+  isCurrentUser: boolean;
+  isOtherUser: boolean;
+  showUserAvatar: boolean;
+  isAssistant: boolean;
+};
+
+/**
+ * Extracts sender information from a message for multi-user chat
+ */
+const getMessageSenderInfo = (
+  message: ChatUIMessage,
+  memberNames: Map<string, string> | undefined,
+  currentUserId: string | undefined
+): MessageSenderInfo => {
+  const userId =
+    message.role === "user"
+      ? (message.metadata as { userId?: string })?.userId
+      : undefined;
+  const senderName = userId ? memberNames?.get(userId) : undefined;
+  const isMultiUser = memberNames !== undefined;
+  const isCurrentUser =
+    message.role === "user" &&
+    (userId === undefined || userId === currentUserId);
+  const isOtherUser = message.role === "user" && !isCurrentUser && isMultiUser;
+  const showUserAvatar =
+    isMultiUser && message.role === "user" && senderName !== undefined;
+  const isAssistant = message.role === "assistant";
+
+  return {
+    userId,
+    senderName,
+    isMultiUser,
+    isCurrentUser,
+    isOtherUser,
+    showUserAvatar,
+    isAssistant,
+  };
+};
+
+type BuildUserAvatarProps = {
+  showUserAvatar: boolean;
+  isCurrentUser: boolean;
+  senderName: string;
+};
+
+/**
+ * Builds user avatar element for multi-user chat
+ */
+const buildUserAvatar = ({
+  showUserAvatar,
+  isCurrentUser,
+  senderName,
+}: BuildUserAvatarProps): React.ReactNode => {
+  if (!showUserAvatar) {
+    return null;
+  }
+
+  return (
+    <Avatar className="size-6">
+      <AvatarFallback
+        className={cn(
+          "text-[10px]",
+          isCurrentUser
+            ? "bg-muted text-muted-foreground"
+            : "bg-muted text-muted-foreground"
+        )}
+      >
+        {getInitials(senderName)}
+      </AvatarFallback>
+    </Avatar>
+  );
+};
+
+type BuildAssistantAvatarProps = {
+  isAssistant: boolean;
+  modelProvider: string | undefined;
+};
+
+/**
+ * Builds assistant avatar element with model provider logo
+ */
+const buildAssistantAvatar = ({
+  isAssistant,
+  modelProvider,
+}: BuildAssistantAvatarProps): React.ReactNode => {
+  if (!isAssistant) {
+    return null;
+  }
+
+  return (
+    <Avatar className="size-6 bg-muted">
+      {modelProvider ? (
+        <AvatarImage
+          alt={modelProvider}
+          className="dark:invert"
+          src={`https://models.dev/logos/${modelProvider}.svg`}
+        />
+      ) : null}
+      <AvatarFallback className="bg-muted text-[10px] text-muted-foreground">
+        AI
+      </AvatarFallback>
+    </Avatar>
+  );
+};
+
+/**
+ * Gets the effective model for a message (with fallback for streaming)
+ */
+const getEffectiveModel = (
+  message: ChatUIMessage,
+  isLastMessage: boolean,
+  currentModel: string | undefined
+): string | undefined => {
+  const metadataModel = (message.metadata as { model?: string })?.model;
+  return metadataModel ?? (isLastMessage ? currentModel : undefined);
+};
+
+/**
+ * Checks if a part is a tool part (starts with "tool-" or is "dynamic-tool")
+ */
+const isToolPart = (partType: string): boolean =>
+  partType.startsWith("tool-") || partType === "dynamic-tool";
+
+/**
+ * Filters out current user from typing members map
+ */
+const filterTypingMembers = (
+  typingMembers: Map<string, string>,
+  currentUserId: string | undefined
+): Map<string, string> => {
+  if (!currentUserId) {
+    return typingMembers;
+  }
+  return new Map(
+    [...typingMembers].filter(([userId]) => userId !== currentUserId)
+  );
+};
+
 /**
  * Renders the conversation history with messages, reasoning, and file attachments
  */
@@ -318,67 +460,39 @@ export const MessagesHistory = ({
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-12 pb-34">
           {messages.map((message, messageIndex) => {
             // Get sender info for multi-user chat avatars
-            const userId =
-              message.role === "user"
-                ? (message.metadata as { userId?: string })?.userId
-                : undefined;
-            const senderName = userId ? memberNames?.get(userId) : undefined;
-            const isMultiUser = memberNames !== undefined;
-            // If userId is undefined for a user message, assume it's the current user
-            // (new messages don't have userId in metadata until saved server-side)
-            const isCurrentUser =
-              message.role === "user" &&
-              (userId === undefined || userId === currentUserId);
-            const isOtherUser =
-              message.role === "user" && !isCurrentUser && isMultiUser;
-            const showUserAvatar =
-              isMultiUser &&
-              message.role === "user" &&
-              senderName !== undefined;
-            const isAssistant = message.role === "assistant";
+            const senderInfo = getMessageSenderInfo(
+              message,
+              memberNames,
+              currentUserId
+            );
+            const {
+              senderName,
+              isCurrentUser,
+              isOtherUser,
+              showUserAvatar,
+              isAssistant,
+            } = senderInfo;
 
-            // Build avatar element for text parts
-            const userAvatar = showUserAvatar ? (
-              <Avatar className="size-6">
-                <AvatarFallback
-                  className={cn(
-                    "text-[10px]",
-                    isCurrentUser
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {getInitials(senderName)}
-                </AvatarFallback>
-              </Avatar>
-            ) : null;
-
-            // Extract provider from model string (e.g., "openai/gpt-4" → "openai")
-            // For the last message, use currentModel as fallback (metadata.model may not be saved yet during streaming)
+            // Build avatar elements
             const isLastMessage = messageIndex === messages.length - 1;
-            const metadataModel = (message.metadata as { model?: string })
-              ?.model;
-            const effectiveModel =
-              metadataModel ?? (isLastMessage ? currentModel : undefined);
+            const effectiveModel = getEffectiveModel(
+              message,
+              isLastMessage,
+              currentModel
+            );
             const modelProvider = isAssistant
               ? effectiveModel?.split("/")[0]
               : undefined;
 
-            const assistantAvatar = isAssistant ? (
-              <Avatar className="size-6 bg-muted">
-                {modelProvider ? (
-                  <AvatarImage
-                    alt={modelProvider}
-                    className="dark:invert"
-                    src={`https://models.dev/logos/${modelProvider}.svg`}
-                  />
-                ) : null}
-                <AvatarFallback className="bg-muted text-[10px] text-muted-foreground">
-                  AI
-                </AvatarFallback>
-              </Avatar>
-            ) : null;
-
+            const userAvatar = buildUserAvatar({
+              showUserAvatar,
+              isCurrentUser,
+              senderName: senderName ?? "",
+            });
+            const assistantAvatar = buildAssistantAvatar({
+              isAssistant,
+              modelProvider,
+            });
             const avatar = userAvatar ?? assistantAvatar;
 
             return (
@@ -427,10 +541,7 @@ export const MessagesHistory = ({
                       return renderFilePart({ message, part, partId });
                     default:
                       // Handle tool parts (type starts with "tool-" or "dynamic-tool")
-                      if (
-                        part.type.startsWith("tool-") ||
-                        part.type === "dynamic-tool"
-                      ) {
+                      if (isToolPart(part.type)) {
                         return renderToolPart({
                           addToolApprovalResponse,
                           part: part as ToolUIPart | DynamicToolPart,
@@ -445,16 +556,7 @@ export const MessagesHistory = ({
           })}
           {typingMembers && typingMembers.size > 0 ? (
             <TypingIndicator
-              typingMembers={
-                // Filter out current user - don't show "You are typing"
-                currentUserId
-                  ? new Map(
-                      [...typingMembers].filter(
-                        ([userId]) => userId !== currentUserId
-                      )
-                    )
-                  : typingMembers
-              }
+              typingMembers={filterTypingMembers(typingMembers, currentUserId)}
             />
           ) : null}
           {showLoader ? <Loader /> : null}
