@@ -206,25 +206,32 @@ export const leaveChat = async (
 export const broadcastToChat = (chatId: string, event: WsEvent): void => {
   const connections = chatConnections.get(chatId);
   if (!connections || connections.size === 0) {
+    console.log(`[WS Manager] No connections for chat ${chatId}`);
     return;
   }
 
   const payload = JSON.stringify(event);
   const deadConnections: ServerWebSocket<WsClientData>[] = [];
 
+  let sentCount = 0;
   for (const ws of connections) {
+    const userId = connectionUserId.get(ws);
     try {
       if (ws.readyState === 1) {
         // WebSocket.OPEN
         ws.send(payload);
+        sentCount++;
+        console.log(`[WS Manager] Sent to user ${userId}, readyState: ${ws.readyState}`);
       } else {
+        console.log(`[WS Manager] Skipped user ${userId}, readyState: ${ws.readyState}`);
         deadConnections.push(ws);
       }
     } catch (error) {
-      console.error(`[WS] Error sending to chat ${chatId}:`, error);
+      console.error(`[WS] Error sending to user ${userId} in chat ${chatId}:`, error);
       deadConnections.push(ws);
     }
   }
+  console.log(`[WS Manager] Broadcast complete: sent to ${sentCount}/${connections.size} connections`);
 
   // Clean up dead connections
   for (const ws of deadConnections) {
