@@ -337,23 +337,30 @@ export const handleStreamFinish = async (
   // This is the single source of truth for successful stream completion
   try {
     // Save all messages (upsert handles both new and updated)
-    const lastMessageId = finalMessages.at(-1)?.id;
-    const lastMessage = finalMessages.at(-1);
-    const isAssistant = lastMessage?.role === "assistant";
-
-    // Build metadata with usage if available
-    const metadata: AiResponseUsage | undefined =
-      usage && isAssistant ? usage : undefined;
+    // Include model for ALL assistant messages (for provider logo display when switching models mid-conversation)
+    // Only include usage metadata on the last assistant message (current generation's token counts)
+    const lastAssistantMessage = [...finalMessages]
+      .reverse()
+      .find((m) => m.role === "assistant");
 
     const messageOptions: Record<
       string,
       { model: string; metadata?: AiResponseUsage }
     > = {};
-    if (lastMessageId) {
-      if (isAssistant && metadata) {
-        messageOptions[lastMessageId] = { model, metadata };
-      } else {
-        messageOptions[lastMessageId] = { model };
+
+    for (const message of finalMessages) {
+      if (message.role === "assistant") {
+        const isLastAssistant = message.id === lastAssistantMessage?.id;
+        // For the new message (last assistant), use the current model from request
+        // For existing messages, preserve their stored model from DB (via metadata)
+        const existingModel = (
+          message.metadata as { model?: string } | undefined
+        )?.model;
+        const messageModel = isLastAssistant ? model : (existingModel ?? model);
+        messageOptions[message.id] = {
+          model: messageModel,
+          ...(isLastAssistant && usage ? { metadata: usage } : {}),
+        };
       }
     }
 

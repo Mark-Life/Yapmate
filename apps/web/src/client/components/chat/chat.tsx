@@ -669,6 +669,7 @@ export const Chat = ({
           ) : (
             <MessagesHistory
               addToolApprovalResponse={addToolApprovalResponse}
+              currentModel={model}
               memberNames={memberNames}
               messages={messages}
               onEdit={handleEdit}
