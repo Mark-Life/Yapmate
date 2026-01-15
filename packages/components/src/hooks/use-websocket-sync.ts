@@ -3,7 +3,7 @@
  * Connects to server WebSocket and handles real-time events
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // QueryClient type from @tanstack/react-query (peer dependency)
 // Using interface to allow structural typing
@@ -43,20 +43,44 @@ type UseWebSocketSyncOptions = {
   getToken: () => Promise<string | null>;
   queryClient: QueryClient;
   currentChatId?: string;
+  /** Display name for presence and typing indicators */
+  displayName?: string;
   onStreamStarted?: (chatId: string) => void;
   enabled?: boolean;
 };
+
+/** Typing state for sending typing indicators */
+type TypingState = {
+  isTyping: boolean;
+  lastTypingTime: number;
+};
+
+/** Return type for the WebSocket sync hook */
+type UseWebSocketSyncReturn = {
+  /** Send a typing indicator to the current chat */
+  sendTyping: () => void;
+  /** Send a stop typing indicator to the current chat */
+  sendStopTyping: () => void;
+};
+
+/** Heartbeat interval in milliseconds */
+const HEARTBEAT_INTERVAL = 30_000;
+/** Typing debounce timeout in milliseconds */
+const TYPING_DEBOUNCE = 2000;
 
 /**
  * WebSocket real-time sync hook
  * Handles connection, reconnection, and event processing
  */
-export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
+export const useWebSocketSync = (
+  options: UseWebSocketSyncOptions
+): UseWebSocketSyncReturn => {
   const {
     wsUrl,
     getToken,
     queryClient,
     currentChatId,
+    displayName,
     onStreamStarted,
     enabled = true,
   } = options;
@@ -67,6 +91,15 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
     null
   );
   const isConnectingRef = useRef(false);
+  const previousChatIdRef = useRef<string | undefined>(undefined);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+  const typingStateRef = useRef<TypingState>({
+    isTyping: false,
+    lastTypingTime: 0,
+  });
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * Calculates exponential backoff delay
@@ -270,6 +303,107 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
     }
   };
 
+  /**
+   * Sends a message through the WebSocket
+   */
+  const sendWsMessage = useCallback(
+    (message: { type: string; chatId?: string; displayName?: string }) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(message));
+      }
+    },
+    []
+  );
+
+  /**
+   * Joins a chat room for multi-user features
+   */
+  const joinChatRoom = useCallback(
+    (chatId: string) => {
+      sendWsMessage({ type: "join_chat", chatId, displayName });
+    },
+    [sendWsMessage, displayName]
+  );
+
+  /**
+   * Leaves a chat room
+   */
+  const leaveChatRoom = useCallback(
+    (chatId: string) => {
+      sendWsMessage({ type: "leave_chat", chatId });
+    },
+    [sendWsMessage]
+  );
+
+  /**
+   * Sends a heartbeat to keep presence alive
+   */
+  const sendHeartbeat = useCallback(
+    (chatId: string) => {
+      sendWsMessage({ type: "heartbeat", chatId, displayName });
+    },
+    [sendWsMessage, displayName]
+  );
+
+  /**
+   * Sends a typing indicator to the current chat
+   */
+  const sendTyping = useCallback(() => {
+    if (!currentChatId || !displayName) {
+      return;
+    }
+
+    const now = Date.now();
+    const state = typingStateRef.current;
+
+    // Only send typing event if not already typing or if debounce time has passed
+    if (!state.isTyping || now - state.lastTypingTime > TYPING_DEBOUNCE) {
+      sendWsMessage({ type: "typing", chatId: currentChatId, displayName });
+      typingStateRef.current = { isTyping: true, lastTypingTime: now };
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to send stop_typing after debounce
+    typingTimeoutRef.current = setTimeout(() => {
+      if (typingStateRef.current.isTyping) {
+        sendWsMessage({
+          type: "stop_typing",
+          chatId: currentChatId,
+          displayName,
+        });
+        typingStateRef.current = { isTyping: false, lastTypingTime: 0 };
+      }
+    }, TYPING_DEBOUNCE);
+  }, [currentChatId, displayName, sendWsMessage]);
+
+  /**
+   * Sends a stop typing indicator to the current chat
+   */
+  const sendStopTyping = useCallback(() => {
+    if (!currentChatId || !displayName) {
+      return;
+    }
+
+    if (typingStateRef.current.isTyping) {
+      sendWsMessage({
+        type: "stop_typing",
+        chatId: currentChatId,
+        displayName,
+      });
+      typingStateRef.current = { isTyping: false, lastTypingTime: 0 };
+    }
+
+    // Clear any pending timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [currentChatId, displayName, sendWsMessage]);
+
   // Connect on mount and when enabled changes
   useEffect(() => {
     if (enabled) {
@@ -291,4 +425,67 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
       connect();
     }
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle chat room changes - join/leave rooms and manage heartbeat
+  useEffect(() => {
+    const prevChatId = previousChatIdRef.current;
+
+    // Leave previous chat room
+    if (prevChatId && prevChatId !== currentChatId) {
+      leaveChatRoom(prevChatId);
+    }
+
+    // Clear existing heartbeat interval
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
+    // Join new chat room and start heartbeat
+    if (currentChatId && wsRef.current?.readyState === WebSocket.OPEN) {
+      joinChatRoom(currentChatId);
+
+      // Start heartbeat interval
+      heartbeatIntervalRef.current = setInterval(() => {
+        if (currentChatId) {
+          sendHeartbeat(currentChatId);
+        }
+      }, HEARTBEAT_INTERVAL);
+    }
+
+    previousChatIdRef.current = currentChatId;
+
+    return () => {
+      // Clean up on unmount
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (currentChatId) {
+        leaveChatRoom(currentChatId);
+      }
+    };
+  }, [currentChatId, joinChatRoom, leaveChatRoom, sendHeartbeat]);
+
+  // Re-join chat when WebSocket reconnects
+  useEffect(() => {
+    if (
+      currentChatId &&
+      wsRef.current?.readyState === WebSocket.OPEN &&
+      reconnectAttempts === 0
+    ) {
+      // WebSocket just connected, join the current chat
+      joinChatRoom(currentChatId);
+    }
+  }, [reconnectAttempts, currentChatId, joinChatRoom]);
+
+  // Clear typing state on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return { sendTyping, sendStopTyping };
 };

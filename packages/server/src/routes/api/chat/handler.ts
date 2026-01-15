@@ -20,7 +20,7 @@ import { setChatToolSelections } from "../../../lib/mcp";
 import { registerStream } from "../../../lib/redis/controller";
 import { setStreamStatus } from "../../../lib/redis/stream";
 import { getCurrentUserId } from "../../../lib/supabase";
-import { publishUserEvent } from "../../../lib/websocket";
+import { publishChatEvent, publishUserEvent } from "../../../lib/websocket";
 import type { ReasoningEffort } from "./ai-response";
 import { processMessageFiles } from "./files";
 import { handleEdit, handleRegeneration } from "./messages";
@@ -215,6 +215,16 @@ export const chatHandler = {
       chatId: id,
       hasActiveStream: true,
     });
+
+    // Also publish to chat channel for multi-user chats
+    // This allows other members viewing the chat to see the stream in real-time
+    if (chat.isMultiUser) {
+      await publishChatEvent(id, {
+        type: "stream_started",
+        chatId: id,
+        hasActiveStream: true,
+      });
+    }
 
     const chunkIndex = { current: 0 };
     const userMessage =

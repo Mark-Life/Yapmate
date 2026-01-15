@@ -682,7 +682,7 @@ export const useMultiUserChat = (chatId: string) => {
 ### Phase 3: Multi-user Streaming ✅
 
 1. ✅ Modify stream writer to broadcast chunks
-2. Add client-side stream reception for non-sender
+2. ✅ Add client-side stream reception for non-sender (via stream_started event + resumeStream)
 
 ### Phase 4: Invite System & UI ✅
 
@@ -705,6 +705,26 @@ export const useMultiUserChat = (chatId: string) => {
 
 1. ✅ Pass displayNames to model
 2. ✅ Update system prompt for multi-user context
+
+### Phase 6: Client-Side Real-Time Features ✅
+
+1. ✅ Implement presence/online indicators
+   - Modified `packages/components/src/hooks/use-websocket-sync.ts` to send `join_chat`, `leave_chat`, `heartbeat` messages
+   - Added `displayName` parameter to hook options
+   - Hook now tracks current chat and sends join/leave when chat changes
+   - Heartbeat sent every 30s to keep presence alive
+
+2. ✅ Implement typing indicators
+   - Added `sendTyping` and `sendStopTyping` functions to `useWebSocketSync` hook
+   - Modified `apps/web/src/client/components/chat/chat-input.tsx` to dispatch typing events on input change
+   - Modified `apps/web/src/client/pages/chat-layout.tsx` WebSocketSync component to:
+     - Get current user's displayName from members list
+     - Pass displayName to useWebSocketSync hook
+     - Listen for `user-typing` and `user-stop-typing` events and call sendTyping/sendStopTyping
+
+3. ✅ Implement stream to other users
+   - Modified `packages/server/src/routes/api/chat/handler.ts` to publish `stream_started` to chat channel for multi-user chats
+   - Other users receive `stream_started` via WebSocket → triggers `resumeStream` to fetch chunks from Redis buffer
 
 ---
 
@@ -752,7 +772,10 @@ export const useMultiUserChat = (chatId: string) => {
 - ✅ `packages/api/src/router.ts` - added invite and members routers
 - ✅ `apps/web/src/client/router.tsx` - added `/invite/:code` route
 - ✅ `apps/web/src/server/index.ts` - added SPA route for `/invite/*`
-- ✅ `packages/server/src/routes/api/chat/handler.ts` - membership checks, userId on save, pass isMultiUser to stream
+- ✅ `packages/server/src/routes/api/chat/handler.ts` - membership checks, userId on save, pass isMultiUser to stream, publish stream_started to chat channel
 - ✅ `packages/server/src/routes/api/chat/ai-response.ts` - multi-user message prefixing, system prompt update
 - ✅ `packages/server/src/routes/api/chat/stream.ts` - pass isMultiUser to AI response
 - ✅ `packages/db/src/service/mapping.ts` - include userId in message metadata for multi-user support
+- ✅ `packages/components/src/hooks/use-websocket-sync.ts` - added join_chat/leave_chat/heartbeat/typing support, returns sendTyping/sendStopTyping
+- ✅ `apps/web/src/client/pages/chat-layout.tsx` - WebSocketSync now gets displayName and handles typing events
+- ✅ `apps/web/src/client/components/chat/chat-input.tsx` - dispatches user-typing/user-stop-typing events on input
