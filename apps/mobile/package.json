@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "dev": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start",
     "android": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start --android",
     "ios": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start --ios",

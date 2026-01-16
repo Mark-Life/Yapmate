@@ -11,7 +11,7 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
-import { createRenderUiTool } from "../../../lib/generative-ui";
+import { createRenderUiTool, type ChunkEmitter } from "../../../lib/generative-ui";
 import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
 import {
@@ -52,6 +52,8 @@ type ExecuteAiResponseOptions = {
   mcpTools?: Record<string, unknown>;
   /** Whether this is a multi-user chat (enables username prefixing) */
   isMultiUser?: boolean;
+  /** Chunk emitter for streaming generative UI */
+  chunkEmitter?: ChunkEmitter;
 };
 
 /**
@@ -263,6 +265,7 @@ export const executeAiResponse = async (
     userId,
     mcpTools,
     isMultiUser,
+    chunkEmitter,
   } = options;
 
   // Prepare messages for multi-user context (prefix usernames)
@@ -361,12 +364,14 @@ export const executeAiResponse = async (
         )
       : {};
 
-  // Create render_ui tool with conversation context
-  // This tool generates visual UI from conversation data
-  const renderUiTool = createRenderUiTool(
-    processedMessages,
-    modelWithSearch.replace(":online", "")
-  );
+  // Create render_ui tool with conversation context and streaming
+  // This tool generates visual UI from conversation data with progressive rendering
+  const renderUiTool = createRenderUiTool({
+    messages: processedMessages,
+    model: modelWithSearch.replace(":online", ""),
+    chunkEmitter,
+    abortSignal,
+  });
 
   // Merge MCP tools, memory tools, and render_ui tool
   const allTools = {

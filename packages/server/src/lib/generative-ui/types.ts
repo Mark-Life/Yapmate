@@ -27,15 +27,27 @@ export type UIGenerationResult = {
   };
 };
 
-/** Stream chunk types for generative UI */
+/** Stream chunk types for generative UI (internal representation) */
 export type GenerativeUIStreamChunk =
   | { type: "generative-ui-start"; id: string }
   | { type: "generative-ui-delta"; id: string; delta: string }
-  | { type: "generative-ui-end"; id: string; tree: UITree };
+  | { type: "generative-ui-end"; id: string; tree: UITree }
+  | { type: "generative-ui-error"; id: string; error: string };
+
+/** Data chunk format for AI SDK stream (wrapped for compatibility) */
+export type GenerativeUIDataChunk = {
+  type: `data-${string}`;
+  data: GenerativeUIStreamChunk;
+};
 
 /** Generative UI part for message parts */
 export type GenerativeUIPart = {
   type: "generative-ui";
   id: string;
   ui: UITree;
+};
+
+/** Chunk emitter for streaming UI generation */
+export type ChunkEmitter = {
+  emit: (chunk: GenerativeUIStreamChunk) => Promise<void>;
 };

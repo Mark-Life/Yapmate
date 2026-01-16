@@ -56,6 +56,8 @@ type MessagesHistoryProps = {
     model?: string
   ) => void;
   status: ChatStatus;
+  /** Map of generative UI id to partial tree JSON for streaming UI */
+  streamingUI?: Map<string, string>;
   /** Map of userId to displayName for typing indicators in multi-user chat */
   typingMembers?: Map<string, string>;
 };
@@ -397,6 +399,7 @@ export const MessagesHistory = ({
   onEdit,
   onRegenerate,
   status,
+  streamingUI,
   typingMembers,
 }: MessagesHistoryProps) => {
   const [copiedPartId, setCopiedPartId] = useState<string | null>(null);
@@ -540,11 +543,28 @@ export const MessagesHistory = ({
                       });
                     case "file":
                       return renderFilePart({ message, part, partId });
-                    case "generative-ui": {
-                      const uiPart = part as { type: "generative-ui"; id: string; ui: unknown };
+                    case "generative-ui" as typeof part.type: {
+                      const uiPart = part as unknown as {
+                        type: "generative-ui";
+                        id: string;
+                        ui: unknown;
+                      };
+                      // Check if this UI is still streaming
+                      const isStreamingThisUI =
+                        streamingUI?.has(uiPart.id) ?? false;
                       return (
-                        <div key={partId} className="w-full rounded-lg border bg-card p-4">
-                          <GenerativeUIRenderer tree={uiPart.ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]} />
+                        <div
+                          className="w-full rounded-lg border bg-card p-4"
+                          key={partId}
+                        >
+                          <GenerativeUIRenderer
+                            isStreaming={isStreamingThisUI}
+                            tree={
+                              uiPart.ui as Parameters<
+                                typeof GenerativeUIRenderer
+                              >[0]["tree"]
+                            }
+                          />
                         </div>
                       );
                     }
@@ -563,6 +583,35 @@ export const MessagesHistory = ({
               </div>
             );
           })}
+          {/* Render streaming generative UI elements */}
+          {streamingUI && streamingUI.size > 0 && (
+            <div className="flex w-full flex-col gap-2">
+              {Array.from(streamingUI.entries()).map(([id, treeJson]) => {
+                try {
+                  const tree = JSON.parse(treeJson);
+                  return (
+                    <div
+                      className="w-full rounded-lg border bg-card p-4"
+                      key={`streaming-ui-${id}`}
+                    >
+                      <GenerativeUIRenderer isStreaming tree={tree} />
+                    </div>
+                  );
+                } catch {
+                  // Invalid JSON during streaming start
+                  return (
+                    <div
+                      className="flex w-full items-center gap-2 rounded-lg border bg-card p-4 text-muted-foreground text-sm"
+                      key={`streaming-ui-${id}`}
+                    >
+                      <div className="size-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                      Generating UI...
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          )}
           {typingMembers && typingMembers.size > 0 ? (
             <TypingIndicator
               typingMembers={filterTypingMembers(typingMembers, currentUserId)}

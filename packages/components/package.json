@@ -1,9 +1,13 @@
 {
   "name": "@yapmate/components",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
     "./ui/*": "./src/ui/*.tsx",
     "./ai-elements/*": "./src/ai-elements/*.tsx",
+    "./ai-elements/generative-ui": "./src/ai-elements/generative-ui/index.tsx",
     "./lib/utils": "./src/lib/utils.ts",
     "./hooks/*": "./src/hooks/*.ts"
   },

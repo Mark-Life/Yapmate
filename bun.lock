@@ -255,6 +255,7 @@
     "packages/db": {
       "name": "@yapmate/db",
       "dependencies": {
+        "@yapmate/core": "workspace:*",
         "@yapmate/server": "workspace:*",
         "ai": "catalog:",
         "drizzle-kit": "^0.31.8",

@@ -325,6 +325,10 @@ const server = serve<WsClientData>({
   port,
   hostname: "0.0.0.0", // Bind to all network interfaces
 
+  // Increase idle timeout for long-running AI operations (default is 10s)
+  // Streaming responses from LLMs can take 30-60+ seconds
+  idleTimeout: 120, // 2 minutes
+
   routes: {
     // Frontend SPA routes - HTML import bundles React app
     "/": index,

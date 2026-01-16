@@ -3,10 +3,15 @@
  * Exports catalog, tool, and generation functions
  */
 
-export { uiCatalog, type UICatalog } from "./catalog";
-export { generateUI, generateUIStream } from "./generate";
-export { createRenderUiTool, type RenderUiToolInput } from "./tool";
+export { type UICatalog, uiCatalog } from "./catalog";
+export { type StreamUIContext, streamUI } from "./generate";
+export {
+  type CreateRenderUiToolOptions,
+  createRenderUiTool,
+  type RenderUiToolInput,
+} from "./tool";
 export type {
+  ChunkEmitter,
   GenerativeUIPart,
   GenerativeUIStreamChunk,
   UIGenerationContext,

@@ -1,3 +1,4 @@
+import type { CustomDataParts } from "@yapmate/core/types";
 import type { MessageMetadata } from "@yapmate/db/schema";
 import type { UIMessage } from "ai";
 
@@ -8,9 +9,10 @@ export type ChatUIMessage = UIMessage<
   {
     model?: string;
   } & MessageMetadata,
-  {
-    "chat-title": {
-      title: string;
-    };
-  }
+  CustomDataParts
 >;
+
+/**
+ * Extended UI message part type including custom parts
+ */
+export type ChatUIMessagePart = ChatUIMessage["parts"][number];

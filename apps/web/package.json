@@ -2,6 +2,7 @@
   "name": "@yapmate/web",
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "dev": "bun --bun --hot --env-file ../../.env.local src/server/index.ts",
     "build": "bun --bun --env-file ../../.env.local  build.ts",
     "start": "cd dist && bun --bun --env-file ../../../.env.local ./index.js"

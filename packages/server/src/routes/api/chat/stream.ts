@@ -4,6 +4,7 @@
  */
 
 import type { MCPClient } from "@ai-sdk/mcp";
+import type { ChunkEmitter, GenerativeUIStreamChunk } from "@yapmate/server/lib/generative-ui";
 import {
   abortStreamAtomic,
   completeStreamAtomic,
@@ -84,6 +85,62 @@ export const processStreamChunks = async (
   }
 };
 
+/** Writer type for stream writing */
+type WriterType = Parameters<
+  Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
+>[0]["writer"];
+
+/**
+ * Creates a ChunkEmitter for streaming generative UI chunks.
+ * Handles Redis publish, WebSocket broadcast, and client writer write.
+ * Wraps chunks in AI SDK data part format for compatibility.
+ * @param writer - Stream writer for client connection
+ * @param streamId - Stream ID for Redis publishing
+ * @param chatId - Chat ID for WebSocket broadcasting
+ * @param chunkIndex - Mutable reference to chunk index counter
+ */
+export const createChunkEmitter = (
+  writer: WriterType,
+  streamId: string,
+  chatId: string,
+  chunkIndex: { current: number }
+): ChunkEmitter => ({
+  emit: async (chunk: GenerativeUIStreamChunk) => {
+    const currentIndex = chunkIndex.current;
+
+    // Wrap in AI SDK data part format: { type: "data-<name>", data: <payload> }
+    // The type must start with "data-" for the AI SDK to recognize it
+    const dataChunk = {
+      type: `data-${chunk.type}` as const,
+      data: chunk,
+    };
+
+    // Publish to Redis for stream recovery/other clients
+    await publishStreamChunk(streamId, {
+      type: dataChunk.type,
+      data: dataChunk,
+      index: currentIndex,
+    });
+
+    // Broadcast to chat channel for multi-user sync
+    await publishChatEvent(chatId, {
+      type: "stream_chunk",
+      chatId,
+      chunk: dataChunk,
+      chunkIndex: currentIndex,
+    });
+
+    chunkIndex.current += 1;
+
+    // Write to current client (may fail if disconnected)
+    try {
+      writer.write(dataChunk as Parameters<WriterType["write"]>[0]);
+    } catch {
+      // Client disconnected, continue - chunks still go to Redis/WebSocket
+    }
+  },
+});
+
 /**
  * Handles stream errors
  * Saves partial message for non-abort errors, cleans up stream state
@@ -154,9 +211,7 @@ type ExecuteAiResponseWithOrchestrationOptions = {
   isFirstMessage: boolean;
   editMessageId: string | undefined;
   userMessage: string;
-  writer: Parameters<
-    Parameters<typeof import("ai").createUIMessageStream>[0]["execute"]
-  >[0]["writer"];
+  writer: WriterType;
   chunkIndex: { current: number };
   /** Whether this is a multi-user chat (enables username prefixing) */
   isMultiUser?: boolean;
@@ -260,6 +315,9 @@ export const executeAiResponseWithOrchestration = async (
       : Promise.resolve();
 
   try {
+    // Create chunk emitter for streaming generative UI
+    const chunkEmitter = createChunkEmitter(writer, streamId, chatId, chunkIndex);
+
     // Execute AI response (creates stream)
     const { uiStream, getUsage } = await executeAiResponse({
       modelWithSearch,
@@ -274,6 +332,7 @@ export const executeAiResponseWithOrchestration = async (
       userId,
       mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
       isMultiUser,
+      chunkEmitter,
     });
 
     // Process chunks: publish to Redis, broadcast to chat, and write to client

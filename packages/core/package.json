@@ -1,6 +1,9 @@
 {
   "name": "@yapmate/core",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
     "./ai/*": "./src/ai/index.ts",
     "./types": "./src/types/index.ts",

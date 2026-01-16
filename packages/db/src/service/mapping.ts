@@ -16,6 +16,13 @@ import type {
   ToolState,
 } from "../schema/parts";
 
+/** Generative UI part type (custom extension to AI SDK) */
+type GenerativeUIPart = {
+  type: "generative-ui";
+  id: string;
+  ui: unknown;
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /** Result of mapping a UIMessage to DB format */
@@ -134,9 +141,9 @@ export const mapUIPartToDb = (
     };
   }
 
-  // Generative UI part
-  if (partType === "generative-ui") {
-    const uiPart = part as { id: string; ui: unknown };
+  // Generative UI part (custom type, not in AI SDK)
+  if ((partType as string) === "generative-ui") {
+    const uiPart = part as unknown as GenerativeUIPart;
     return {
       ...base,
       type: "generative-ui" as PartType,
@@ -307,11 +314,12 @@ export const mapDbPartToUI = (
       };
 
     case "generative-ui":
+      // Custom type extension, cast to satisfy return type
       return {
         type: "generative-ui",
         id: dbPart.generative_ui_id ?? "",
         ui: dbPart.generative_ui_tree,
-      };
+      } as GenerativeUIPart as unknown as UIMessage["parts"][number]; // TODO: make proper type fix
 
     default:
       return {

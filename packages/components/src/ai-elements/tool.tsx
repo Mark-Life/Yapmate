@@ -140,17 +140,32 @@ export const ToolOutput = ({
   errorText,
   ...props
 }: ToolOutputProps) => {
-  console.log("[ToolOutput]", { output, errorText, isGenerativeUI: isGenerativeUIOutput(output) });
+  const isGenUI = isGenerativeUIOutput(output);
+  console.log("[ToolOutput]", { output, errorText, isGenerativeUI: isGenUI });
+
+  // Deep debug for generative UI
+  if (isGenUI) {
+    const uiOutput = output as { type: string; ui: { root: string; elements: unknown } };
+    console.log("[ToolOutput] Generative UI details:", {
+      root: uiOutput.ui?.root,
+      elementsType: Array.isArray(uiOutput.ui?.elements) ? "array" : typeof uiOutput.ui?.elements,
+      elementsKeys: uiOutput.ui?.elements && typeof uiOutput.ui.elements === "object" && !Array.isArray(uiOutput.ui.elements)
+        ? Object.keys(uiOutput.ui.elements)
+        : "N/A (not an object)",
+      elementsLength: Array.isArray(uiOutput.ui?.elements) ? uiOutput.ui.elements.length : "N/A",
+      rawElements: JSON.stringify(uiOutput.ui?.elements, null, 2),
+    });
+  }
 
   if (!(output || errorText)) {
     return null;
   }
 
   // Handle generative-ui output specially
-  if (isGenerativeUIOutput(output)) {
+  if (isGenUI) {
     return (
       <div className={cn("p-4", className)} {...props}>
-        <GenerativeUIRenderer tree={output.ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]} />
+        <GenerativeUIRenderer tree={(output as { ui: unknown }).ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]} />
       </div>
     );
   }

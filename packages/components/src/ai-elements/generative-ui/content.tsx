@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@yapmate/components/lib/utils";
-import Streamdown from "streamdown";
+import { Streamdown } from "streamdown";
 
 export type TextBlockProps = {
   content: string;
