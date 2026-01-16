@@ -73,6 +73,10 @@ export const Chat = ({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  // Track streaming generative UI parts (id -> partial tree as JSON string)
+  const [streamingUI, setStreamingUI] = useState<Map<string, string>>(
+    () => new Map()
+  );
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash";
@@ -298,7 +302,7 @@ export const Chat = ({
     id: chatId,
     messages: initialMessages,
     transport,
-    generateId: () => crypto.randomUUID(),
+    generateId: () => crypto.randomUUID?.(),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onData: (dataPart) => {
       // Handle streamed title updates
@@ -308,7 +312,11 @@ export const Chat = ({
       }
       // TODO: fix typecasting
       // Handle MCP connection errors (custom data type)
-      const part = dataPart as { type: string; data?: unknown };
+      const part = dataPart as {
+        type: string;
+        data?: unknown;
+        [key: string]: unknown;
+      };
       if (part.type === "data-mcp-error" && part.data) {
         const { errors } = part.data as {
           errors: Array<{
@@ -321,6 +329,55 @@ export const Chat = ({
           toast.error(`MCP Error: ${err.serverName}`, {
             description: err.error,
             duration: 8000,
+          });
+        }
+      }
+
+      // Handle generative UI streaming chunks (wrapped in data format)
+      // The chunks come as { type: "data-generative-ui-*", data: { type, id, ... } }
+      const chunkData = part.data as {
+        type?: string;
+        id?: string;
+        delta?: string;
+      } | undefined;
+
+      if (
+        part.type === "data-generative-ui-start" ||
+        chunkData?.type === "generative-ui-start"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        if (id) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(id, "{}");
+            return newMap;
+          });
+        }
+      } else if (
+        part.type === "data-generative-ui-delta" ||
+        chunkData?.type === "generative-ui-delta"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        const delta = chunkData?.delta ?? (part.delta as string);
+        if (id && delta) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(id, delta);
+            return newMap;
+          });
+        }
+      } else if (
+        part.type === "data-generative-ui-end" ||
+        part.type === "data-generative-ui-error" ||
+        chunkData?.type === "generative-ui-end" ||
+        chunkData?.type === "generative-ui-error"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        if (id) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(id);
+            return newMap;
           });
         }
       }
@@ -656,6 +713,7 @@ export const Chat = ({
               onEdit={handleEdit}
               onRegenerate={handleRegenerate}
               status={status}
+              streamingUI={streamingUI}
               typingMembers={typingMembers}
             />
           )}

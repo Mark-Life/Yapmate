@@ -1,15 +1,25 @@
 {
   "name": "@yapmate/server",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./routes/*": "./src/routes/*.ts",
     "./middleware/*": "./src/middleware/*.ts",
-    "./lib/*": "./src/lib/*.ts"
+    "./lib/*": "./src/lib/*.ts",
+    "./lib/supabase": "./src/lib/supabase/index.ts",
+    "./lib/websocket": "./src/lib/websocket/index.ts",
+    "./lib/mcp": "./src/lib/mcp/index.ts",
+    "./lib/redis": "./src/lib/redis/index.ts",
+    "./lib/models": "./src/lib/models/index.ts",
+    "./lib/generative-ui": "./src/lib/generative-ui/index.ts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^2.0.33",
     "@ai-sdk/mcp": "^1.0.5",
+    "@json-render/core": "^0.2.0",
     "@langfuse/tracing": "^4.5.1",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "@openrouter/sdk": "^0.3.11",

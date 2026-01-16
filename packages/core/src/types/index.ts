@@ -43,3 +43,18 @@ export type ModelMetadata = {
  * Model ID format (lowercase provider/model-name)
  */
 export type ModelId = string;
+
+// ─── UI Message Types ────────────────────────────────────────────────────────
+
+/**
+ * Custom data part types extending AI SDK's UIMessage
+ */
+export type CustomDataParts = {
+  "chat-title": {
+    title: string;
+  };
+  "generative-ui": {
+    id: string;
+    ui: unknown;
+  };
+};

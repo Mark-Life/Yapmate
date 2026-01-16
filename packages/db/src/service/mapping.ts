@@ -16,6 +16,13 @@ import type {
   ToolState,
 } from "../schema/parts";
 
+/** Generative UI part type (custom extension to AI SDK) */
+type GenerativeUIPart = {
+  type: "generative-ui";
+  id: string;
+  ui: unknown;
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /** Result of mapping a UIMessage to DB format */
@@ -131,6 +138,17 @@ export const mapUIPartToDb = (
       ...base,
       type: "file" as PartType,
       file_id: fileId,
+    };
+  }
+
+  // Generative UI part (custom type, not in AI SDK)
+  if ((partType as string) === "generative-ui") {
+    const uiPart = part as unknown as GenerativeUIPart;
+    return {
+      ...base,
+      type: "generative-ui" as PartType,
+      generative_ui_id: uiPart.id,
+      generative_ui_tree: uiPart.ui,
     };
   }
 
@@ -294,6 +312,14 @@ export const mapDbPartToUI = (
         url: "", // Will be populated by caller with signed URL or dataUrl
         mediaType: "application/octet-stream",
       };
+
+    case "generative-ui":
+      // Custom type extension, cast to satisfy return type
+      return {
+        type: "generative-ui",
+        id: dbPart.generative_ui_id ?? "",
+        ui: dbPart.generative_ui_tree,
+      } as GenerativeUIPart as unknown as UIMessage["parts"][number]; // TODO: make proper type fix
 
     default:
       return {

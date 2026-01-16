@@ -23,6 +23,9 @@
       "@yapmate/components/ai-elements/*": [
         "./packages/components/src/ai-elements/*"
       ],
+      "@yapmate/components/ai-elements/generative-ui": [
+        "./packages/components/src/ai-elements/generative-ui/index.tsx"
+      ],
       "@yapmate/components/lib/utils": [
         "./packages/components/src/lib/utils.ts"
       ],
@@ -32,6 +35,20 @@
       "@yapmate/server/routes/*": ["./packages/server/src/routes/*"],
       "@yapmate/server/middleware/*": ["./packages/server/src/middleware/*"],
       "@yapmate/server/lib/*": ["./packages/server/src/lib/*"],
+      "@yapmate/server/lib/supabase": [
+        "./packages/server/src/lib/supabase/index.ts"
+      ],
+      "@yapmate/server/lib/websocket": [
+        "./packages/server/src/lib/websocket/index.ts"
+      ],
+      "@yapmate/server/lib/mcp": ["./packages/server/src/lib/mcp/index.ts"],
+      "@yapmate/server/lib/redis": ["./packages/server/src/lib/redis/index.ts"],
+      "@yapmate/server/lib/models": [
+        "./packages/server/src/lib/models/index.ts"
+      ],
+      "@yapmate/server/lib/generative-ui": [
+        "./packages/server/src/lib/generative-ui/index.ts"
+      ],
 
       "@yapmate/core/types": ["./packages/core/src/types/index.ts"],
       "@yapmate/core/ai": ["./packages/core/src/ai/index.ts"],

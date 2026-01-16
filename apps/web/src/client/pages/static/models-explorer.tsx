@@ -10,7 +10,7 @@ const TRAILING_ZERO_REGEX = /\.0$/;
 type ModelFromApi = {
   id: string;
   name: string;
-  contextLimit: number;
+  contextLimit: number | null;
 };
 
 type DisplayModel = {
@@ -90,7 +90,7 @@ const transformModels = (models: ModelFromApi[]): DisplayModel[] => {
         provider,
         providerDisplay: getProviderDisplayName(provider),
         tags,
-        contextLimit: model.contextLimit,
+        contextLimit: model.contextLimit ?? 0,
         isTopModel: topModelsSet.has(model.id),
       };
     });
