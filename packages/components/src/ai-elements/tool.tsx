@@ -19,6 +19,7 @@ import {
   CollapsibleTrigger,
 } from "@yapmate/components/ui/collapsible";
 import { CodeBlock } from "./code-block";
+import { GenerativeUIRenderer } from "./generative-ui";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -122,14 +123,36 @@ export type ToolOutputProps = ComponentProps<"div"> & {
   errorText: ToolUIPart["errorText"];
 };
 
+/** Type guard for generative-ui tool output */
+const isGenerativeUIOutput = (
+  output: unknown
+): output is { type: "generative-ui"; ui: { root: string; elements: Record<string, unknown> } } =>
+  typeof output === "object" &&
+  output !== null &&
+  "type" in output &&
+  (output as { type: unknown }).type === "generative-ui" &&
+  "ui" in output &&
+  typeof (output as { ui: unknown }).ui === "object";
+
 export const ToolOutput = ({
   className,
   output,
   errorText,
   ...props
 }: ToolOutputProps) => {
+  console.log("[ToolOutput]", { output, errorText, isGenerativeUI: isGenerativeUIOutput(output) });
+
   if (!(output || errorText)) {
     return null;
+  }
+
+  // Handle generative-ui output specially
+  if (isGenerativeUIOutput(output)) {
+    return (
+      <div className={cn("p-4", className)} {...props}>
+        <GenerativeUIRenderer tree={output.ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]} />
+      </div>
+    );
   }
 
   let Output = <div>{output as ReactNode}</div>;
