@@ -1,0 +1,3 @@
+ALTER TABLE "parts" ADD COLUMN "generative_ui_tree" jsonb;--> statement-breakpoint
+ALTER TABLE "parts" ADD COLUMN "generative_ui_id" text;--> statement-breakpoint
+ALTER TABLE "parts" ADD CONSTRAINT "generative_ui_fields_required_if_type_is_generative_ui" CHECK (CASE WHEN "parts"."type" = 'generative-ui' THEN "parts"."generative_ui_tree" IS NOT NULL AND "parts"."generative_ui_id" IS NOT NULL ELSE TRUE END);
