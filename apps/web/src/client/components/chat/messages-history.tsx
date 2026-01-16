@@ -3,6 +3,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@yapmate/components/ai-elements/conversation";
+import { GenerativeUIRenderer } from "@yapmate/components/ai-elements/generative-ui";
 import { Loader } from "@yapmate/components/ai-elements/loader";
 import {
   Message,
@@ -539,6 +540,14 @@ export const MessagesHistory = ({
                       });
                     case "file":
                       return renderFilePart({ message, part, partId });
+                    case "generative-ui": {
+                      const uiPart = part as { type: "generative-ui"; id: string; ui: unknown };
+                      return (
+                        <div key={partId} className="w-full rounded-lg border bg-card p-4">
+                          <GenerativeUIRenderer tree={uiPart.ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]} />
+                        </div>
+                      );
+                    }
                     default:
                       // Handle tool parts (type starts with "tool-" or "dynamic-tool")
                       if (isToolPart(part.type)) {

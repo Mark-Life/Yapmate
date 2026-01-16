@@ -11,6 +11,7 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { createRenderUiTool } from "../../../lib/generative-ui";
 import { langfuse } from "../../../lib/instrumentation";
 import { openrouter } from "../../../lib/openrouter";
 import {
@@ -360,10 +361,18 @@ export const executeAiResponse = async (
         )
       : {};
 
-  // Merge MCP tools and memory tools
+  // Create render_ui tool with conversation context
+  // This tool generates visual UI from conversation data
+  const renderUiTool = createRenderUiTool(
+    processedMessages,
+    modelWithSearch.replace(":online", "")
+  );
+
+  // Merge MCP tools, memory tools, and render_ui tool
   const allTools = {
     ...wrappedMcpTools,
     ...(memoryTools || {}),
+    render_ui: renderUiTool,
   };
 
   // Prepend user rules as context message

@@ -134,6 +134,17 @@ export const mapUIPartToDb = (
     };
   }
 
+  // Generative UI part
+  if (partType === "generative-ui") {
+    const uiPart = part as { id: string; ui: unknown };
+    return {
+      ...base,
+      type: "generative-ui" as PartType,
+      generative_ui_id: uiPart.id,
+      generative_ui_tree: uiPart.ui,
+    };
+  }
+
   // Dynamic tool part
   if (partType === "dynamic-tool") {
     return {
@@ -293,6 +304,13 @@ export const mapDbPartToUI = (
         type: "file",
         url: "", // Will be populated by caller with signed URL or dataUrl
         mediaType: "application/octet-stream",
+      };
+
+    case "generative-ui":
+      return {
+        type: "generative-ui",
+        id: dbPart.generative_ui_id ?? "",
+        ui: dbPart.generative_ui_tree,
       };
 
     default:

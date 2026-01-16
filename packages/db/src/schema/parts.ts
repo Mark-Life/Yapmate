@@ -26,6 +26,7 @@ export const PART_TYPES = [
   "source",
   "tool-invocation",
   "file",
+  "generative-ui",
 ] as const;
 export type PartType = (typeof PART_TYPES)[number];
 
@@ -82,6 +83,12 @@ export const parts = pgTable(
     // ─── File Part ───────────────────────────────────────────────────────
     /** Reference to files table (for type = 'file') */
     file_id: uuid().references(() => files.id, { onDelete: "set null" }),
+
+    // ─── Generative UI Part ─────────────────────────────────────────────
+    /** UI tree JSON (for type = 'generative-ui') */
+    generative_ui_tree: jsonb(),
+    /** Unique ID for the generative UI instance */
+    generative_ui_id: text(),
     ...timestamps,
   },
   (t) => [
@@ -117,6 +124,11 @@ export const parts = pgTable(
     check(
       "file_id_required_if_type_is_file",
       sql`CASE WHEN ${t.type} = 'file' THEN ${t.file_id} IS NOT NULL ELSE TRUE END`
+    ),
+
+    check(
+      "generative_ui_fields_required_if_type_is_generative_ui",
+      sql`CASE WHEN ${t.type} = 'generative-ui' THEN ${t.generative_ui_tree} IS NOT NULL AND ${t.generative_ui_id} IS NOT NULL ELSE TRUE END`
     ),
   ]
 );
