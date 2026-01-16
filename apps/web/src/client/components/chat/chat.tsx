@@ -298,7 +298,12 @@ export const Chat = ({
     id: chatId,
     messages: initialMessages,
     transport,
-    generateId: () => crypto.randomUUID(),
+    generateId: () =>
+      crypto.randomUUID?.() ??
+      "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+      }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onData: (dataPart) => {
       // Handle streamed title updates
