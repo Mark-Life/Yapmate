@@ -91,55 +91,66 @@ Tool results stored in message parts:
 │  - Uses MCP tools (postgres, supabase, etc.)                   │
 │  - Receives file uploads (CSV, JSON)                           │
 │  - Accumulates data in conversation context                    │
-│  - Has tool: render_ui({ intent, data_summary? })              │
+│  - Has tool: render_ui({ intent? })  ← minimal/empty params    │
 └───────────────────────────┬────────────────────────────────────┘
                             │
+                            │ Server-side: pass FULL conversation
+                            │ (avoids main agent re-typing data tokens)
                             ▼
 ┌────────────────────────────────────────────────────────────────┐
 │ UI Generation Agent (new)                                      │
-│  - Receives: user intent + relevant context (tool results)     │
+│  - Receives: FULL conversation history (tool results, user     │
+│    messages, assistant messages - all context)                 │
+│  - Model: SAME as user selected for main agent                 │
 │  - System prompt: component catalog description                │
-│  - Output: structured JSON (validated against catalog schema)  │
-│  - Uses OpenAI/Anthropic structured output for reliability     │
+│  - Output: STREAMED JSON for progressive rendering             │
 └───────────────────────────┬────────────────────────────────────┘
                             │
+                            │ Stream chunks to client
                             ▼
 ┌────────────────────────────────────────────────────────────────┐
 │ Client Renderer                                                │
 │  - New message part type: 'generative-ui'                      │
 │  - JSONUIProvider wraps component tree                         │
 │  - Registry maps types → React components                      │
+│  - Progressive render as JSON streams in                       │
 │  - Actions can trigger callbacks to main agent                 │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Context Extraction Strategy
+### Key Design Decisions
 
-Main agent decides what to pass to UI agent. Options:
+1. **Empty/minimal tool params** - `render_ui` takes only optional `intent` string
+   - Main agent does NOT re-type data in tool arguments
+   - Avoids double token generation (main agent writes data → UI agent writes same data)
+   - Server extracts full conversation and passes to UI agent
 
-1. **Full tool results** - for small data sets
-2. **Summarized data** - schema + sample rows + aggregates
-3. **Data reference** - ID/key, UI agent re-fetches if needed
+2. **Same model** - UI agent uses same model user selected for main agent
+   - Passed via API request body (`model` field)
+   - Consistent quality expectations
+
+3. **Streaming** - UI generation streams to client
+   - More responsive than waiting for complete JSON
+   - Progressive rendering as chunks arrive
+
+### Context Passing (Server-Side)
+
+Server extracts context from conversation - main agent doesn't need to summarize:
 
 ```typescript
-// Example context extraction
-function extractUIContext(messages: Message[]) {
-  const toolResults = messages
-    .flatMap(m => m.parts)
-    .filter(p => p.type === 'tool')
-    .map(p => ({
-      tool: p.toolName,
-      input: p.input,
-      output: p.output
-    }));
-
-  const userIntent = messages
-    .filter(m => m.role === 'user')
-    .map(m => m.parts.find(p => p.type === 'text')?.text)
-    .filter(Boolean)
-    .join('\n');
-
-  return { toolResults, userIntent };
+// Server-side when render_ui tool is called
+function handleRenderUiTool(
+  intent: string | undefined,
+  conversationMessages: Message[],
+  model: string  // from API request
+) {
+  // Pass FULL conversation to UI agent
+  // No extraction/summarization by main agent = no duplicate tokens
+  return generateUIStream({
+    intent,
+    messages: conversationMessages,
+    model  // same model user selected
+  });
 }
 ```
 
@@ -311,62 +322,104 @@ export const uiCatalog = createCatalog({
    ```typescript
    // packages/server/src/lib/generative-ui/tool.ts
    export const renderUiTool = tool({
-     description: 'Generate a visual UI (dashboard, report, cards) from data in context',
+     description: 'Generate a visual UI (dashboard, report, cards, flashcards) from data already in conversation. Use this when user wants to visualize data from previous tool calls or uploaded files.',
      parameters: z.object({
-       intent: z.string().describe('What the user wants to visualize'),
-       dataDescription: z.string().optional().describe('Brief description of data to render')
+       intent: z.string().optional().describe('What to render: "table", "analytics dashboard", "summary", "flashcards", etc. If omitted, infer from conversation.')
      }),
-     execute: async ({ intent, dataDescription }, { messages, abortSignal }) => {
-       // Extract relevant context
-       const context = extractUIContext(messages);
-
-       // Call UI generation agent
-       const uiJson = await generateUI({
-         intent,
-         dataDescription,
-         context,
-         abortSignal
-       });
-
-       // Validate against catalog
-       const validated = uiCatalog.validateTree(uiJson);
-       if (!validated.success) {
-         throw new Error('Generated UI failed validation');
-       }
-
-       return { ui: validated.data };
-     }
+     // NOTE: execute receives full messages from server context, NOT from tool params
+     // This avoids main agent re-typing all data as tool arguments
    });
+
+   // Server-side handler (in ai-response.ts or separate handler)
+   async function executeRenderUiTool(
+     toolCall: { intent?: string },
+     context: {
+       messages: Message[];
+       model: string;        // same model user selected
+       abortSignal: AbortSignal;
+       writer: UIMessageStreamWriter;
+     }
+   ) {
+     const { intent } = toolCall;
+     const { messages, model, abortSignal, writer } = context;
+
+     // Stream UI generation - passes FULL conversation, no data extraction
+     const uiStream = await generateUIStream({
+       intent,
+       messages,  // full conversation history
+       model,     // user's selected model
+       abortSignal
+     });
+
+     // Forward stream chunks to client
+     for await (const chunk of uiStream) {
+       writer.write({ type: 'generative-ui-delta', delta: chunk });
+     }
+   }
    ```
 
-4. **Create UI generation function**
+4. **Create streaming UI generation function**
    ```typescript
    // packages/server/src/lib/generative-ui/generate.ts
-   import { generateObject } from 'ai';
+   import { streamObject } from 'ai';
+   import { openrouter } from '../openrouter';
 
-   export async function generateUI({ intent, context, abortSignal }) {
+   export async function generateUIStream({
+     intent,
+     messages,
+     model,
+     abortSignal
+   }: {
+     intent?: string;
+     messages: Message[];
+     model: string;
+     abortSignal: AbortSignal;
+   }) {
      const systemPrompt = `You generate UI layouts as JSON.
 
    Available components:
    ${generateCatalogPrompt(uiCatalog)}
 
    Rules:
+   - Analyze the conversation to find data from tool results, file uploads, etc.
    - Choose components that best fit the data shape
    - Use DataTable for arrays of objects
    - Use Metric for single numeric values
    - Use Chart when trends/comparisons are useful
    - Use Grid/Stack for layout
-   - Keep it simple and readable`;
+   - Keep it simple and readable
+   - If intent is provided, focus on that specific visualization`;
 
-     const { object } = await generateObject({
-       model: openrouter.chat('openai/gpt-4o-mini'),
+     // Use SAME model as main agent (user's selection)
+     const result = streamObject({
+       model: openrouter.chat(model),
        schema: uiCatalog.schemas.tree,
        system: systemPrompt,
-       prompt: `User intent: ${intent}\n\nData context:\n${JSON.stringify(context, null, 2)}`,
+       messages: [
+         // Pass full conversation as context
+         ...messages.map(m => ({
+           role: m.role,
+           content: formatMessageForUIAgent(m)  // includes tool results, text, files
+         })),
+         // Add intent as final user message if provided
+         ...(intent ? [{ role: 'user' as const, content: `Generate UI for: ${intent}` }] : [])
+       ],
        abortSignal
      });
 
-     return object;
+     return result.partialObjectStream;  // stream for progressive rendering
+   }
+
+   function formatMessageForUIAgent(message: Message): string {
+     // Format message parts for UI agent to understand
+     return message.parts.map(part => {
+       if (part.type === 'text') return part.text;
+       if (part.type === 'tool') {
+         return `[Tool: ${part.toolName}]\nInput: ${JSON.stringify(part.input)}\nOutput: ${JSON.stringify(part.output)}`;
+       }
+       if (part.type === 'file') return `[File: ${part.filename}]`;
+       return '';
+     }).join('\n');
    }
    ```
 
@@ -402,13 +455,39 @@ export const uiCatalog = createCatalog({
 
 ### Phase 3: Stream Integration
 
-8. **Handle UI generation in stream**
-   - When tool result contains `{ ui: ... }`, emit as `generative-ui` part
-   - Client renders via `GenerativeUIPart`
+8. **Handle UI generation in main stream**
+   - When `render_ui` tool is called, intercept before normal tool execution
+   - Call `generateUIStream()` with full conversation + user's model
+   - Emit chunks as `generative-ui-delta` parts in main response stream
+   - Client accumulates deltas → renders progressively
 
-9. **Optional: Stream UI generation**
-   - Use `useUIStream` hook from json-render for progressive rendering
-   - Requires separate SSE endpoint for UI stream
+9. **Client-side streaming UI render**
+   ```typescript
+   // In messages-history.tsx or dedicated component
+   function StreamingGenerativeUI({ partialTree }: { partialTree: Partial<UITree> }) {
+     // json-render's Renderer handles partial trees gracefully
+     // Components render as their data becomes available
+     return (
+       <JSONUIProvider>
+         <Renderer
+           tree={partialTree}
+           registry={componentRegistry}
+           // Fallback for incomplete nodes
+           fallback={<Skeleton />}
+         />
+       </JSONUIProvider>
+     );
+   }
+   ```
+
+10. **Stream protocol addition**
+    ```typescript
+    // New stream chunk types
+    type GenerativeUIStreamPart =
+      | { type: 'generative-ui-start'; id: string }
+      | { type: 'generative-ui-delta'; id: string; delta: Partial<UITree> }
+      | { type: 'generative-ui-end'; id: string; tree: UITree };
+    ```
 
 ### Phase 4: Actions & Interactivity
 
@@ -436,21 +515,21 @@ Instead of separate agent, detect data shape in tool results and auto-render:
 
 ### B: Inline Generation (No Sub-Agent)
 
-Main agent generates UI JSON directly using structured output:
+Main agent generates UI JSON directly as part of response:
 
 ```typescript
-const result = await generateObject({
+// Main agent has dual output mode
+const result = await streamText({
   model,
-  schema: z.union([
-    z.object({ type: z.literal('text'), content: z.string() }),
-    z.object({ type: z.literal('ui'), tree: uiCatalog.schemas.tree })
-  ]),
-  // ...
+  tools: {
+    // No render_ui tool, agent writes UI directly
+  },
+  // Agent decides when to output UI vs text
 });
 ```
 
 **Pros**: Single request, lower latency
-**Cons**: Mixes concerns, harder to tune
+**Cons**: Mixes concerns, main agent must understand UI schema, harder to tune separately
 
 ### C: Client-Side Generation
 
@@ -463,21 +542,21 @@ Pass data to client, run smaller model in browser/edge:
 
 ## Open Questions
 
-1. **Context size limits** - How much data can we pass to UI agent? Need truncation strategy?
+1. **Context size limits** - Full conversation could be large. Truncation strategy for very long chats?
 
-2. **Caching** - Should generated UIs be cached? Key by intent + data hash?
+2. **Caching** - Should generated UIs be cached? Key by intent + conversation hash?
 
 3. **Editing** - Can users modify generated UI? Save customizations?
 
-4. **Streaming** - Should UI generation stream chunks, or return complete JSON?
+4. **Error recovery** - What if UI generation fails? Fallback to text summary?
 
-5. **Error recovery** - What if UI generation fails? Fallback to text summary?
+5. **Multi-user** - How do generated UIs behave in multi-user chats? Per-user or shared?
 
-6. **Multi-user** - How do generated UIs behave in multi-user chats? Per-user or shared?
+6. **Persistence** - Store final UI JSON in message parts for reload, or regenerate?
 
-7. **Persistence** - Store UI JSON in message parts, or regenerate on load?
+7. **Component expansion** - How to add domain-specific components without bloating catalog?
 
-8. **Component expansion** - How to add domain-specific components without bloating catalog?
+8. **Structured output support** - Not all models support structured output. Fallback for unsupported models?
 
 ---
 
