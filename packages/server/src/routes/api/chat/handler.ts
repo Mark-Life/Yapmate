@@ -243,6 +243,12 @@ export const chatHandler = {
 
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
+        // Send model info at stream start for client-side avatar display
+        writer.write({
+          type: "data-model" as const,
+          data: { model, assistantMessageId },
+        });
+
         try {
           streamUsage = await executeAiResponseWithOrchestration({
             modelWithSearch,

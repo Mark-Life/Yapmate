@@ -145,9 +145,24 @@ export const Chat = ({
     messageId: string;
     role: "user" | "assistant";
   } | null>(null);
+  // Store model per assistant message for avatar display after streaming
+  const messageModelMapRef = useRef<Map<string, string>>(new Map());
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
+
+  // Initialize model map from initial messages (DB-loaded messages have metadata.model)
+  useEffect(() => {
+    if (!initialMessages?.length) {
+      return;
+    }
+    for (const msg of initialMessages) {
+      const msgModel = (msg.metadata as { model?: string } | undefined)?.model;
+      if (msg.role === "assistant" && msgModel) {
+        messageModelMapRef.current.set(msg.id, msgModel);
+      }
+    }
+  }, [initialMessages]);
   useEffect(() => {
     searchEnabledRef.current = searchEnabled;
   }, [searchEnabled]);
@@ -240,10 +255,32 @@ export const Chat = ({
           // Refresh chats list to show new title
           queryClient.invalidateQueries({ queryKey: ["chats"] });
         }
+        // Handle model info for avatar display
+        const part = dataPart as { type: string; data?: unknown };
+        if (part.type === "data-model" && part.data) {
+          const { model: streamedModel, assistantMessageId } = part.data as {
+            model: string;
+            assistantMessageId: string;
+          };
+          messageModelMapRef.current.set(assistantMessageId, streamedModel);
+        }
       },
       onFinish: ({ messages: finishedMessages }) => {
-        // Manually update messages state to ensure UI reflects completed stream
-        setMessages(finishedMessages);
+        // Patch assistant messages with model from our stored map
+        const patchedMessages = finishedMessages.map((msg) => {
+          if (msg.role !== "assistant") {
+            return msg;
+          }
+          const storedModel = messageModelMapRef.current.get(msg.id);
+          if (!storedModel) {
+            return msg;
+          }
+          return {
+            ...msg,
+            metadata: { ...msg.metadata, model: storedModel },
+          };
+        });
+        setMessages(patchedMessages as ChatUIMessage[]);
         // Invalidate cache so navigation back to this chat fetches fresh DB data
         queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
       },

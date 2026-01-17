@@ -114,6 +114,19 @@ export const Chat = ({
     setModel(defaultModel);
   }, [models, model, initialId, initialMessages, queryClient]);
 
+  // Initialize model map from initial messages (DB-loaded messages have metadata.model)
+  useEffect(() => {
+    if (!initialMessages?.length) {
+      return;
+    }
+    for (const msg of initialMessages) {
+      const msgModel = (msg.metadata as { model?: string } | undefined)?.model;
+      if (msg.role === "assistant" && msgModel) {
+        messageModelMapRef.current.set(msg.id, msgModel);
+      }
+    }
+  }, [initialMessages]);
+
   /**
    * Handles model change with localStorage persistence
    */
@@ -236,6 +249,9 @@ export const Chat = ({
   const isResumingStreamRef = useRef(false);
   // Store previous messages for error rollback (optimistic update recovery)
   const previousMessagesRef = useRef<ChatUIMessage[] | null>(null);
+  // Store model per assistant message for avatar display after streaming
+  // Preserves models from DB-loaded messages and streamed data parts
+  const messageModelMapRef = useRef<Map<string, string>>(new Map());
   modelRef.current = model;
   searchEnabledRef.current = searchEnabled;
   memoryEnabledRef.current = memoryEnabled;
@@ -324,12 +340,34 @@ export const Chat = ({
           });
         }
       }
+      // Handle model info for avatar display
+      if (part.type === "data-model" && part.data) {
+        const { model: streamedModel, assistantMessageId } = part.data as {
+          model: string;
+          assistantMessageId: string;
+        };
+        messageModelMapRef.current.set(assistantMessageId, streamedModel);
+      }
     },
     onFinish: ({ messages: finishedMessages }) => {
       // Clear previous messages - operation succeeded, no rollback needed
       previousMessagesRef.current = null;
-      // Manually update messages state to ensure UI reflects completed stream
-      setMessages(finishedMessages);
+      // Patch assistant messages with model from our stored map
+      // This preserves models for avatar display after streaming completes
+      const patchedMessages = finishedMessages.map((msg) => {
+        if (msg.role !== "assistant") {
+          return msg;
+        }
+        const storedModel = messageModelMapRef.current.get(msg.id);
+        if (!storedModel) {
+          return msg;
+        }
+        return {
+          ...msg,
+          metadata: { ...msg.metadata, model: storedModel },
+        };
+      });
+      setMessages(patchedMessages as ChatUIMessage[]);
       // Track message completion
       const assistantMessage = finishedMessages.find(
         (msg) => msg.role === "assistant"
