@@ -343,69 +343,66 @@ export function MessageAttachment({
   const isImage = mediaType === "image";
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
 
+  if (isImage) {
+    return (
+      <div
+        className={cn(
+          "group relative max-h-64 w-fit overflow-hidden rounded-lg",
+          from === "user" && "ml-auto",
+          className
+        )}
+        {...props}
+      >
+        {/* biome-ignore lint/performance/noImgElement: its ok here */}
+        <img
+          alt={filename || "attachment"}
+          className="max-h-64 w-auto object-cover"
+          src={data.url}
+        />
+        {onRemove && (
+          <Button
+            aria-label="Remove attachment"
+            className="absolute top-2 right-2 size-6 rounded-full bg-background/80 p-0 opacity-0 backdrop-blur-sm transition-opacity hover:bg-background group-hover:opacity-100 [&>svg]:size-3"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            type="button"
+            variant="ghost"
+          >
+            <XIcon />
+            <span className="sr-only">Remove</span>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "group relative size-48 w-fit overflow-hidden rounded-lg",
+        "group flex h-10 w-fit items-center gap-2 overflow-hidden rounded-lg bg-muted px-3",
         from === "user" && "ml-auto",
         className
       )}
       {...props}
     >
-      {isImage ? (
-        <>
-          {/* biome-ignore lint/performance/noImgElement: its ok here */}
-          <img
-            alt={filename || "attachment"}
-            className="size-full object-cover"
-            height={192}
-            src={data.url}
-            width={192}
-          />
-          {onRemove && (
-            <Button
-              aria-label="Remove attachment"
-              className="absolute top-2 right-2 size-6 rounded-full bg-background/80 p-0 opacity-0 backdrop-blur-sm transition-opacity hover:bg-background group-hover:opacity-100 [&>svg]:size-3"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              type="button"
-              variant="ghost"
-            >
-              <XIcon />
-              <span className="sr-only">Remove</span>
-            </Button>
-          )}
-        </>
-      ) : (
-        <>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex size-full shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <PaperclipIcon className="size-4" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{attachmentLabel}</p>
-            </TooltipContent>
-          </Tooltip>
-          {onRemove && (
-            <Button
-              aria-label="Remove attachment"
-              className="size-6 shrink-0 rounded-full p-0 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100 [&>svg]:size-3"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              type="button"
-              variant="ghost"
-            >
-              <XIcon />
-              <span className="sr-only">Remove</span>
-            </Button>
-          )}
-        </>
+      <PaperclipIcon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="max-w-48 truncate text-sm">{attachmentLabel}</span>
+      {onRemove && (
+        <Button
+          aria-label="Remove attachment"
+          className="size-6 shrink-0 rounded-full p-0 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100 [&>svg]:size-3"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          type="button"
+          variant="ghost"
+        >
+          <XIcon />
+          <span className="sr-only">Remove</span>
+        </Button>
       )}
     </div>
   );
