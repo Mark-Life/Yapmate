@@ -23,7 +23,7 @@ import { lightTap } from "@/lib/haptics";
  * Groups models by provider, with local models first, then top models in "Common"
  */
 const groupModelsByProvider = (modelsList: TransformedModel[]) => {
-  const topModelsSet = new Set(TOP_MODELS);
+  const topModelsSet = new Set<string>(TOP_MODELS);
   const localModels: Array<{
     name: string;
     value: string;
@@ -247,9 +247,9 @@ export default function ModelSelectorScreen() {
         className="flex flex-row items-center gap-2 rounded-sm px-3 py-2 active:bg-accent"
         onPress={() => handleSelect(item.value)}
       >
-        {item.isLocal && (
+        {item.isLocal ? (
           <Icon as={Smartphone} className="size-4 text-muted-foreground" />
-        )}
+        ) : null}
         <Text className="flex-1 text-foreground text-sm">{item.name}</Text>
         {item.value === currentModel && (
           <Icon as={Check} className="size-4 text-muted-foreground" />

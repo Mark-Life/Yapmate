@@ -46,7 +46,7 @@ import { generateAPIUrl } from "@/lib/api-url";
 import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
-import { isLocalModel } from "@/lib/local-model";
+import { APPLE_LOCAL_MODEL, isLocalModel } from "@/lib/local-model";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
 import { YapmateIcon } from "../yapmate-icon";
@@ -78,6 +78,7 @@ export const Chat = ({
   initialMessages = [],
   isNew = false,
   onChatCreated,
+  // todo: fix this linter error
 }: ChatProps) => {
   const queryClient = useQueryClient();
   const { colorScheme } = useColorScheme();
@@ -222,6 +223,11 @@ export const Chat = ({
   } | null>(null);
   // Store model per assistant message for avatar display after streaming
   const messageModelMapRef = useRef<Map<string, string>>(new Map());
+  // Track isNewChat for local model sync
+  const isNewChatRef = useRef(isNewChat);
+  useEffect(() => {
+    isNewChatRef.current = isNewChat;
+  }, [isNewChat]);
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
@@ -261,9 +267,9 @@ export const Chat = ({
         fetch: (async (url: string | URL | Request, init?: RequestInit) => {
           // Get current session token
           const {
-            data: { session },
+            data: { session: authSession },
           } = await supabase.auth.getSession();
-          const token = session?.access_token;
+          const token = authSession?.access_token;
 
           // Add Authorization header if token exists
           const headers = new Headers(init?.headers);
@@ -408,10 +414,56 @@ export const Chat = ({
     },
   });
 
+  /**
+   * Extracts title from first user message (truncated to 50 chars)
+   */
+  const getTitleFromMessages = (msgs: ChatUIMessage[]): string => {
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    if (!firstUserMsg) {
+      return "Local Chat";
+    }
+    const textPart = firstUserMsg.parts.find((p) => p.type === "text");
+    if (!textPart || textPart.type !== "text") {
+      return "Local Chat";
+    }
+    const text = textPart.text.trim();
+    return text.length > 50 ? `${text.slice(0, 47)}...` : text;
+  };
+
   // Local on-device chat hook (always called for React rules)
   const localChat = useLocalChat({
     id: chatId,
     initialMessages: [],
+    onFinish: async ({ messages: finalMessages }) => {
+      // Only sync for authenticated users
+      if (!session?.user?.id) {
+        return;
+      }
+
+      try {
+        // Create chat in DB if this is a new chat
+        if (isNewChatRef.current) {
+          const title = getTitleFromMessages(finalMessages);
+          await createChatMutation.mutateAsync({ id: chatId, title });
+          isNewChatRef.current = false;
+          setIsNewChat(false);
+          onChatCreated?.(chatId);
+        }
+
+        // Sync messages to database
+        await rpcClient.messages.sync({
+          chatId,
+          messages: finalMessages,
+          model: APPLE_LOCAL_MODEL.id,
+        });
+
+        // Invalidate cache so chat list shows updated data
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+      } catch (error) {
+        console.error("Failed to sync local messages:", error);
+      }
+    },
     onError: (error: Error) => {
       capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
         error: error.message,
@@ -631,7 +683,6 @@ export const Chat = ({
       model,
       has_attachments: hasAttachments,
       search_enabled: searchEnabled,
-      is_local: usingLocalModel,
     });
 
     if (usingLocalModel) {

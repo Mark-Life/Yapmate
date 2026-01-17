@@ -298,7 +298,10 @@ const MessageBubble = ({
   // Other user's message: muted bubble, left-aligned
   // Current user's message: primary bubble, right-aligned
   // Assistant message: no bubble
-  let bubbleStyle: ViewStyle[] = [styles.assistantBubble, { backgroundColor: theme.background }];
+  let bubbleStyle: ViewStyle[] = [
+    styles.assistantBubble,
+    { backgroundColor: theme.background },
+  ];
   if (isOtherUser) {
     bubbleStyle = [styles.userBubble, { backgroundColor: theme.muted }];
   } else if (isUser) {
