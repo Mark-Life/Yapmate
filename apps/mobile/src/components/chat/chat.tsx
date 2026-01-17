@@ -23,7 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useAttachments } from "@/hooks/use-attachments";
+import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
+import { isLocalModel } from "@/lib/local-model";
 import {
   getSearchEnabled,
   setSearchEnabled as persistSearchEnabled,
@@ -102,13 +104,43 @@ export const Chat = ({
     }
   }, [models, initialId, initialMessages, queryClient]);
 
+  // Track message count for model switch warning (ref to avoid closure issues)
+  const messagesCountRef = useRef(0);
+
   /**
    * Handles model change with AsyncStorage persistence
+   * Shows warning when switching between local/server models mid-chat
    */
-  const handleModelChange = useCallback((newModel: string) => {
-    setModel(newModel);
-    setLastUsedModel(newModel);
-  }, []);
+  const handleModelChange = useCallback(
+    (newModel: string) => {
+      const wasLocal = isLocalModel(model);
+      const willBeLocal = isLocalModel(newModel);
+
+      if (messagesCountRef.current > 0 && wasLocal !== willBeLocal) {
+        Alert.alert(
+          "Switch model type?",
+          wasLocal
+            ? "Switching to a cloud model will start a new server-synced chat. Your local messages won't be uploaded."
+            : "Switching to on-device model will start a local-only chat. Messages won't sync to server.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Switch",
+              onPress: () => {
+                setModel(newModel);
+                setLastUsedModel(newModel);
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      setModel(newModel);
+      setLastUsedModel(newModel);
+    },
+    [model]
+  );
 
   /**
    * Handles search enabled change with AsyncStorage persistence
@@ -308,6 +340,32 @@ export const Chat = ({
       },
     });
 
+  // Local on-device chat hook (always called for React rules)
+  const localChat = useLocalChat({
+    id: chatId,
+    initialMessages: [],
+    onError: (error: Error) => {
+      capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
+        error: error.message,
+      });
+      console.error("Local chat error:", error);
+    },
+  });
+
+  // Select active chat based on model type
+  const usingLocalModel = isLocalModel(model);
+  const activeMessages = usingLocalModel ? localChat.messages : messages;
+  const activeStatus = usingLocalModel ? localChat.status : status;
+  const activeSetMessages = usingLocalModel
+    ? localChat.setMessages
+    : setMessages;
+  const activeRegenerate = usingLocalModel ? localChat.regenerate : regenerate;
+
+  // Keep messagesCountRef in sync for model switch warning
+  useEffect(() => {
+    messagesCountRef.current = activeMessages.length;
+  }, [activeMessages.length]);
+
   /**
    * Handles regeneration from a specific message
    */
@@ -317,15 +375,15 @@ export const Chat = ({
         messageId,
         role,
         selectedModel,
-        messages,
+        messages: activeMessages,
         setModel: handleModelChange,
-        setMessages,
-        regenerate,
+        setMessages: activeSetMessages,
+        regenerate: activeRegenerate,
         regenerateMessageIdRef,
         regenerateRoleRef,
       });
     },
-    [messages, regenerate, setMessages, handleModelChange]
+    [activeMessages, activeRegenerate, activeSetMessages, handleModelChange]
   );
 
   /**
@@ -336,14 +394,14 @@ export const Chat = ({
       handleEdit({
         messageId,
         editedText,
-        messages,
-        setMessages,
-        regenerate,
+        messages: activeMessages,
+        setMessages: activeSetMessages,
+        regenerate: activeRegenerate,
         editMessageIdRef,
         editedTextRef,
       });
     },
-    [messages, regenerate, setMessages]
+    [activeMessages, activeRegenerate, activeSetMessages]
   );
 
   /**
@@ -398,17 +456,22 @@ export const Chat = ({
    * Handles stopping the current stream
    */
   const handleStop = useCallback(async () => {
-    if (!chatId) {
+    capture(AnalyticsEvents.STREAM_STOPPED);
+
+    // Local models: stop via hook
+    if (usingLocalModel) {
+      localChat.stop();
       return;
     }
 
+    // Server models: stop via RPC
+    if (!chatId) return;
     try {
-      capture(AnalyticsEvents.STREAM_STOPPED);
       await rpcClient.chat.stop({ chatId });
     } catch (error) {
       console.error("Stop request failed:", error);
     }
-  }, [chatId, capture]);
+  }, [chatId, capture, usingLocalModel, localChat]);
 
   /**
    * Creates chat in DB on first message
@@ -466,16 +529,20 @@ export const Chat = ({
       model,
       has_attachments: hasAttachments,
       search_enabled: searchEnabled,
+      is_local: usingLocalModel,
     });
 
-    // Create chat in DB on first message
-    await ensureChatExists();
-
-    // Send message via transport with files
-    sendMessage({
-      text: message.text.trim(),
-      files: message.files,
-    });
+    if (usingLocalModel) {
+      // Local model: no server persistence, no file attachments
+      localChat.sendMessage({ text: message.text.trim() });
+    } else {
+      // Server model: create chat in DB on first message
+      await ensureChatExists();
+      sendMessage({
+        text: message.text.trim(),
+        files: message.files,
+      });
+    }
 
     // Clear input and attachments after sending
     setInput("");
@@ -524,7 +591,7 @@ export const Chat = ({
     <View
       className={`relative flex-1 bg-background ${colorScheme === "dark" ? "dark" : ""}`}
     >
-      {messages.length === 0 ? (
+      {activeMessages.length === 0 ? (
         <Pressable className="flex-1" onPress={handleDismissKeyboard}>
           <View
             className="flex-1 items-center justify-center pb-64"
@@ -536,13 +603,13 @@ export const Chat = ({
       ) : (
         <View className="flex-1">
           <MessagesHistory
-            messages={messages}
+            messages={activeMessages}
             onEdit={handleEditCallback}
             onRegenerate={handleRegenerateCallback}
             onRequestModelForRegeneration={handleRequestModelForRegeneration}
             onScrollStateChange={setIsAtBottom}
             scrollToBottomRef={scrollToBottomRef}
-            status={status}
+            status={activeStatus}
           />
           <LinearGradient
             colors={
@@ -575,7 +642,7 @@ export const Chat = ({
         </View>
       )}
 
-      {!isAtBottom && messages.length > 0 ? (
+      {!isAtBottom && activeMessages.length > 0 ? (
         <View
           className="absolute right-0 left-0 z-20 items-center"
           style={{
@@ -612,6 +679,7 @@ export const Chat = ({
       >
         <ChatInput
           attachments={attachments}
+          disableSearch={usingLocalModel}
           input={input}
           isNew={isNewChat}
           model={model}
@@ -620,8 +688,8 @@ export const Chat = ({
           onSearchEnabledChange={handleSearchEnabledChange}
           onStop={handleStop}
           onSubmit={handleSubmit}
-          searchEnabled={searchEnabled}
-          status={status}
+          searchEnabled={searchEnabled && !usingLocalModel}
+          status={activeStatus}
         />
       </View>
     </View>

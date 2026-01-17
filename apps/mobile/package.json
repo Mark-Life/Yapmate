@@ -16,6 +16,7 @@
     "@legendapp/list": "^2.0.19",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
+    "@react-native-ai/apple": "^0.11.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "^7.1.26",
     "@rn-primitives/accordion": "^1.2.0",
