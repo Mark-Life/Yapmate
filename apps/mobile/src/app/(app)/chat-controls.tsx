@@ -1,6 +1,13 @@
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { BookText, Brain, Database, ExternalLink } from "lucide-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  BookText,
+  Brain,
+  ChevronRight,
+  Database,
+  ExternalLink,
+  Wrench,
+} from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Linking,
@@ -16,8 +23,15 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useRules } from "@/hooks/use-rules";
-import type { ReasoningEffort } from "@/hooks/use-user-preferences";
-import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
+import type {
+  McpToolSelection,
+  ReasoningEffort,
+} from "@/hooks/use-user-preferences";
+import {
+  createCustomEvent,
+  type EventListener,
+  eventTarget,
+} from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
 
 type UserRule = {
@@ -43,14 +57,17 @@ const REASONING_OPTIONS: Array<{
  * Includes: Memory toggle, Reasoning depth, AI Rules selector
  */
 export default function ChatControlsScreen() {
+  const router = useRouter();
   const {
     selectedRuleIds: selectedRuleIdsParam,
     memoryEnabled: memoryEnabledParam,
     reasoningEffort: reasoningEffortParam,
+    selectedMcpTools: selectedMcpToolsParam,
   } = useLocalSearchParams<{
     selectedRuleIds?: string;
     memoryEnabled?: string;
     reasoningEffort?: string;
+    selectedMcpTools?: string;
   }>();
   const { rules, isLoading } = useRules();
   const [search, setSearch] = useState("");
@@ -77,6 +94,21 @@ export default function ChatControlsScreen() {
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(
     () => (reasoningEffortParam as ReasoningEffort) || "low"
   );
+
+  // Parse initial MCP tools from params
+  const initialMcpTools = useMemo(() => {
+    if (!selectedMcpToolsParam) {
+      return [];
+    }
+    try {
+      return JSON.parse(selectedMcpToolsParam) as McpToolSelection[];
+    } catch {
+      return [];
+    }
+  }, [selectedMcpToolsParam]);
+
+  const [selectedMcpTools, setSelectedMcpTools] =
+    useState<McpToolSelection[]>(initialMcpTools);
 
   // Filter rules by search (title or content)
   const filteredRules = useMemo(() => {
@@ -124,6 +156,38 @@ export default function ChatControlsScreen() {
   };
 
   /**
+   * Opens MCP tools selection sheet
+   */
+  const openMcpTools = () => {
+    lightTap();
+    router.push({
+      pathname: "/mcp-tools",
+      params: {
+        selectedMcpTools: JSON.stringify(selectedMcpTools),
+      },
+    });
+  };
+
+  /**
+   * Listen for mcp-tools-updated events
+   */
+  useEffect(() => {
+    const handleMcpToolsUpdated: EventListener = (event) => {
+      const detail = event.detail as { selectedMcpTools: McpToolSelection[] };
+      setSelectedMcpTools(detail.selectedMcpTools);
+    };
+
+    eventTarget.addEventListener("mcp-tools-updated", handleMcpToolsUpdated);
+
+    return () => {
+      eventTarget.removeEventListener(
+        "mcp-tools-updated",
+        handleMcpToolsUpdated
+      );
+    };
+  }, []);
+
+  /**
    * Opens web settings page for creating rules
    */
   const openWebSettings = () => {
@@ -141,10 +205,11 @@ export default function ChatControlsScreen() {
             selectedRuleIds: Array.from(selectedIds),
             memoryEnabled,
             reasoningEffort,
+            selectedMcpTools,
           })
         );
       },
-      [selectedIds, memoryEnabled, reasoningEffort]
+      [selectedIds, memoryEnabled, reasoningEffort, selectedMcpTools]
     )
   );
 
@@ -225,6 +290,7 @@ export default function ChatControlsScreen() {
   };
 
   const selectedCount = selectedIds.size;
+  const mcpToolsCount = selectedMcpTools.length;
 
   return (
     <KeyboardAvoidingView
@@ -301,6 +367,36 @@ export default function ChatControlsScreen() {
               </Pressable>
             ))}
           </View>
+        </View>
+
+        {/* MCP Tools Section */}
+        <View className="px-4 pb-4">
+          <View className="flex flex-row items-center gap-2 pb-2">
+            <Icon as={Wrench} className="text-muted-foreground" size={16} />
+            <Text className="font-semibold text-base text-foreground">
+              MCP Tools
+            </Text>
+          </View>
+          <Pressable
+            className="flex flex-row items-center justify-between rounded-lg bg-muted/50 px-4 py-3 active:bg-accent"
+            onPress={openMcpTools}
+          >
+            <View className="flex-1">
+              <Text className="font-medium text-foreground text-sm">
+                Select Tools
+              </Text>
+              <Text className="text-muted-foreground text-xs">
+                {mcpToolsCount > 0
+                  ? `${mcpToolsCount} tool${mcpToolsCount !== 1 ? "s" : ""} selected`
+                  : "Choose tools from your MCP servers"}
+              </Text>
+            </View>
+            <Icon
+              as={ChevronRight}
+              className="text-muted-foreground"
+              size={20}
+            />
+          </Pressable>
         </View>
 
         {/* Rules Section */}

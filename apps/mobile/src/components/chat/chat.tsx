@@ -29,10 +29,13 @@ import {
   getMemoryEnabled,
   getReasoningEffort,
   getSearchEnabled,
+  getSelectedMcpTools,
   getSelectedRuleIds,
+  type McpToolSelection,
   setMemoryEnabled as persistMemoryEnabled,
   setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
+  setSelectedMcpTools as persistSelectedMcpTools,
   setSelectedRuleIds as persistSelectedRuleIds,
   type ReasoningEffort,
   setLastUsedModel,
@@ -84,6 +87,9 @@ export const Chat = ({
   const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
     getReasoningEffort()
+  );
+  const [selectedMcpTools, setSelectedMcpTools] = useState<McpToolSelection[]>(
+    () => getSelectedMcpTools()
   );
   const { models } = useModels();
   const attachments = useAttachments();
@@ -186,6 +192,7 @@ export const Chat = ({
   const selectedRuleIdsRef = useRef(selectedRuleIds);
   const memoryEnabledRef = useRef(memoryEnabled);
   const reasoningEffortRef = useRef(reasoningEffort);
+  const selectedMcpToolsRef = useRef(selectedMcpTools);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -224,6 +231,9 @@ export const Chat = ({
   useEffect(() => {
     reasoningEffortRef.current = reasoningEffort;
   }, [reasoningEffort]);
+  useEffect(() => {
+    selectedMcpToolsRef.current = selectedMcpTools;
+  }, [selectedMcpTools]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -292,6 +302,7 @@ export const Chat = ({
               selectedRuleIds: selectedRuleIdsRef.current,
               memoryEnabled: memoryEnabledRef.current,
               reasoningEffort: reasoningEffortRef.current,
+              selectedMcpTools: selectedMcpToolsRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -494,6 +505,7 @@ export const Chat = ({
         selectedRuleIds: string[];
         memoryEnabled: boolean;
         reasoningEffort: ReasoningEffort;
+        selectedMcpTools: McpToolSelection[];
       };
       setSelectedRuleIds(detail.selectedRuleIds);
       persistSelectedRuleIds(detail.selectedRuleIds);
@@ -501,6 +513,8 @@ export const Chat = ({
       persistMemoryEnabled(detail.memoryEnabled);
       setReasoningEffort(detail.reasoningEffort);
       persistReasoningEffort(detail.reasoningEffort);
+      setSelectedMcpTools(detail.selectedMcpTools);
+      persistSelectedMcpTools(detail.selectedMcpTools);
     };
 
     eventTarget.addEventListener("controls-updated", handleControlsUpdated);

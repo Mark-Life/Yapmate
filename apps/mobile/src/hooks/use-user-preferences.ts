@@ -8,12 +8,18 @@ const STORAGE_KEY = "yapmate_user_preferences";
 
 export type ReasoningEffort = "low" | "medium" | "high";
 
+export type McpToolSelection = {
+  mcpServerId: string;
+  toolName: string;
+};
+
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
   selectedRuleIds: string[];
   memoryEnabled: boolean;
   reasoningEffort: ReasoningEffort;
+  selectedMcpTools: McpToolSelection[];
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -22,6 +28,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   selectedRuleIds: [],
   memoryEnabled: false,
   reasoningEffort: "low",
+  selectedMcpTools: [],
 };
 
 // In-memory cache for sync access after initial load
@@ -43,6 +50,7 @@ export const initUserPreferences = async (): Promise<UserPreferences> => {
         selectedRuleIds: parsed.selectedRuleIds ?? [],
         memoryEnabled: parsed.memoryEnabled ?? false,
         reasoningEffort: parsed.reasoningEffort ?? "low",
+        selectedMcpTools: parsed.selectedMcpTools ?? [],
       };
     }
     isInitialized = true;
@@ -136,6 +144,21 @@ export const setReasoningEffort = async (
   effort: ReasoningEffort
 ): Promise<void> => {
   await setUserPreferences({ reasoningEffort: effort });
+};
+
+/**
+ * Gets the selected MCP tools from cache
+ */
+export const getSelectedMcpTools = (): McpToolSelection[] =>
+  cachedPreferences.selectedMcpTools;
+
+/**
+ * Sets the selected MCP tools in cache and storage
+ */
+export const setSelectedMcpTools = async (
+  tools: McpToolSelection[]
+): Promise<void> => {
+  await setUserPreferences({ selectedMcpTools: tools });
 };
 
 /**

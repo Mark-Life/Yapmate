@@ -9,6 +9,7 @@ import { useDrawer } from "@/contexts/drawer-context";
 import {
   getMemoryEnabled,
   getReasoningEffort,
+  getSelectedMcpTools,
   getSelectedRuleIds,
 } from "@/hooks/use-user-preferences";
 import { lightTap } from "@/lib/haptics";
@@ -35,6 +36,7 @@ export const HeaderControls = () => {
         selectedRuleIds: JSON.stringify(getSelectedRuleIds()),
         memoryEnabled: String(getMemoryEnabled()),
         reasoningEffort: getReasoningEffort(),
+        selectedMcpTools: JSON.stringify(getSelectedMcpTools()),
       },
     });
   };
