@@ -207,7 +207,8 @@ export const MessagesHistory = ({
         const messagesChanged =
           messages.length !== prevMessagesLengthRef.current;
         const isStreaming = status === "streaming" || status === "submitted";
-        const shouldAutoScroll = messagesChanged || isStreaming;
+        // Only auto-scroll if user is already at bottom (or a new message was just added)
+        const shouldAutoScroll = messagesChanged || (isStreaming && isAtBottom);
 
         // Update the ref for next comparison
         prevMessagesLengthRef.current = messages.length;

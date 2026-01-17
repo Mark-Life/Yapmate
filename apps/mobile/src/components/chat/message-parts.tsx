@@ -16,6 +16,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ViewStyle,
 } from "react-native";
 import ContextMenu from "react-native-context-menu-view";
 import Animated, {
@@ -91,11 +92,12 @@ const NativeMarkdownMessage = ({
   );
 
   // Determine alignment: user = right, other user = left, assistant = stretch
-  const alignSelf = isUser
-    ? "flex-end"
-    : isOtherUser
-      ? "flex-start"
-      : "stretch";
+  let alignSelf: "flex-end" | "flex-start" | "stretch" = "stretch";
+  if (isUser) {
+    alignSelf = "flex-end";
+  } else if (isOtherUser) {
+    alignSelf = "flex-start";
+  }
 
   return (
     <NativeMarkdownView
@@ -296,11 +298,12 @@ const MessageBubble = ({
   // Other user's message: muted bubble, left-aligned
   // Current user's message: primary bubble, right-aligned
   // Assistant message: no bubble
-  const bubbleStyle = isOtherUser
-    ? [styles.userBubble, { backgroundColor: theme.muted }]
-    : isUser
-      ? [styles.userBubble, { backgroundColor: theme.primary }]
-      : [styles.assistantBubble, { backgroundColor: theme.background }];
+  let bubbleStyle: ViewStyle[] = [styles.assistantBubble, { backgroundColor: theme.background }];
+  if (isOtherUser) {
+    bubbleStyle = [styles.userBubble, { backgroundColor: theme.muted }];
+  } else if (isUser) {
+    bubbleStyle = [styles.userBubble, { backgroundColor: theme.primary }];
+  }
 
   return (
     <View style={bubbleStyle}>
@@ -349,6 +352,7 @@ export const TextPart = ({
   contextMenuActions,
   contextMenuKey,
   onContextMenuPress,
+  // todo: fix this linter error
 }: TextPartProps) => {
   const { colorScheme } = useColorScheme();
   const theme = getThemeColors(colorScheme);
@@ -442,11 +446,12 @@ export const TextPart = ({
     );
   }
 
-  const wrapperStyle = isOtherUser
-    ? styles.otherUserWrapper
-    : isUser
-      ? styles.userWrapper
-      : styles.assistantWrapper;
+  let wrapperStyle: ViewStyle = styles.assistantWrapper;
+  if (isOtherUser) {
+    wrapperStyle = styles.otherUserWrapper;
+  } else if (isUser) {
+    wrapperStyle = styles.userWrapper;
+  }
 
   const bubbleContent = (
     <MessageBubble
@@ -564,9 +569,6 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     isStreaming ? "reasoning" : ""
   );
 
-  // Track if we've already auto-collapsed
-  const hasAutoCollapsed = useRef(false);
-
   // Track content height for NativeMarkdownView auto-sizing
   const [contentHeight, setContentHeight] = useState(20);
 
@@ -577,20 +579,11 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     }
   }, []);
 
-  // Handle streaming end - record duration and auto-collapse after delay
+  // Handle streaming end - record duration
   useEffect(() => {
     if (!isStreaming && startTime && duration === null) {
       const elapsed = Math.ceil((Date.now() - startTime) / 1000);
       setDuration(elapsed);
-
-      // Auto-collapse after 1 second delay
-      if (!hasAutoCollapsed.current) {
-        hasAutoCollapsed.current = true;
-        const timer = setTimeout(() => {
-          setAccordionValue("");
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
     }
   }, [isStreaming, startTime, duration]);
 
@@ -599,9 +592,12 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     return null;
   }
 
-  const headerText = isStreaming
-    ? "Thinking..."
-    : `Thought for ${duration ?? 0} seconds`;
+  let headerText = "Thought";
+  if (isStreaming) {
+    headerText = "Thinking...";
+  } else if (duration) {
+    headerText = `Thought for ${duration} seconds`;
+  }
 
   return (
     <View style={[styles.reasoningContainer, { borderColor: theme.border }]}>

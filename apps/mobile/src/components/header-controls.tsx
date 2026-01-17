@@ -1,6 +1,7 @@
 import { GlassContainer, GlassView } from "expo-glass-effect";
 import { useRouter } from "expo-router";
 import { Menu, Plus, SlidersHorizontal } from "lucide-react-native";
+import { Keyboard } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -29,6 +30,7 @@ export const HeaderControls = () => {
    * Opens chat controls sheet with current preferences
    */
   const openControls = () => {
+    Keyboard.dismiss();
     lightTap();
     router.push({
       pathname: "/chat-controls",
@@ -71,6 +73,7 @@ export const HeaderControls = () => {
           <Button
             className="p-0"
             onPress={() => {
+              Keyboard.dismiss();
               lightTap();
               toggleDrawer();
             }}
@@ -91,6 +94,7 @@ export const HeaderControls = () => {
           <Button
             className="p-0"
             onPress={() => {
+              Keyboard.dismiss();
               lightTap();
               navigateToNew();
             }}
