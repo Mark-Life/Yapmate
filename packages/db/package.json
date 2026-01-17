@@ -6,6 +6,7 @@
     "./service": "./src/service/index.ts"
   },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "generate": "bun --env-file ../../.env.local drizzle-kit generate",
     "generate:custom": "bun --env-file ../../.env.local drizzle-kit generate --custom",
     "migrate": "bun --env-file ../../.env.local drizzle-kit migrate",
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "@yapmate/server": "workspace:*",
+    "@yapmate/core": "workspace:*",
     "ai": "catalog:",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",

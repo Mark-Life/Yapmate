@@ -1,9 +1,13 @@
 {
   "name": "@yapmate/core",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
     "./ai/*": "./src/ai/index.ts",
     "./types": "./src/types/index.ts",
-    "./models/config": "./src/models/config.ts"
+    "./models/config": "./src/models/config.ts",
+    "./generative-ui": "./src/generative-ui/index.ts"
   }
 }

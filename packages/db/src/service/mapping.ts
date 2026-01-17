@@ -16,6 +16,13 @@ import type {
   ToolState,
 } from "../schema/parts";
 
+/** Generative UI part type (custom extension to AI SDK) */
+type GenerativeUIPart = {
+  type: "generative-ui";
+  id: string;
+  ui: unknown;
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /** Result of mapping a UIMessage to DB format */
@@ -54,7 +61,44 @@ const mapToolState = (state: string): ToolState => {
 // ─── UI → DB Mapping ─────────────────────────────────────────────────────────
 
 /** Transient part types that should not be persisted */
-const TRANSIENT_PART_TYPES = ["step-start"] as const;
+const TRANSIENT_PART_TYPES = [
+  "step-start",
+  // Generative UI streaming chunks (should not be saved as parts)
+  "data-ui-start",
+  "data-ui-patch",
+  "data-ui-end",
+  "data-ui-error",
+  // Legacy generative UI chunk types
+  "data-generative-ui-start",
+  "data-generative-ui-delta",
+  "data-generative-ui-end",
+  "data-generative-ui-error",
+] as const;
+
+/** Check if text content is a generative UI streaming chunk that should be filtered */
+const isGenerativeUIStreamingChunk = (text: string): boolean => {
+  if (!text.startsWith("{") || !text.includes('"type"')) return false;
+  try {
+    const parsed = JSON.parse(text);
+    const type = parsed?.type ?? parsed?.data?.type;
+    return (
+      type === "ui-start" ||
+      type === "ui-patch" ||
+      type === "ui-end" ||
+      type === "ui-error" ||
+      type === "generative-ui-start" ||
+      type === "generative-ui-delta" ||
+      type === "generative-ui-end" ||
+      type === "generative-ui-error" ||
+      type === "data-ui-start" ||
+      type === "data-ui-patch" ||
+      type === "data-ui-end" ||
+      type === "data-ui-error"
+    );
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Maps a single UI part to a DB part insert
@@ -84,6 +128,10 @@ export const mapUIPartToDb = (
 
   // Text part
   if (partType === "text") {
+    // Skip text parts that are generative UI streaming chunks
+    if (isGenerativeUIStreamingChunk(part.text)) {
+      return null;
+    }
     return {
       ...base,
       type: "text" as PartType,
@@ -131,6 +179,17 @@ export const mapUIPartToDb = (
       ...base,
       type: "file" as PartType,
       file_id: fileId,
+    };
+  }
+
+  // Generative UI part (custom type, not in AI SDK)
+  if ((partType as string) === "generative-ui") {
+    const uiPart = part as unknown as GenerativeUIPart;
+    return {
+      ...base,
+      type: "generative-ui" as PartType,
+      generative_ui_id: uiPart.id,
+      generative_ui_tree: uiPart.ui,
     };
   }
 
@@ -294,6 +353,14 @@ export const mapDbPartToUI = (
         url: "", // Will be populated by caller with signed URL or dataUrl
         mediaType: "application/octet-stream",
       };
+
+    case "generative-ui":
+      // Custom type extension, cast to satisfy return type
+      return {
+        type: "generative-ui",
+        id: dbPart.generative_ui_id ?? "",
+        ui: dbPart.generative_ui_tree,
+      } as GenerativeUIPart as unknown as UIMessage["parts"][number]; // TODO: make proper type fix
 
     default:
       return {

@@ -73,6 +73,10 @@ export const Chat = ({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  // Track streaming generative UI parts (id -> partial tree as JSON string)
+  const [streamingUI, setStreamingUI] = useState<Map<string, string>>(
+    () => new Map()
+  );
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { models } = useModels();
   const FALLBACK_MODEL = "google/gemini-2.5-flash";
@@ -298,7 +302,7 @@ export const Chat = ({
     id: chatId,
     messages: initialMessages,
     transport,
-    generateId: () => crypto.randomUUID(),
+    generateId: () => crypto.randomUUID?.(),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onData: (dataPart) => {
       // Handle streamed title updates
@@ -308,7 +312,11 @@ export const Chat = ({
       }
       // TODO: fix typecasting
       // Handle MCP connection errors (custom data type)
-      const part = dataPart as { type: string; data?: unknown };
+      const part = dataPart as {
+        type: string;
+        data?: unknown;
+        [key: string]: unknown;
+      };
       if (part.type === "data-mcp-error" && part.data) {
         const { errors } = part.data as {
           errors: Array<{
@@ -321,6 +329,110 @@ export const Chat = ({
           toast.error(`MCP Error: ${err.serverName}`, {
             description: err.error,
             duration: 8000,
+          });
+        }
+      }
+
+      // Handle generative UI streaming chunks (wrapped in data format)
+      // Supports both old format (generative-ui-*) and new format (ui-*)
+      const chunkData = part.data as {
+        type?: string;
+        id?: string;
+        delta?: string;
+        patch?: unknown;
+        tree?: unknown;
+      } | undefined;
+
+      // UI Start - old: generative-ui-start, new: ui-start
+      if (
+        part.type === "data-generative-ui-start" ||
+        part.type === "data-ui-start" ||
+        chunkData?.type === "generative-ui-start" ||
+        chunkData?.type === "ui-start"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        if (id) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(id, "{}");
+            return newMap;
+          });
+        }
+      }
+      // UI Delta/Patch - old: generative-ui-delta, new: ui-patch
+      else if (
+        part.type === "data-generative-ui-delta" ||
+        part.type === "data-ui-patch" ||
+        chunkData?.type === "generative-ui-delta" ||
+        chunkData?.type === "ui-patch"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        // Handle old delta format (full tree as string)
+        const delta = chunkData?.delta ?? (part.delta as string);
+        // Handle new patch format (apply patch to current tree)
+        const patch = chunkData?.patch;
+
+        if (id) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            if (delta) {
+              // Old format: delta is the full tree JSON string
+              newMap.set(id, delta);
+            } else if (patch) {
+              // New format: apply patch to existing tree
+              // For now, just store the patch - full patch application would need tree state
+              const current = prev.get(id) ?? "{}";
+              try {
+                const tree = JSON.parse(current);
+                // Simple patch application for common cases
+                const p = patch as { op: string; path: string; value?: unknown };
+                if (p.op === "set" && p.path === "/root") {
+                  tree.root = p.value;
+                } else if (p.op === "add" && p.path.startsWith("/elements/")) {
+                  const key = p.path.replace("/elements/", "");
+                  tree.elements = tree.elements ?? {};
+                  tree.elements[key] = p.value;
+                } else if (p.op === "replace") {
+                  // Handle replace operations on nested paths
+                  const pathParts = p.path.split("/").filter(Boolean);
+                  if (pathParts[0] === "elements" && pathParts.length >= 3) {
+                    const key = pathParts[1];
+                    tree.elements = tree.elements ?? {};
+                    if (!tree.elements[key]) tree.elements[key] = {};
+                    let target = tree.elements[key];
+                    for (let i = 2; i < pathParts.length - 1; i++) {
+                      target[pathParts[i]] = target[pathParts[i]] ?? {};
+                      target = target[pathParts[i]];
+                    }
+                    target[pathParts[pathParts.length - 1]] = p.value;
+                  }
+                }
+                newMap.set(id, JSON.stringify(tree));
+              } catch {
+                // If parsing fails, just keep the current value
+              }
+            }
+            return newMap;
+          });
+        }
+      }
+      // UI End/Error - old: generative-ui-end/error, new: ui-end/error
+      else if (
+        part.type === "data-generative-ui-end" ||
+        part.type === "data-generative-ui-error" ||
+        part.type === "data-ui-end" ||
+        part.type === "data-ui-error" ||
+        chunkData?.type === "generative-ui-end" ||
+        chunkData?.type === "generative-ui-error" ||
+        chunkData?.type === "ui-end" ||
+        chunkData?.type === "ui-error"
+      ) {
+        const id = chunkData?.id ?? (part.id as string);
+        if (id) {
+          setStreamingUI((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(id);
+            return newMap;
           });
         }
       }
@@ -656,6 +768,7 @@ export const Chat = ({
               onEdit={handleEdit}
               onRegenerate={handleRegenerate}
               status={status}
+              streamingUI={streamingUI}
               typingMembers={typingMembers}
             />
           )}
