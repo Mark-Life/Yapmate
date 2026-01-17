@@ -7,6 +7,7 @@
   "exports": {
     "./ai/*": "./src/ai/index.ts",
     "./types": "./src/types/index.ts",
-    "./models/config": "./src/models/config.ts"
+    "./models/config": "./src/models/config.ts",
+    "./generative-ui": "./src/generative-ui/index.ts"
   }
 }

@@ -1,53 +1,53 @@
 /**
  * Type definitions for generative UI
  */
-import type { UITree } from "@json-render/core";
-import type { UIMessage } from "ai";
+
+import type { UITree, JsonPatch } from '@yapmate/core/generative-ui'
+import type { UIMessage } from 'ai'
+
+// Re-export core types for convenience
+export type { UITree, UIElement, JsonPatch, DynamicValue, VisibilityCondition, Action } from '@yapmate/core/generative-ui'
 
 /** Context passed to the UI generation agent */
 export type UIGenerationContext = {
   /** Optional intent from render_ui tool */
-  intent?: string;
+  intent?: string
   /** Full conversation history */
-  messages: UIMessage[];
+  messages: UIMessage[]
   /** Model ID to use (same as user's selected model) */
-  model: string;
+  model: string
+  /** Optional data context for data binding */
+  data?: Record<string, unknown>
   /** Abort signal for cancellation */
-  abortSignal?: AbortSignal;
-};
+  abortSignal?: AbortSignal
+}
 
 /** Result of UI generation */
 export type UIGenerationResult = {
   /** Generated UI tree */
-  tree: UITree;
+  tree: UITree
   /** Generation metadata */
   metadata?: {
-    tokensUsed?: number;
-    modelUsed?: string;
-  };
-};
+    tokensUsed?: number
+    modelUsed?: string
+  }
+}
 
-/** Stream chunk types for generative UI (internal representation) */
+/** Stream chunk types for generative UI */
 export type GenerativeUIStreamChunk =
-  | { type: "generative-ui-start"; id: string }
-  | { type: "generative-ui-delta"; id: string; delta: string }
-  | { type: "generative-ui-end"; id: string; tree: UITree }
-  | { type: "generative-ui-error"; id: string; error: string };
-
-/** Data chunk format for AI SDK stream (wrapped for compatibility) */
-export type GenerativeUIDataChunk = {
-  type: `data-${string}`;
-  data: GenerativeUIStreamChunk;
-};
-
-/** Generative UI part for message parts */
-export type GenerativeUIPart = {
-  type: "generative-ui";
-  id: string;
-  ui: UITree;
-};
+  | { type: 'ui-start'; id: string }
+  | { type: 'ui-patch'; id: string; patch: JsonPatch }
+  | { type: 'ui-end'; id: string; tree: UITree }
+  | { type: 'ui-error'; id: string; error: string }
 
 /** Chunk emitter for streaming UI generation */
 export type ChunkEmitter = {
-  emit: (chunk: GenerativeUIStreamChunk) => Promise<void>;
-};
+  emit: (chunk: GenerativeUIStreamChunk) => void | Promise<void>
+}
+
+/** Generative UI part for message parts */
+export type GenerativeUIPart = {
+  type: 'generative-ui'
+  id: string
+  ui: UITree
+}
