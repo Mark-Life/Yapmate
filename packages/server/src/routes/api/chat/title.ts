@@ -9,7 +9,7 @@ import { publishStreamChunk } from "../../../lib/redis/stream";
 import { publishChatEvent, publishUserEvent } from "../../../lib/websocket";
 import { updateChatTitle } from "./store";
 
-const TITLE_GENERATION_MODEL = "mistralai/mistral-7b-instruct-v0.3";
+const TITLE_GENERATION_MODEL = "google/gemma-3n-e4b-it:free";
 const MAX_TITLE_LENGTH = 50;
 
 /**
