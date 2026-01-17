@@ -136,6 +136,7 @@ export const MessageItem = ({
 }: MessageItemProps) => {
   const isUser = message.role === "user";
   const parts = message.parts ?? [];
+  const model = (message.metadata as { model?: string } | undefined)?.model;
   const messageRole = message.role as "user" | "assistant";
   const isStreaming = status === "streaming" || status === "submitted";
   const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
@@ -226,6 +227,7 @@ export const MessageItem = ({
                 isUser={isUser}
                 key={partId}
                 messageId={message.id}
+                modelName={!isUser ? model : undefined}
                 onCancelEdit={onCancelEdit}
                 onContextMenuPress={handleContextMenuPress}
                 onEdit={onEdit}

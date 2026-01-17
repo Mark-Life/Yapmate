@@ -35,6 +35,7 @@ import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
 import { getThemeColors, radius, type ThemeColors } from "@/lib/colors";
+import { parseModel } from "@/lib/parse-model";
 import { EditActions } from "./message-actions";
 
 type ChatUIMessage = UIMessage;
@@ -177,6 +178,7 @@ type TextPartProps = {
   isUser: boolean;
   isEditing: boolean;
   messageId: string;
+  modelName?: string;
   onCancelEdit: () => void;
   onEdit?: (messageId: string, editedText: string) => void;
   contextMenuActions?: ContextMenuAction[];
@@ -281,6 +283,16 @@ const MessageBubble = ({
 };
 
 /**
+ * Renders a formatted model name label below assistant messages
+ */
+const ModelLabel = ({ modelName }: { modelName: string }) => {
+  const { modelName: formattedName } = parseModel(modelName);
+  return (
+    <Text className="text-muted-foreground text-xs mt-1">{formattedName}</Text>
+  );
+};
+
+/**
  * Renders a text message part with inline styles
  */
 export const TextPart = ({
@@ -288,6 +300,7 @@ export const TextPart = ({
   isUser,
   isEditing,
   messageId,
+  modelName,
   onCancelEdit,
   onEdit,
   contextMenuActions,
@@ -354,11 +367,14 @@ export const TextPart = ({
     }
     // Assistant message: no bubble styling
     return (
-      <NativeMarkdownMessage
-        content={textContent ?? ""}
-        contextMenuActions={contextMenuActions}
-        onContextMenuAction={onContextMenuPress}
-      />
+      <>
+        <NativeMarkdownMessage
+          content={textContent ?? ""}
+          contextMenuActions={contextMenuActions}
+          onContextMenuAction={onContextMenuPress}
+        />
+        {modelName ? <ModelLabel modelName={modelName} /> : null}
+      </>
     );
   }
 
@@ -401,6 +417,7 @@ export const TextPart = ({
       ) : (
         bubbleContent
       )}
+      {!isUser && modelName ? <ModelLabel modelName={modelName} /> : null}
       {isEditing ? (
         <View
           style={[
