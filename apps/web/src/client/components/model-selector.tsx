@@ -75,7 +75,7 @@ export const ModelSelectorCombobox = ({
             </PromptInputButton>
           </ModelSelectorTrigger>
         </TooltipTrigger>
-        <TooltipContent hideArrow side="top" sideOffset={45}>
+        <TooltipContent hideArrow side="top" sideOffset={8}>
           Change model{" "}
           <KbdGroup>
             {splitHotkey(HOTKEYS.openModelSelector).map((key, idx) => (

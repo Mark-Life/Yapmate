@@ -307,7 +307,7 @@ export const ToolSelector = ({
             ) : null}
           </PromptInputButton>
         </TooltipTrigger>
-        <TooltipContent hideArrow side="top" sideOffset={45}>
+        <TooltipContent hideArrow side="top" sideOffset={8}>
           MCP Tools{" "}
           <KbdGroup>
             {splitHotkey(HOTKEYS.openToolSelector).map((key, idx) => (

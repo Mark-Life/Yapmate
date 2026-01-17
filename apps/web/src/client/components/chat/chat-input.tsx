@@ -313,7 +313,7 @@ export const ChatInput = ({
               <TooltipTrigger asChild>
                 <PromptInputAddFileButton />
               </TooltipTrigger>
-              <TooltipContent hideArrow side="top" sideOffset={45}>
+              <TooltipContent hideArrow side="top" sideOffset={8}>
                 Add files{" "}
                 <KbdGroup>
                   {splitHotkey(HOTKEYS.attachFile).map((key, idx) => (
@@ -332,7 +332,7 @@ export const ChatInput = ({
                   <GlobeIcon className="size-4" />
                 </PromptInputButton>
               </TooltipTrigger>
-              <TooltipContent hideArrow side="top" sideOffset={45}>
+              <TooltipContent hideArrow side="top" sideOffset={8}>
                 Web search{" "}
                 <KbdGroup>
                   {splitHotkey(HOTKEYS.toggleSearch).map((key, idx) => (
@@ -351,7 +351,7 @@ export const ChatInput = ({
                   <DatabaseIcon className="size-4" />
                 </PromptInputButton>
               </TooltipTrigger>
-              <TooltipContent hideArrow side="top" sideOffset={45}>
+              <TooltipContent hideArrow side="top" sideOffset={8}>
                 Memory{" "}
                 <KbdGroup>
                   {splitHotkey(HOTKEYS.toggleMemory).map((key, idx) => (
@@ -376,7 +376,7 @@ export const ChatInput = ({
                       </PromptInputButton>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
-                  <TooltipContent hideArrow side="top" sideOffset={45}>
+                  <TooltipContent hideArrow side="top" sideOffset={8}>
                     Reasoning depth{" "}
                     <KbdGroup>
                       {splitHotkey(HOTKEYS.cycleReasoning).map((key, idx) => (
@@ -428,7 +428,7 @@ export const ChatInput = ({
                     </PromptInputButton>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent hideArrow side="top" sideOffset={45}>
+                <TooltipContent hideArrow side="top" sideOffset={8}>
                   More options
                 </TooltipContent>
               </Tooltip>

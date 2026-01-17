@@ -126,7 +126,7 @@ export const RuleSelector = ({
             ) : null}
           </PromptInputButton>
         </TooltipTrigger>
-        <TooltipContent hideArrow side="top" sideOffset={45}>
+        <TooltipContent hideArrow side="top" sideOffset={8}>
           AI Rules{" "}
           <KbdGroup>
             {splitHotkey(HOTKEYS.openRuleSelector).map((key, idx) => (
