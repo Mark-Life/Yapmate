@@ -26,10 +26,15 @@ import { useAttachments } from "@/hooks/use-attachments";
 import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
 import {
+  getMemoryEnabled,
+  getReasoningEffort,
   getSearchEnabled,
   getSelectedRuleIds,
+  setMemoryEnabled as persistMemoryEnabled,
+  setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
   setSelectedRuleIds as persistSelectedRuleIds,
+  type ReasoningEffort,
   setLastUsedModel,
 } from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
@@ -75,6 +80,10 @@ export const Chat = ({
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
   const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() =>
     getSelectedRuleIds()
+  );
+  const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
+    getReasoningEffort()
   );
   const { models } = useModels();
   const attachments = useAttachments();
@@ -175,6 +184,8 @@ export const Chat = ({
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
   const selectedRuleIdsRef = useRef(selectedRuleIds);
+  const memoryEnabledRef = useRef(memoryEnabled);
+  const reasoningEffortRef = useRef(reasoningEffort);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -207,6 +218,12 @@ export const Chat = ({
   useEffect(() => {
     selectedRuleIdsRef.current = selectedRuleIds;
   }, [selectedRuleIds]);
+  useEffect(() => {
+    memoryEnabledRef.current = memoryEnabled;
+  }, [memoryEnabled]);
+  useEffect(() => {
+    reasoningEffortRef.current = reasoningEffort;
+  }, [reasoningEffort]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -273,6 +290,8 @@ export const Chat = ({
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
               selectedRuleIds: selectedRuleIdsRef.current,
+              memoryEnabled: memoryEnabledRef.current,
+              reasoningEffort: reasoningEffortRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -467,13 +486,21 @@ export const Chat = ({
 
   /**
    * Listens for controls-updated events from chat-controls screen
-   * Updates selectedRuleIds state and persists to storage
+   * Updates state and persists to storage
    */
   useEffect(() => {
     const handleControlsUpdated: EventListener = (event) => {
-      const detail = event.detail as { selectedRuleIds: string[] };
+      const detail = event.detail as {
+        selectedRuleIds: string[];
+        memoryEnabled: boolean;
+        reasoningEffort: ReasoningEffort;
+      };
       setSelectedRuleIds(detail.selectedRuleIds);
       persistSelectedRuleIds(detail.selectedRuleIds);
+      setMemoryEnabled(detail.memoryEnabled);
+      persistMemoryEnabled(detail.memoryEnabled);
+      setReasoningEffort(detail.reasoningEffort);
+      persistReasoningEffort(detail.reasoningEffort);
     };
 
     eventTarget.addEventListener("controls-updated", handleControlsUpdated);

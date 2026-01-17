@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
-import { getSelectedRuleIds } from "@/hooks/use-user-preferences";
+import {
+  getMemoryEnabled,
+  getReasoningEffort,
+  getSelectedRuleIds,
+} from "@/hooks/use-user-preferences";
 import { lightTap } from "@/lib/haptics";
 
 /**
@@ -21,14 +25,17 @@ export const HeaderControls = () => {
   const router = useRouter();
 
   /**
-   * Opens chat controls sheet with current selected rule IDs
+   * Opens chat controls sheet with current preferences
    */
   const openControls = () => {
     lightTap();
-    const selectedRuleIds = getSelectedRuleIds();
     router.push({
       pathname: "/chat-controls",
-      params: { selectedRuleIds: JSON.stringify(selectedRuleIds) },
+      params: {
+        selectedRuleIds: JSON.stringify(getSelectedRuleIds()),
+        memoryEnabled: String(getMemoryEnabled()),
+        reasoningEffort: getReasoningEffort(),
+      },
     });
   };
 
