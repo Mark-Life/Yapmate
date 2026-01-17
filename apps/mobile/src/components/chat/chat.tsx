@@ -25,7 +25,6 @@ import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
-import { isLocalModel } from "@/lib/local-model";
 import {
   getSearchEnabled,
   setSearchEnabled as persistSearchEnabled,
@@ -35,6 +34,7 @@ import { generateAPIUrl } from "@/lib/api-url";
 import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
+import { isLocalModel } from "@/lib/local-model";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
 import { YapmateIcon } from "../yapmate-icon";
@@ -309,7 +309,10 @@ export const Chat = ({
           }
           return {
             ...msg,
-            metadata: { ...msg.metadata, model: storedModel },
+            metadata: {
+              ...(msg.metadata as { model?: string }),
+              model: storedModel,
+            },
           };
         });
         setMessages(patchedMessages as ChatUIMessage[]);
@@ -465,7 +468,9 @@ export const Chat = ({
     }
 
     // Server models: stop via RPC
-    if (!chatId) return;
+    if (!chatId) {
+      return;
+    }
     try {
       await rpcClient.chat.stop({ chatId });
     } catch (error) {

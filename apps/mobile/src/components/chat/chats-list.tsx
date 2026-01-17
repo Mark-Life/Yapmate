@@ -46,7 +46,7 @@ const fetchChats = async () => {
  */
 const ChatListSkeleton = () => (
   <View className="gap-2 p-4">
-    {[1, 2, 3, 4].map((i) => (
+    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((i) => (
       <Skeleton className="h-16 w-full rounded-lg" key={i} />
     ))}
   </View>

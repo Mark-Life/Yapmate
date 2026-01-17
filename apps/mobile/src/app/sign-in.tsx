@@ -1,3 +1,4 @@
+import { GlassView } from "expo-glass-effect";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -39,14 +40,23 @@ export default function SignIn() {
           </Text>
         </Button>
       </View>
-      <View className="mt-4 items-center">
-        <Button
-          className="h-auto p-0"
-          onPress={() => router.replace("/(guest)")}
-          variant="link"
+      <View className="mt-24 items-center">
+        <GlassView
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
         >
-          <Text className="text-muted-foreground">Continue as guest</Text>
-        </Button>
+          <Button
+            className="h-auto rounded-full"
+            onPress={() => router.replace("/(guest)")}
+            variant="ghost"
+          >
+            <Text className="text-primary">Continue as guest</Text>
+          </Button>
+        </GlassView>
       </View>
     </AuthContainer>
   );

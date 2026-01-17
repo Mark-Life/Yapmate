@@ -42,7 +42,9 @@ export const useLocalChat = ({
 
   const sendMessage = useCallback(
     async (input: { text: string }) => {
-      if (!input.text.trim()) return;
+      if (!input.text.trim()) {
+        return;
+      }
 
       const userMessage: UIMessage = {
         id: Crypto.randomUUID(),
@@ -80,7 +82,9 @@ export const useLocalChat = ({
 
         let fullText = "";
         for await (const chunk of result.textStream) {
-          if (abortController.signal.aborted) break;
+          if (abortController.signal.aborted) {
+            break;
+          }
           fullText += chunk;
 
           setMessages((prev) =>
@@ -116,10 +120,14 @@ export const useLocalChat = ({
   );
 
   const regenerate = useCallback(async () => {
-    if (messages.length < 2) return;
+    if (messages.length < 2) {
+      return;
+    }
 
     const lastUserIdx = messages.findLastIndex((m) => m.role === "user");
-    if (lastUserIdx === -1) return;
+    if (lastUserIdx === -1) {
+      return;
+    }
 
     const messagesUpToUser = messages.slice(0, lastUserIdx + 1);
 
@@ -153,7 +161,9 @@ export const useLocalChat = ({
 
       let fullText = "";
       for await (const chunk of result.textStream) {
-        if (abortController.signal.aborted) break;
+        if (abortController.signal.aborted) {
+          break;
+        }
         fullText += chunk;
 
         setMessages((prev) =>
