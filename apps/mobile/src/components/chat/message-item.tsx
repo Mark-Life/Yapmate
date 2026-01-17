@@ -1,8 +1,8 @@
-import type { ChatStatus, FileUIPart, UIMessage } from "ai";
+import type { ChatStatus, FileUIPart, ReasoningUIPart, UIMessage } from "ai";
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
-import { FilePart, TextPart } from "./message-parts";
+import { FilePart, ReasoningPart, TextPart } from "./message-parts";
 
 type ChatUIMessage = UIMessage;
 
@@ -160,6 +160,7 @@ export const MessageItem = ({
     >
       {parts.map((part, i) => {
         const partId = `${message.id}-${i}`;
+        const isLastPart = i === parts.length - 1;
 
         switch (part.type) {
           case "file":
@@ -184,6 +185,15 @@ export const MessageItem = ({
                 onContextMenuPress={handleContextMenuPress}
                 onEdit={onEdit}
                 part={part}
+              />
+            );
+          case "reasoning":
+            // Reasoning is streaming if this is the last part and message is streaming
+            return (
+              <ReasoningPart
+                isStreaming={isStreaming && isLastPart}
+                key={partId}
+                part={part as ReasoningUIPart}
               />
             );
           default:

@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import type { ChatStatus, UIMessage } from "ai";
 import * as Clipboard from "expo-clipboard";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
@@ -44,6 +44,7 @@ export const MessagesHistory = ({
   const layoutHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
   const scrollOffsetRef = useRef(0);
+  const prevMessagesLengthRef = useRef(messages.length);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
@@ -133,20 +134,43 @@ export const MessagesHistory = ({
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.id}
-      ListFooterComponent={
-        status === "submitted" ? (
+      ListFooterComponent={useMemo(() => {
+        // Don't show "Thinking..." if last message already has a reasoning part
+        // (the reasoning part will show its own thinking indicator)
+        if (status !== "submitted") {
+          return null;
+        }
+        const lastMessage = messages.at(-1);
+        const hasReasoningPart = lastMessage?.parts?.some(
+          (part) => part.type === "reasoning"
+        );
+        if (hasReasoningPart) {
+          return null;
+        }
+
+        return (
           <View className="mx-4 my-2">
             <Text className="text-muted-foreground text-sm">Thinking...</Text>
           </View>
-        ) : null
-      }
+        );
+      }, [status, messages])}
       onContentSizeChange={(_width, contentHeight) => {
         contentHeightRef.current = contentHeight;
-        // Auto-scroll to bottom when content changes
-        // Skip auto-scroll if user is editing a message to prevent interrupting their typing
-        // Use scrollToOffset for precise positioning during streaming
-        // Add CONTENT_PADDING_BOTTOM since contentHeight doesn't include padding
+
+        // Only auto-scroll when:
+        // 1. New messages are added (messages.length changed)
+        // 2. Currently streaming content
+        // Skip auto-scroll for accordion expand/collapse or other UI changes
+        const messagesChanged =
+          messages.length !== prevMessagesLengthRef.current;
+        const isStreaming = status === "streaming" || status === "submitted";
+        const shouldAutoScroll = messagesChanged || isStreaming;
+
+        // Update the ref for next comparison
+        prevMessagesLengthRef.current = messages.length;
+
         if (
+          shouldAutoScroll &&
           messages.length > 0 &&
           layoutHeightRef.current > 0 &&
           editingMessageId === null

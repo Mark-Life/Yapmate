@@ -1,11 +1,11 @@
-import type { FileUIPart, UIMessage } from "ai";
+import type { FileUIPart, ReasoningUIPart, UIMessage } from "ai";
 import { FileIcon } from "lucide-react-native";
-import {
-  type ContentSizeEvent,
-  type ContextMenuActionEvent,
-  type ContextMenuAction as NativeContextMenuAction,
-  NativeMarkdownView,
+import type {
+  ContentSizeEvent,
+  ContextMenuActionEvent,
+  ContextMenuAction as NativeContextMenuAction,
 } from "modules/native-markdown";
+import { NativeMarkdownView } from "modules/native-markdown";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -18,6 +18,19 @@ import {
   View,
 } from "react-native";
 import ContextMenu from "react-native-context-menu-view";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
@@ -408,7 +421,161 @@ export const TextPart = ({
   );
 };
 
+type ReasoningPartProps = {
+  part: ReasoningUIPart;
+  isStreaming: boolean;
+};
+
+/**
+ * Renders the shimmer text for "Thinking..." with pulsing opacity animation
+ */
+const ShimmerText = ({ children }: { children: string }) => {
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 800 }),
+        withTiming(1, { duration: 800 })
+      ),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Text className="font-medium text-muted-foreground text-sm">
+        {children}
+      </Text>
+    </Animated.View>
+  );
+};
+
+/**
+ * Renders a reasoning/thinking part in a collapsible accordion
+ * - Shows "Thinking..." with shimmer animation while streaming
+ * - Shows "Thought for X seconds" after completion
+ * - Auto-collapses after streaming ends
+ */
+export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
+  const { colorScheme } = useColorScheme();
+  const theme = getThemeColors(colorScheme);
+
+  // Track duration from when we first see this part streaming
+  const [startTime] = useState(() => (isStreaming ? Date.now() : null));
+  const [duration, setDuration] = useState<number | null>(null);
+
+  // Track accordion open state - expanded while streaming, collapsed after
+  const [accordionValue, setAccordionValue] = useState<string>(
+    isStreaming ? "reasoning" : ""
+  );
+
+  // Track if we've already auto-collapsed
+  const hasAutoCollapsed = useRef(false);
+
+  // Track content height for NativeMarkdownView auto-sizing
+  const [contentHeight, setContentHeight] = useState(20);
+
+  const handleContentSizeChange = useCallback((event: ContentSizeEvent) => {
+    const { height } = event.nativeEvent;
+    if (height > 0) {
+      setContentHeight(height);
+    }
+  }, []);
+
+  // Handle streaming end - record duration and auto-collapse after delay
+  useEffect(() => {
+    if (!isStreaming && startTime && duration === null) {
+      const elapsed = Math.ceil((Date.now() - startTime) / 1000);
+      setDuration(elapsed);
+
+      // Auto-collapse after 1 second delay
+      if (!hasAutoCollapsed.current) {
+        hasAutoCollapsed.current = true;
+        const timer = setTimeout(() => {
+          setAccordionValue("");
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isStreaming, startTime, duration]);
+
+  // Don't render if there's no content
+  if (!(part.text || isStreaming)) {
+    return null;
+  }
+
+  const headerText = isStreaming
+    ? "Thinking..."
+    : `Thought for ${duration ?? 0} seconds`;
+
+  return (
+    <View style={[styles.reasoningContainer, { borderColor: theme.border }]}>
+      <Accordion
+        collapsible
+        onValueChange={(value) =>
+          setAccordionValue((value as string | undefined) ?? "")
+        }
+        type="single"
+        value={accordionValue}
+      >
+        <AccordionItem className="border-b-0" value="reasoning">
+          <AccordionTrigger className="py-2">
+            <View style={styles.reasoningHeader}>
+              {isStreaming ? (
+                <ShimmerText>{headerText}</ShimmerText>
+              ) : (
+                <Text className="font-medium text-muted-foreground text-sm">
+                  {headerText}
+                </Text>
+              )}
+            </View>
+          </AccordionTrigger>
+          <AccordionContent className="pb-2">
+            <View style={styles.reasoningContent}>
+              {Platform.OS === "ios" ? (
+                <NativeMarkdownView
+                  content={part.text}
+                  onContentSizeChange={handleContentSizeChange}
+                  style={{ height: contentHeight }}
+                  textColor={theme.mutedForeground}
+                />
+              ) : (
+                <StreamingMarkdown
+                  content={part.text}
+                  textClassName="text-muted-foreground text-sm"
+                />
+              )}
+            </View>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
+  reasoningContainer: {
+    marginVertical: 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    paddingHorizontal: 12,
+    width: "100%",
+  },
+  reasoningHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  reasoningContent: {
+    paddingTop: 4,
+  },
   filePart: {
     marginVertical: 4,
     overflow: "hidden",
