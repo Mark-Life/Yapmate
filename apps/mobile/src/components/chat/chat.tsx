@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -21,10 +21,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useSession } from "@/contexts/auth";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
+import { useMultiUserChat } from "@/hooks/use-multi-user-chat";
 import {
   getSearchEnabled,
   setSearchEnabled as persistSearchEnabled,
@@ -74,7 +76,24 @@ export const Chat = ({
   const { models } = useModels();
   const attachments = useAttachments();
   const { capture } = useAnalytics();
+  const { session } = useSession();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+
+  // Multi-user chat support
+  const currentUserId = session?.user?.id;
+  const { members, isMultiUser, typingMembers } = useMultiUserChat({
+    chatId: initialId ?? null,
+    enabled: Boolean(initialId),
+  });
+
+  // Build member names map for display
+  const memberNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const member of members) {
+      map.set(member.userId, member.displayName);
+    }
+    return map;
+  }, [members]);
 
   // Determine default model based on context
   const [model, setModel] = useState(() => {
@@ -615,6 +634,9 @@ export const Chat = ({
         <View className="flex-1">
           <MessagesHistory
             addToolApprovalResponse={addToolApprovalResponse}
+            currentUserId={currentUserId}
+            isMultiUser={isMultiUser}
+            memberNames={memberNames}
             messages={activeMessages}
             onEdit={handleEditCallback}
             onRegenerate={handleRegenerateCallback}
@@ -622,6 +644,7 @@ export const Chat = ({
             onScrollStateChange={setIsAtBottom}
             scrollToBottomRef={scrollToBottomRef}
             status={activeStatus}
+            typingMembers={typingMembers}
           />
           <LinearGradient
             colors={

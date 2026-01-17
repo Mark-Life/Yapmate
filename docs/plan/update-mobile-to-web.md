@@ -118,7 +118,7 @@ Comparison of web and mobile implementations to identify missing features in the
 
 **Files to create/modify**:
 - Create: `apps/mobile/src/components/chat/feedback-buttons.tsx`
-- Modify: `apps/mobile/src/components/chat/message-item.tsx`
+- Modify: `apps/mobile/src/components/chat/message-item.tsx`z
 
 ---
 

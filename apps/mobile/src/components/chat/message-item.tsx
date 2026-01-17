@@ -23,6 +23,7 @@ type MessageItemProps = {
     id: string;
     approved: boolean;
   }) => void;
+  isOtherUser?: boolean;
   message: ChatUIMessage;
   isEditing: boolean;
   onCopy: (text: string, partId: string) => void;
@@ -34,6 +35,7 @@ type MessageItemProps = {
     role: "user" | "assistant"
   ) => void;
   onStartEdit: (messageId: string) => void;
+  senderName?: string;
   status: ChatStatus;
 };
 
@@ -124,6 +126,7 @@ const getTextContent = (parts: ChatUIMessage["parts"]): string =>
  */
 export const MessageItem = ({
   addToolApprovalResponse,
+  isOtherUser = false,
   message,
   isEditing,
   onCopy,
@@ -132,15 +135,19 @@ export const MessageItem = ({
   onRegenerate,
   onRequestModelForRegeneration,
   onStartEdit,
+  senderName,
   status,
 }: MessageItemProps) => {
   const isUser = message.role === "user";
+  // Align right only for current user's messages (not other users' messages)
+  const alignRight = isUser && !isOtherUser;
   const parts = message.parts ?? [];
   const model = (message.metadata as { model?: string } | undefined)?.model;
   const messageRole = message.role as "user" | "assistant";
   const isStreaming = status === "streaming" || status === "submitted";
   const canRegenerate = Boolean(onRegenerate && onRequestModelForRegeneration);
-  const canEdit = Boolean(isUser && onEdit);
+  // Can only edit own messages, not other users' messages
+  const canEdit = Boolean(isUser && !isOtherUser && onEdit);
   const { capture } = useAnalytics();
 
   const { actions, actionIds } = useMemo(
@@ -196,7 +203,7 @@ export const MessageItem = ({
     <View
       style={[
         styles.messageContainer,
-        isUser ? styles.itemsEnd : styles.itemsStart,
+        alignRight ? styles.itemsEnd : styles.itemsStart,
       ]}
     >
       {parts.map((part, i) => {
@@ -212,7 +219,7 @@ export const MessageItem = ({
           case "file":
             return (
               <FilePart
-                isUser={isUser}
+                isUser={alignRight}
                 key={partId}
                 part={part as FileUIPart}
                 useAutoMargin={true}
@@ -224,14 +231,16 @@ export const MessageItem = ({
                 contextMenuActions={actions}
                 contextMenuKey={contextMenuKey}
                 isEditing={isEditing}
+                isOtherUser={isOtherUser}
                 isUser={isUser}
                 key={partId}
                 messageId={message.id}
-                modelName={!isUser ? model : undefined}
+                modelName={isUser ? undefined : model}
                 onCancelEdit={onCancelEdit}
                 onContextMenuPress={handleContextMenuPress}
                 onEdit={onEdit}
                 part={part}
+                senderName={senderName}
               />
             );
           case "reasoning":
