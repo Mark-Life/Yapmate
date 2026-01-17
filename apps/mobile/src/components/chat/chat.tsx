@@ -28,8 +28,18 @@ import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
 import { useMultiUserChat } from "@/hooks/use-multi-user-chat";
 import {
+  getMemoryEnabled,
+  getReasoningEffort,
   getSearchEnabled,
+  getSelectedMcpTools,
+  getSelectedRuleIds,
+  type McpToolSelection,
+  setMemoryEnabled as persistMemoryEnabled,
+  setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
+  setSelectedMcpTools as persistSelectedMcpTools,
+  setSelectedRuleIds as persistSelectedRuleIds,
+  type ReasoningEffort,
   setLastUsedModel,
 } from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
@@ -73,6 +83,16 @@ export const Chat = ({
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() =>
+    getSelectedRuleIds()
+  );
+  const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
+    getReasoningEffort()
+  );
+  const [selectedMcpTools, setSelectedMcpTools] = useState<McpToolSelection[]>(
+    () => getSelectedMcpTools()
+  );
   const { models } = useModels();
   const attachments = useAttachments();
   const { capture } = useAnalytics();
@@ -188,6 +208,10 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
+  const selectedRuleIdsRef = useRef(selectedRuleIds);
+  const memoryEnabledRef = useRef(memoryEnabled);
+  const reasoningEffortRef = useRef(reasoningEffort);
+  const selectedMcpToolsRef = useRef(selectedMcpTools);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -217,6 +241,18 @@ export const Chat = ({
   useEffect(() => {
     searchEnabledRef.current = searchEnabled;
   }, [searchEnabled]);
+  useEffect(() => {
+    selectedRuleIdsRef.current = selectedRuleIds;
+  }, [selectedRuleIds]);
+  useEffect(() => {
+    memoryEnabledRef.current = memoryEnabled;
+  }, [memoryEnabled]);
+  useEffect(() => {
+    reasoningEffortRef.current = reasoningEffort;
+  }, [reasoningEffort]);
+  useEffect(() => {
+    selectedMcpToolsRef.current = selectedMcpTools;
+  }, [selectedMcpTools]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -282,6 +318,10 @@ export const Chat = ({
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
+              selectedRuleIds: selectedRuleIdsRef.current,
+              memoryEnabled: memoryEnabledRef.current,
+              reasoningEffort: reasoningEffortRef.current,
+              selectedMcpTools: selectedMcpToolsRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -479,6 +519,38 @@ export const Chat = ({
       eventTarget.removeEventListener("model-selected", handleModelSelected);
     };
   }, [handleRegenerateCallback, handleModelChange]);
+
+  /**
+   * Listens for controls-updated events from chat-controls screen
+   * Updates state and persists to storage
+   */
+  useEffect(() => {
+    const handleControlsUpdated: EventListener = (event) => {
+      const detail = event.detail as {
+        selectedRuleIds: string[];
+        memoryEnabled: boolean;
+        reasoningEffort: ReasoningEffort;
+        selectedMcpTools: McpToolSelection[];
+      };
+      setSelectedRuleIds(detail.selectedRuleIds);
+      persistSelectedRuleIds(detail.selectedRuleIds);
+      setMemoryEnabled(detail.memoryEnabled);
+      persistMemoryEnabled(detail.memoryEnabled);
+      setReasoningEffort(detail.reasoningEffort);
+      persistReasoningEffort(detail.reasoningEffort);
+      setSelectedMcpTools(detail.selectedMcpTools);
+      persistSelectedMcpTools(detail.selectedMcpTools);
+    };
+
+    eventTarget.addEventListener("controls-updated", handleControlsUpdated);
+
+    return () => {
+      eventTarget.removeEventListener(
+        "controls-updated",
+        handleControlsUpdated
+      );
+    };
+  }, []);
 
   /**
    * Handles stopping the current stream

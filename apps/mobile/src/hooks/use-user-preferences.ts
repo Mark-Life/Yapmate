@@ -6,14 +6,29 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "yapmate_user_preferences";
 
+export type ReasoningEffort = "low" | "medium" | "high";
+
+export type McpToolSelection = {
+  mcpServerId: string;
+  toolName: string;
+};
+
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
+  selectedRuleIds: string[];
+  memoryEnabled: boolean;
+  reasoningEffort: ReasoningEffort;
+  selectedMcpTools: McpToolSelection[];
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   lastUsedModel: null,
   searchEnabled: false,
+  selectedRuleIds: [],
+  memoryEnabled: false,
+  reasoningEffort: "low",
+  selectedMcpTools: [],
 };
 
 // In-memory cache for sync access after initial load
@@ -32,6 +47,10 @@ export const initUserPreferences = async (): Promise<UserPreferences> => {
       cachedPreferences = {
         lastUsedModel: parsed.lastUsedModel ?? null,
         searchEnabled: parsed.searchEnabled ?? false,
+        selectedRuleIds: parsed.selectedRuleIds ?? [],
+        memoryEnabled: parsed.memoryEnabled ?? false,
+        reasoningEffort: parsed.reasoningEffort ?? "low",
+        selectedMcpTools: parsed.selectedMcpTools ?? [],
       };
     }
     isInitialized = true;
@@ -85,6 +104,61 @@ export const getSearchEnabled = (): boolean => cachedPreferences.searchEnabled;
  */
 export const setSearchEnabled = async (enabled: boolean): Promise<void> => {
   await setUserPreferences({ searchEnabled: enabled });
+};
+
+/**
+ * Gets the selected rule IDs from cache
+ */
+export const getSelectedRuleIds = (): string[] =>
+  cachedPreferences.selectedRuleIds;
+
+/**
+ * Sets the selected rule IDs in cache and storage
+ */
+export const setSelectedRuleIds = async (ruleIds: string[]): Promise<void> => {
+  await setUserPreferences({ selectedRuleIds: ruleIds });
+};
+
+/**
+ * Gets the memory enabled preference from cache
+ */
+export const getMemoryEnabled = (): boolean => cachedPreferences.memoryEnabled;
+
+/**
+ * Sets the memory enabled preference in cache and storage
+ */
+export const setMemoryEnabled = async (enabled: boolean): Promise<void> => {
+  await setUserPreferences({ memoryEnabled: enabled });
+};
+
+/**
+ * Gets the reasoning effort preference from cache
+ */
+export const getReasoningEffort = (): ReasoningEffort =>
+  cachedPreferences.reasoningEffort;
+
+/**
+ * Sets the reasoning effort preference in cache and storage
+ */
+export const setReasoningEffort = async (
+  effort: ReasoningEffort
+): Promise<void> => {
+  await setUserPreferences({ reasoningEffort: effort });
+};
+
+/**
+ * Gets the selected MCP tools from cache
+ */
+export const getSelectedMcpTools = (): McpToolSelection[] =>
+  cachedPreferences.selectedMcpTools;
+
+/**
+ * Sets the selected MCP tools in cache and storage
+ */
+export const setSelectedMcpTools = async (
+  tools: McpToolSelection[]
+): Promise<void> => {
+  await setUserPreferences({ selectedMcpTools: tools });
 };
 
 /**
