@@ -7,6 +7,7 @@ import {
   type VisibilityCondition,
   evaluateVisibility,
   type VisibilityContext,
+  resolveAllDynamicValues,
 } from "@yapmate/core/generative-ui"
 import { componentRegistry } from "./registry"
 import {
@@ -109,6 +110,14 @@ function ElementRenderer({
     )
   }
 
+  // Resolve dynamic values in props using data context
+  const resolvedProps = element.props
+    ? resolveAllDynamicValues(
+        element.props as Record<string, unknown>,
+        visibilityCtx.data ?? {}
+      )
+    : {}
+
   const childElements = element.children?.map(childKey => (
     <ElementRenderer
       key={childKey}
@@ -120,7 +129,7 @@ function ElementRenderer({
   ))
 
   return (
-    <Component key={element.key} {...element.props}>
+    <Component key={element.key} {...resolvedProps}>
       {childElements}
     </Component>
   )

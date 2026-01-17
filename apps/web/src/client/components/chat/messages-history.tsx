@@ -139,6 +139,19 @@ type RenderToolPartProps = {
 /**
  * Renders a tool invocation part
  */
+/** Check if tool output is a generative UI result */
+const isGenerativeUIOutput = (
+  output: unknown
+): output is { type: "generative-ui"; uiId: string; ui: unknown } => {
+  return (
+    output !== null &&
+    typeof output === "object" &&
+    "type" in output &&
+    (output as { type: unknown }).type === "generative-ui" &&
+    "ui" in output
+  );
+};
+
 const renderToolPart = ({
   addToolApprovalResponse,
   part,
@@ -164,6 +177,26 @@ const renderToolPart = ({
     "id" in part.approval
   ) {
     approvalId = (part.approval as { id: string }).id;
+  }
+
+  // Check if this is a render_ui tool with generative UI output
+  const toolName = isDynamic ? dynamicPart.toolName : toolType.replace("tool-", "");
+  const isRenderUiTool = toolName === "render_ui";
+  const hasGenerativeUIOutput =
+    part.state === "output-available" && isGenerativeUIOutput(part.output);
+
+  // For render_ui tool with generative UI output, render the UI directly
+  if (isRenderUiTool && hasGenerativeUIOutput) {
+    const uiOutput = part.output as { type: "generative-ui"; uiId: string; ui: unknown };
+    return (
+      <div className="w-full rounded-lg border bg-card p-4" key={partId}>
+        <GenerativeUIRenderer
+          tree={
+            uiOutput.ui as Parameters<typeof GenerativeUIRenderer>[0]["tree"]
+          }
+        />
+      </div>
+    );
   }
 
   return (
@@ -371,6 +404,36 @@ const getEffectiveModel = (
 const isToolPart = (partType: string): boolean =>
   partType.startsWith("tool-") || partType === "dynamic-tool";
 
+/** Generative UI streaming chunk types to filter out from display */
+const STREAMING_CHUNK_TYPES = new Set([
+  "ui-start",
+  "ui-patch",
+  "ui-end",
+  "ui-error",
+  "generative-ui-start",
+  "generative-ui-delta",
+  "generative-ui-end",
+  "generative-ui-error",
+  "data-ui-start",
+  "data-ui-patch",
+  "data-ui-end",
+  "data-ui-error",
+]);
+
+/**
+ * Checks if text content is a generative UI streaming chunk that should be filtered
+ */
+const isGenerativeUIStreamingChunk = (text: string): boolean => {
+  if (!text.startsWith("{") || !text.includes('"type"')) return false;
+  try {
+    const parsed = JSON.parse(text);
+    const type = parsed?.type ?? parsed?.data?.type;
+    return typeof type === "string" && STREAMING_CHUNK_TYPES.has(type);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Filters out current user from typing members map
  */
@@ -508,6 +571,10 @@ export const MessagesHistory = ({
 
                   switch (part.type) {
                     case "text":
+                      // Skip generative UI streaming chunks (legacy data)
+                      if (isGenerativeUIStreamingChunk(part.text)) {
+                        return null;
+                      }
                       return (
                         <TextPart
                           avatar={avatar}
@@ -552,6 +619,18 @@ export const MessagesHistory = ({
                       // Check if this UI is still streaming
                       const isStreamingThisUI =
                         streamingUI?.has(uiPart.id) ?? false;
+                      // If streaming, use the streaming tree for visual continuity
+                      let treeToRender = uiPart.ui;
+                      if (isStreamingThisUI) {
+                        const streamingJson = streamingUI?.get(uiPart.id);
+                        if (streamingJson) {
+                          try {
+                            treeToRender = JSON.parse(streamingJson);
+                          } catch {
+                            // Keep using uiPart.ui if parse fails
+                          }
+                        }
+                      }
                       return (
                         <div
                           className="w-full rounded-lg border bg-card p-4"
@@ -560,7 +639,7 @@ export const MessagesHistory = ({
                           <GenerativeUIRenderer
                             isStreaming={isStreamingThisUI}
                             tree={
-                              uiPart.ui as Parameters<
+                              treeToRender as Parameters<
                                 typeof GenerativeUIRenderer
                               >[0]["tree"]
                             }
