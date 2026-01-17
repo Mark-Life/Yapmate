@@ -13,6 +13,10 @@ const CONTENT_PADDING_BOTTOM = 140;
 type ChatUIMessage = UIMessage;
 
 type MessagesHistoryProps = {
+  addToolApprovalResponse?: (response: {
+    id: string;
+    approved: boolean;
+  }) => void;
   messages: ChatUIMessage[];
   status: ChatStatus;
   onScrollStateChange?: (isAtBottom: boolean) => void;
@@ -31,6 +35,7 @@ type MessagesHistoryProps = {
  * Content scrolls behind safe areas with padding applied
  */
 export const MessagesHistory = ({
+  addToolApprovalResponse,
   messages,
   status,
   onScrollStateChange,
@@ -202,6 +207,7 @@ export const MessagesHistory = ({
       ref={listRef}
       renderItem={({ item }) => (
         <MessageItem
+          addToolApprovalResponse={addToolApprovalResponse}
           isEditing={editingMessageId === item.id}
           message={item}
           onCancelEdit={() => setEditingMessageId(null)}

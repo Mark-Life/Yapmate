@@ -275,73 +275,79 @@ export const Chat = ({
       })
   );
 
-  const { messages, sendMessage, status, regenerate, setMessages } =
-    useChat<ChatUIMessage>({
-      id: chatId,
-      messages: initialMessages,
-      transport,
-      generateId: () => Crypto.randomUUID(),
-      onData: (dataPart) => {
-        // Handle streamed title updates
-        if (dataPart.type === "data-chat-title") {
-          // Refresh chats list to show new title
-          queryClient.invalidateQueries({ queryKey: ["chats"] });
+  const {
+    messages,
+    sendMessage,
+    status,
+    regenerate,
+    setMessages,
+    addToolApprovalResponse,
+  } = useChat<ChatUIMessage>({
+    id: chatId,
+    messages: initialMessages,
+    transport,
+    generateId: () => Crypto.randomUUID(),
+    onData: (dataPart) => {
+      // Handle streamed title updates
+      if (dataPart.type === "data-chat-title") {
+        // Refresh chats list to show new title
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      }
+      // Handle model info for avatar display
+      const part = dataPart as { type: string; data?: unknown };
+      if (part.type === "data-model" && part.data) {
+        const { model: streamedModel, assistantMessageId } = part.data as {
+          model: string;
+          assistantMessageId: string;
+        };
+        messageModelMapRef.current.set(assistantMessageId, streamedModel);
+      }
+    },
+    onFinish: ({ messages: finishedMessages }) => {
+      // Patch assistant messages with model from our stored map
+      const patchedMessages = finishedMessages.map((msg) => {
+        if (msg.role !== "assistant") {
+          return msg;
         }
-        // Handle model info for avatar display
-        const part = dataPart as { type: string; data?: unknown };
-        if (part.type === "data-model" && part.data) {
-          const { model: streamedModel, assistantMessageId } = part.data as {
-            model: string;
-            assistantMessageId: string;
-          };
-          messageModelMapRef.current.set(assistantMessageId, streamedModel);
+        const storedModel = messageModelMapRef.current.get(msg.id);
+        if (!storedModel) {
+          return msg;
         }
-      },
-      onFinish: ({ messages: finishedMessages }) => {
-        // Patch assistant messages with model from our stored map
-        const patchedMessages = finishedMessages.map((msg) => {
-          if (msg.role !== "assistant") {
-            return msg;
-          }
-          const storedModel = messageModelMapRef.current.get(msg.id);
-          if (!storedModel) {
-            return msg;
-          }
-          return {
-            ...msg,
-            metadata: {
-              ...(msg.metadata as { model?: string }),
-              model: storedModel,
-            },
-          };
-        });
-        setMessages(patchedMessages as ChatUIMessage[]);
-        // Invalidate cache so navigation back to this chat fetches fresh DB data
-        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
-      },
-      onError: (error) => {
-        // Handle 402 Payment Required (rate limit exceeded)
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          error.status === 402
-        ) {
-          capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
-            error: "rate_limit_exceeded",
-          });
-          Alert.alert(
-            "Message limit reached",
-            "You've reached your free monthly message limit. Your allowance will reset next month."
-          );
-          return;
-        }
+        return {
+          ...msg,
+          metadata: {
+            ...(msg.metadata as { model?: string }),
+            model: storedModel,
+          },
+        };
+      });
+      setMessages(patchedMessages as ChatUIMessage[]);
+      // Invalidate cache so navigation back to this chat fetches fresh DB data
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+    },
+    onError: (error) => {
+      // Handle 402 Payment Required (rate limit exceeded)
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 402
+      ) {
         capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "rate_limit_exceeded",
         });
-        console.error("useChat error:", error);
-      },
-    });
+        Alert.alert(
+          "Message limit reached",
+          "You've reached your free monthly message limit. Your allowance will reset next month."
+        );
+        return;
+      }
+      capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      console.error("useChat error:", error);
+    },
+  });
 
   // Local on-device chat hook (always called for React rules)
   const localChat = useLocalChat({
@@ -608,6 +614,7 @@ export const Chat = ({
       ) : (
         <View className="flex-1">
           <MessagesHistory
+            addToolApprovalResponse={addToolApprovalResponse}
             messages={activeMessages}
             onEdit={handleEditCallback}
             onRegenerate={handleRegenerateCallback}

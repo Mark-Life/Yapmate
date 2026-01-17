@@ -28,7 +28,7 @@ Comparison of web and mobile implementations to identify missing features in the
 
 ## Missing Features
 
-### 1. Tool Call Rendering (High Priority)
+### 1. Tool Call Rendering (High Priority) ✅ done
 
 **Web has** (`messages-history.tsx:139-219`):
 - Collapsible tool cards with `<Tool>`, `<ToolHeader>`, `<ToolContent>`

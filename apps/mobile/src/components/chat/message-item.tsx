@@ -1,8 +1,15 @@
-import type { ChatStatus, FileUIPart, ReasoningUIPart, UIMessage } from "ai";
+import type {
+  ChatStatus,
+  FileUIPart,
+  ReasoningUIPart,
+  ToolUIPart,
+  UIMessage,
+} from "ai";
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { FilePart, ReasoningPart, TextPart } from "./message-parts";
+import { ToolPart } from "./tool-part";
 
 type ChatUIMessage = UIMessage;
 
@@ -12,6 +19,10 @@ type ContextMenuAction = {
 };
 
 type MessageItemProps = {
+  addToolApprovalResponse?: (response: {
+    id: string;
+    approved: boolean;
+  }) => void;
   message: ChatUIMessage;
   isEditing: boolean;
   onCopy: (text: string, partId: string) => void;
@@ -24,6 +35,34 @@ type MessageItemProps = {
   ) => void;
   onStartEdit: (messageId: string) => void;
   status: ChatStatus;
+};
+
+/**
+ * Checks if a part type is a tool part (starts with "tool-" or is "dynamic-tool")
+ */
+const isToolPart = (partType: string): boolean =>
+  partType.startsWith("tool-") || partType === "dynamic-tool";
+
+/**
+ * Checks if a text part contains legacy data-model JSON that was mistakenly saved
+ * These parts should be filtered out from rendering
+ */
+const isLegacyDataModelPart = (
+  part: ChatUIMessage["parts"][number]
+): boolean => {
+  if (part.type !== "text") {
+    return false;
+  }
+  const text = part.text.trim();
+  if (!(text.startsWith("{") && text.endsWith("}"))) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(text);
+    return parsed?.type === "data-model";
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -84,6 +123,7 @@ const getTextContent = (parts: ChatUIMessage["parts"]): string =>
  * Context menu is applied at the TextPart level for proper bubble styling
  */
 export const MessageItem = ({
+  addToolApprovalResponse,
   message,
   isEditing,
   onCopy,
@@ -162,6 +202,11 @@ export const MessageItem = ({
         const partId = `${message.id}-${i}`;
         const isLastPart = i === parts.length - 1;
 
+        // Skip legacy data-model parts that were mistakenly saved as text
+        if (isLegacyDataModelPart(part)) {
+          return null;
+        }
+
         switch (part.type) {
           case "file":
             return (
@@ -197,6 +242,16 @@ export const MessageItem = ({
               />
             );
           default:
+            // Handle tool parts (type starts with "tool-" or "dynamic-tool")
+            if (isToolPart(part.type)) {
+              return (
+                <ToolPart
+                  addToolApprovalResponse={addToolApprovalResponse}
+                  key={partId}
+                  part={part as ToolUIPart}
+                />
+              );
+            }
             return null;
         }
       })}
