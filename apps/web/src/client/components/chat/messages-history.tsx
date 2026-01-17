@@ -369,6 +369,31 @@ const isToolPart = (partType: string): boolean =>
   partType.startsWith("tool-") || partType === "dynamic-tool";
 
 /**
+ * Checks if a text part contains legacy data-model JSON that was mistakenly saved
+ * These parts should be filtered out from rendering
+ */
+const isLegacyDataModelPart = (
+  part: ChatUIMessage["parts"][number]
+): boolean => {
+  if (part.type !== "text") {
+    return false;
+  }
+  const text = part.text.trim();
+  if (!text.startsWith("{")) {
+    return false;
+  }
+  if (!text.endsWith("}")) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(text);
+    return parsed?.type === "data-model";
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Filters out current user from typing members map
  */
 const filterTypingMembers = (
@@ -502,6 +527,11 @@ export const MessagesHistory = ({
                   const isCopied = copiedPartId === partId;
                   const isLastPart = i === message.parts.length - 1;
 
+                  // Skip legacy data-model parts that were mistakenly saved as text
+                  if (isLegacyDataModelPart(part)) {
+                    return null;
+                  }
+
                   switch (part.type) {
                     case "text":
                       return (
@@ -515,6 +545,7 @@ export const MessagesHistory = ({
                           isOtherUser={isOtherUser}
                           key={partId}
                           message={message}
+                          modelName={effectiveModel}
                           onCancelEdit={() => setEditingMessageId(null)}
                           onCopy={handleCopy}
                           onEdit={onEdit}
