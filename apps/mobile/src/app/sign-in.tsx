@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { AuthContainer } from "@/components/auth/AuthContainer";
@@ -11,6 +12,7 @@ import { Text } from "@/components/ui/text";
  * Route protection handled by Stack.Protected in root layout
  */
 export default function SignIn() {
+  const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   return (
@@ -35,6 +37,15 @@ export default function SignIn() {
           <Text className="text-primary">
             {mode === "login" ? "Sign Up" : "Sign In"}
           </Text>
+        </Button>
+      </View>
+      <View className="mt-4 items-center">
+        <Button
+          className="h-auto p-0"
+          onPress={() => router.replace("/(guest)")}
+          variant="link"
+        >
+          <Text className="text-muted-foreground">Continue as guest</Text>
         </Button>
       </View>
     </AuthContainer>

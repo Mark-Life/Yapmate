@@ -60,6 +60,7 @@ function RootNavigator() {
       </Stack.Protected>
 
       <Stack.Protected guard={!session}>
+        <Stack.Screen name="(guest)" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="auth/callback" />
       </Stack.Protected>
