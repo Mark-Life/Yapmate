@@ -11,8 +11,7 @@ export const APPLE_LOCAL_MODEL = {
 /**
  * Checks if a model ID is a local on-device model
  */
-export const isLocalModel = (modelId: string) =>
-  modelId.startsWith("local/");
+export const isLocalModel = (modelId: string) => modelId.startsWith("local/");
 
 /**
  * Checks if Apple Foundation Model is available on this device

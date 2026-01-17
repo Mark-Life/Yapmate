@@ -1,7 +1,7 @@
 /**
  * Chats service - CRUD operations for chat sessions
  */
-import { and, desc, eq, or, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "../client";
 import { chatMembers } from "../schema/chat-members";
 import { type ChatInsert, type ChatSelect, chats } from "../schema/chats";

@@ -60,7 +60,7 @@ export const messages = {
           const hasAccess = chat
             ? await canAccessChat(chatId, context.userId)
             : false;
-          if (!chat || !hasAccess) {
+          if (!(chat && hasAccess)) {
             // Skip chats that don't exist or user doesn't have access to
             return;
           }

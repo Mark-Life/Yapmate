@@ -62,7 +62,12 @@ const EditActions = ({ canSave, onCancelEdit, onEdit }: EditActionsProps) => (
     >
       <XIcon className="size-3" />
     </MessageAction>
-    <MessageAction disabled={!canSave} label="Save" onClick={onEdit} tooltip="Save changes">
+    <MessageAction
+      disabled={!canSave}
+      label="Save"
+      onClick={onEdit}
+      tooltip="Save changes"
+    >
       <CheckIcon className="size-3" />
     </MessageAction>
   </>
@@ -190,7 +195,11 @@ const MessageActionsContent = ({
 
   if (isEditing) {
     return (
-      <EditActions canSave={canSave} onCancelEdit={onCancelEdit} onEdit={onEdit} />
+      <EditActions
+        canSave={canSave}
+        onCancelEdit={onCancelEdit}
+        onEdit={onEdit}
+      />
     );
   }
 
