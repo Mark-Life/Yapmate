@@ -43,27 +43,43 @@ export const useMcpTools = (serverId: string | null) => {
  * Returns a map of serverId -> tools array
  */
 export const useMcpToolsForServers = (serverIds: string[]) => {
-  const queries = useQuery({
-    queryKey: ["mcpToolsMulti", serverIds],
+  const query = useQuery({
+    queryKey: ["mcpToolsMulti", ...serverIds],
     queryFn: async () => {
-      const results = await Promise.all(
+      const map: Record<string, McpTool[]> = {};
+      await Promise.all(
         serverIds.map(async (serverId) => {
           try {
             const tools = await rpcClient.mcp.tools.list({ serverId });
-            return { serverId, tools };
+            map[serverId] = tools;
           } catch {
-            return { serverId, tools: [] };
+            map[serverId] = [];
           }
         })
       );
-      return new Map(results.map(({ serverId, tools }) => [serverId, tools]));
+      return map;
     },
     enabled: serverIds.length > 0,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
-  return {
-    toolsMap: queries.data ?? new Map(),
-    isLoading: queries.isLoading,
+
+  // Create a Map-like interface from the record
+  const toolsRecord = query.data ?? {};
+  const toolsMap = {
+    get: (serverId: string) => toolsRecord[serverId] ?? [],
   };
+
+  return {
+    toolsMap,
+    isLoading: query.isLoading,
+  };
+};
+
+type McpTool = {
+  id: string;
+  mcpServerId: string;
+  toolName: string;
+  displayName: string;
+  description: string | null;
 };

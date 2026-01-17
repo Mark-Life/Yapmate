@@ -1,3 +1,5 @@
+import { Host, Picker, Switch } from "@expo/ui/swift-ui";
+import { GlassView } from "expo-glass-effect";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   BookText,
@@ -21,7 +23,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { useRules } from "@/hooks/use-rules";
 import type {
   McpToolSelection,
@@ -142,9 +143,9 @@ export default function ChatControlsScreen() {
   /**
    * Toggles memory enabled
    */
-  const toggleMemory = () => {
+  const toggleMemory = (value: boolean) => {
     lightTap();
-    setMemoryEnabled((prev) => !prev);
+    setMemoryEnabled(value);
   };
 
   /**
@@ -191,7 +192,7 @@ export default function ChatControlsScreen() {
    * Opens web settings page for creating rules
    */
   const openWebSettings = () => {
-    Linking.openURL("https://yapmate.com/settings");
+    Linking.openURL("https://yapmate.com/settings/rules");
   };
 
   /**
@@ -216,13 +217,22 @@ export default function ChatControlsScreen() {
   /**
    * Renders a rule item with checkbox
    */
-  const renderRule = ({ item }: { item: UserRule }) => (
+  const renderRule = ({
+    item,
+    isFirst,
+    isLast,
+  }: {
+    item: UserRule;
+    isFirst: boolean;
+    isLast: boolean;
+  }) => (
     <Pressable
-      className="flex flex-row items-start gap-3 rounded-lg px-3 py-3 active:bg-accent"
+      className={`flex flex-row items-center gap-3 px-3 py-3 active:bg-accent ${isFirst ? "rounded-t-md" : ""} ${isLast ? "rounded-b-md" : ""}`}
       onPress={() => toggleRule(item.id)}
     >
       <Checkbox
         checked={selectedIds.has(item.id)}
+        className="size-5"
         onCheckedChange={() => toggleRule(item.id)}
       />
       <View className="flex-1">
@@ -242,7 +252,7 @@ export default function ChatControlsScreen() {
   /**
    * Renders empty state for rules
    */
-  const renderRulesEmptyState = () => {
+  const _renderRulesEmptyState = () => {
     if (isLoading) {
       return (
         <View className="items-center justify-center px-4 py-6">
@@ -299,22 +309,19 @@ export default function ChatControlsScreen() {
       style={{ paddingTop: 16 }}
     >
       <ScrollView
-        className="flex-1"
+        className="flex"
         contentContainerStyle={{ paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Memory Section */}
-        <View className="px-4 pb-4">
+        <View className="flex flex-col p-6">
           <View className="flex flex-row items-center gap-2 pb-2">
             <Icon as={Database} className="text-muted-foreground" size={16} />
             <Text className="font-semibold text-base text-foreground">
               Memory
             </Text>
           </View>
-          <Pressable
-            className="flex flex-row items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
-            onPress={toggleMemory}
-          >
+          <View className="flex flex-row items-center justify-between rounded-lg py-3">
             <View className="flex-1">
               <Text className="font-medium text-foreground text-sm">
                 Enable Memory
@@ -323,85 +330,47 @@ export default function ChatControlsScreen() {
                 AI remembers context across conversations
               </Text>
             </View>
-            <Switch checked={memoryEnabled} onCheckedChange={toggleMemory} />
-          </Pressable>
+            <Host matchContents>
+              <Switch
+                onValueChange={toggleMemory}
+                value={memoryEnabled}
+                variant="switch"
+              />
+            </Host>
+          </View>
         </View>
 
+        {/* Divider */}
+        <View className="h-px bg-foreground opacity-20" />
+
         {/* Reasoning Section */}
-        <View className="px-4 pb-4">
-          <View className="flex flex-row items-center gap-2 pb-2">
+        <View className="p-6 py-8">
+          <View className="flex flex-row items-center gap-2 pb-3">
             <Icon as={Brain} className="text-muted-foreground" size={16} />
             <Text className="font-semibold text-base text-foreground">
               Thinking Depth
             </Text>
           </View>
-          <View className="flex flex-row gap-2">
-            {REASONING_OPTIONS.map((option) => (
-              <Pressable
-                className={`flex-1 rounded-lg px-3 py-2.5 ${
-                  reasoningEffort === option.value
-                    ? "bg-primary"
-                    : "bg-muted/50"
-                }`}
-                key={option.value}
-                onPress={() => selectReasoningEffort(option.value)}
-              >
-                <Text
-                  className={`text-center font-medium text-sm ${
-                    reasoningEffort === option.value
-                      ? "text-primary-foreground"
-                      : "text-foreground"
-                  }`}
-                >
-                  {option.label}
-                </Text>
-                <Text
-                  className={`text-center text-xs ${
-                    reasoningEffort === option.value
-                      ? "text-primary-foreground/70"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {option.description}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Host matchContents>
+            <Picker
+              onOptionSelected={({ nativeEvent: { index } }) => {
+                selectReasoningEffort(REASONING_OPTIONS[index].value);
+              }}
+              options={REASONING_OPTIONS.map((o) => o.label)}
+              selectedIndex={REASONING_OPTIONS.findIndex(
+                (o) => o.value === reasoningEffort
+              )}
+              variant="segmented"
+            />
+          </Host>
         </View>
 
-        {/* MCP Tools Section */}
-        <View className="px-4 pb-4">
-          <View className="flex flex-row items-center gap-2 pb-2">
-            <Icon as={Wrench} className="text-muted-foreground" size={16} />
-            <Text className="font-semibold text-base text-foreground">
-              MCP Tools
-            </Text>
-          </View>
-          <Pressable
-            className="flex flex-row items-center justify-between rounded-lg bg-muted/50 px-4 py-3 active:bg-accent"
-            onPress={openMcpTools}
-          >
-            <View className="flex-1">
-              <Text className="font-medium text-foreground text-sm">
-                Select Tools
-              </Text>
-              <Text className="text-muted-foreground text-xs">
-                {mcpToolsCount > 0
-                  ? `${mcpToolsCount} tool${mcpToolsCount !== 1 ? "s" : ""} selected`
-                  : "Choose tools from your MCP servers"}
-              </Text>
-            </View>
-            <Icon
-              as={ChevronRight}
-              className="text-muted-foreground"
-              size={20}
-            />
-          </Pressable>
-        </View>
+        {/* Divider */}
+        <View className="h-px bg-foreground opacity-20" />
 
         {/* Rules Section */}
-        <View className="px-4">
-          <View className="flex flex-row items-center justify-between pb-2">
+        <View className="flex flex-col gap-2 p-6 py-8">
+          <View className="flex flex-row items-center justify-between">
             <View className="flex flex-row items-center gap-2">
               <Icon as={BookText} className="text-muted-foreground" size={16} />
               <Text className="font-semibold text-base text-foreground">
@@ -414,41 +383,82 @@ export default function ChatControlsScreen() {
               </Text>
             )}
           </View>
+          <Text className="pb-2 text-muted-foreground text-xs">
+            Selected rules are prepended to your messages
+          </Text>
 
           {/* Search input */}
           {rules.length > 0 && (
             <View className="pb-2">
-              <Input
-                className="h-9 rounded-lg border-0 bg-muted/50"
-                onChangeText={setSearch}
-                placeholder="Search rules..."
-                ref={inputRef}
-                value={search}
-              />
+              <GlassView
+                isInteractive={true}
+                style={{
+                  borderRadius: 12,
+                  padding: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <Input
+                  className="rounded-md border-input bg-transparent"
+                  onChangeText={setSearch}
+                  placeholder="Search rules..."
+                  ref={inputRef}
+                  value={search}
+                />
+              </GlassView>
             </View>
           )}
 
           {/* Rules list */}
           {filteredRules.length > 0 ? (
-            <View className="rounded-lg bg-muted/50">
+            <View className="rounded-lg border border-border">
               {filteredRules.map((rule, index) => (
                 <View key={rule.id}>
-                  {renderRule({ item: rule })}
+                  {renderRule({
+                    item: rule,
+                    isFirst: index === 0,
+                    isLast: index === filteredRules.length - 1,
+                  })}
                   {index < filteredRules.length - 1 && (
-                    <View className="mx-3 h-px bg-border" />
+                    <View className="h-px bg-border" />
                   )}
                 </View>
               ))}
             </View>
           ) : (
-            renderRulesEmptyState()
+            // renderRulesEmptyState()
+            <View className="rounded-lg border border-border px-4 py-2">
+              <Text className="text-muted-foreground text-sm">No rules</Text>
+            </View>
           )}
+        </View>
 
-          {rules.length > 0 && (
-            <Text className="mt-2 text-center text-muted-foreground text-xs">
-              Selected rules are prepended to your messages
-            </Text>
-          )}
+        {/* Divider */}
+        <View className="h-px bg-foreground opacity-20" />
+
+        {/* MCP Tools Section */}
+        <View className="p-6 py-8">
+          <Pressable
+            className="flex flex-row items-center justify-between rounded-full px-3 py-3 active:bg-accent"
+            onPress={openMcpTools}
+          >
+            <View className="flex flex-row items-center gap-2">
+              <Icon as={Wrench} className="text-muted-foreground" size={16} />
+              <Text className="font-semibold text-base text-foreground">
+                MCP Tools
+              </Text>
+              {mcpToolsCount > 0 && (
+                <Text className="text-muted-foreground text-xs">
+                  {mcpToolsCount} selected
+                </Text>
+              )}
+            </View>
+            <Icon
+              as={ChevronRight}
+              className="text-muted-foreground"
+              size={20}
+            />
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

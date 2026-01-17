@@ -157,7 +157,7 @@ export const MessagesHistory = ({
     <LegendList
       className="flex-1"
       contentContainerStyle={{
-        marginTop: insets.top + 20,
+        marginTop: insets.top + 38,
         paddingBottom: CONTENT_PADDING_BOTTOM,
         marginBottom: insets.bottom,
       }}

@@ -97,7 +97,7 @@ const AppLayoutInner = () => {
                   headerShown: false,
                   presentation: "formSheet",
                   sheetGrabberVisible: true,
-                  sheetAllowedDetents: [0.5, 0.9],
+                  sheetAllowedDetents: [0.5, 0.98],
                   contentStyle: {
                     backgroundColor: "transparent",
                   },
@@ -109,7 +109,7 @@ const AppLayoutInner = () => {
                   headerShown: false,
                   presentation: "formSheet",
                   sheetGrabberVisible: true,
-                  sheetAllowedDetents: [0.7, 0.9],
+                  sheetAllowedDetents: [0.5, 0.98],
                   contentStyle: {
                     backgroundColor: "transparent",
                   },

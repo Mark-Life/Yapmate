@@ -1,10 +1,6 @@
+import { GlassView } from "expo-glass-effect";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-  Server,
-} from "lucide-react-native";
+import { Check, ExternalLink, Server } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -16,6 +12,7 @@ import {
   type TextInput,
   View,
 } from "react-native";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -24,17 +21,18 @@ import type { McpToolSelection } from "@/hooks/use-user-preferences";
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
 
-type McpTool = {
-  id: string;
-  mcpServerId: string;
-  name: string;
-  description: string | null;
-};
-
 type McpServer = {
   id: string;
   name: string;
   enabled: boolean;
+};
+
+type McpTool = {
+  id: string;
+  mcpServerId: string;
+  toolName: string;
+  displayName: string;
+  description: string | null;
 };
 
 /**
@@ -49,9 +47,6 @@ export default function McpToolsScreen() {
   const { servers, isLoading: isLoadingServers } = useMcpServers();
   const [search, setSearch] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(
-    () => new Set()
-  );
 
   // Only show enabled servers
   const enabledServers = useMemo(
@@ -82,6 +77,15 @@ export default function McpToolsScreen() {
     useState<McpToolSelection[]>(initialSelections);
 
   /**
+   * Checks if server has wildcard selection (all tools)
+   */
+  const isServerWildcard = useCallback(
+    (serverId: string) =>
+      selections.some((s) => s.mcpServerId === serverId && s.toolName === "*"),
+    [selections]
+  );
+
+  /**
    * Checks if a specific tool is selected
    */
   const isToolSelected = useCallback(
@@ -95,29 +99,7 @@ export default function McpToolsScreen() {
   );
 
   /**
-   * Checks if server has wildcard selection (all tools)
-   */
-  const isServerWildcard = useCallback(
-    (serverId: string) =>
-      selections.some((s) => s.mcpServerId === serverId && s.toolName === "*"),
-    [selections]
-  );
-
-  /**
-   * Gets count of selected tools for a server
-   */
-  const getServerSelectionCount = useCallback(
-    (serverId: string) => {
-      if (isServerWildcard(serverId)) {
-        return toolsMap.get(serverId)?.length ?? 0;
-      }
-      return selections.filter((s) => s.mcpServerId === serverId).length;
-    },
-    [selections, isServerWildcard, toolsMap]
-  );
-
-  /**
-   * Toggles server wildcard selection
+   * Toggles server wildcard selection (all tools)
    */
   const toggleServerWildcard = (serverId: string) => {
     lightTap();
@@ -126,7 +108,7 @@ export default function McpToolsScreen() {
         (s) => s.mcpServerId === serverId && s.toolName === "*"
       );
       if (hasWildcard) {
-        // Remove wildcard
+        // Remove wildcard (deselect all)
         return prev.filter(
           (s) => !(s.mcpServerId === serverId && s.toolName === "*")
         );
@@ -144,15 +126,17 @@ export default function McpToolsScreen() {
     lightTap();
     setSelections((prev) => {
       // If server has wildcard, switch to individual selections minus this tool
-      if (isServerWildcard(serverId)) {
-        const serverTools = toolsMap.get(serverId) ?? [];
-        const newSelections = prev.filter((s) => s.mcpServerId !== serverId);
-        for (const tool of serverTools) {
-          if (tool.name !== toolName) {
-            newSelections.push({ mcpServerId: serverId, toolName: tool.name });
-          }
-        }
-        return newSelections;
+      const hasWildcard = prev.some(
+        (s) => s.mcpServerId === serverId && s.toolName === "*"
+      );
+      if (hasWildcard) {
+        const serverTools = (toolsMap.get(serverId) ?? []) as McpTool[];
+        return [
+          ...prev.filter((s) => s.mcpServerId !== serverId),
+          ...serverTools
+            .filter((t) => t.toolName !== toolName)
+            .map((t) => ({ mcpServerId: serverId, toolName: t.toolName })),
+        ];
       }
 
       const exists = prev.some(
@@ -168,44 +152,65 @@ export default function McpToolsScreen() {
   };
 
   /**
-   * Toggles server expansion
+   * Filter by search query (searches both servers and tools)
    */
-  const toggleExpanded = (serverId: string) => {
-    lightTap();
-    setExpandedServers((prev) => {
-      const next = new Set(prev);
-      if (next.has(serverId)) {
-        next.delete(serverId);
-      } else {
-        next.add(serverId);
+  const filterBySearch = useCallback(
+    (serverId: string, serverName: string) => {
+      if (!search.trim()) {
+        return true;
       }
-      return next;
-    });
-  };
+      const query = search.toLowerCase();
+      // Match server name
+      if (serverName.toLowerCase().includes(query)) {
+        return true;
+      }
+      // Match any tool name/description
+      const tools = (toolsMap.get(serverId) ?? []) as McpTool[];
+      return tools.some(
+        (t: McpTool) =>
+          t.toolName.toLowerCase().includes(query) ||
+          t.displayName.toLowerCase().includes(query) ||
+          t.description?.toLowerCase().includes(query)
+      );
+    },
+    [search, toolsMap]
+  );
 
   /**
    * Filter tools by search query
    */
   const filterTools = useCallback(
-    (tools: McpTool[]) => {
+    (serverId: string, serverName: string): McpTool[] => {
+      const tools = (toolsMap.get(serverId) ?? []) as McpTool[];
       if (!search.trim()) {
         return tools;
       }
       const query = search.toLowerCase();
+      // If server name matches, show all tools
+      if (serverName.toLowerCase().includes(query)) {
+        return tools;
+      }
+      // Otherwise filter tools
       return tools.filter(
         (t) =>
-          t.name.toLowerCase().includes(query) ||
+          t.toolName.toLowerCase().includes(query) ||
+          t.displayName.toLowerCase().includes(query) ||
           t.description?.toLowerCase().includes(query)
       );
     },
-    [search]
+    [search, toolsMap]
+  );
+
+  const filteredServers = useMemo(
+    () => enabledServers.filter((s) => filterBySearch(s.id, s.name)),
+    [enabledServers, filterBySearch]
   );
 
   /**
    * Opens web settings for server management
    */
   const openWebSettings = () => {
-    Linking.openURL("https://yapmate.com/settings");
+    Linking.openURL("https://yapmate.com/settings/mcp");
   };
 
   /**
@@ -263,116 +268,80 @@ export default function McpToolsScreen() {
   };
 
   /**
-   * Renders tools list content based on tools state
+   * Renders a server section with header and tools
    */
-  const renderToolsContent = (
-    tools: McpTool[],
-    filteredTools: McpTool[],
-    serverId: string
-  ) => {
-    if (tools.length === 0) {
-      return (
-        <View className="px-3 py-4">
-          <Text className="text-center text-muted-foreground text-xs">
-            No tools available
-          </Text>
-        </View>
-      );
-    }
-    if (filteredTools.length === 0) {
-      return (
-        <View className="px-3 py-4">
-          <Text className="text-center text-muted-foreground text-xs">
-            No tools match "{search}"
-          </Text>
-        </View>
-      );
-    }
-    return filteredTools.map((tool, idx) => (
-      <View key={tool.id}>
-        <Pressable
-          className="flex flex-row items-start gap-3 px-3 py-2.5 active:bg-accent"
-          onPress={() => toggleTool(serverId, tool.name)}
-        >
-          <Checkbox
-            checked={isToolSelected(serverId, tool.name)}
-            onCheckedChange={() => toggleTool(serverId, tool.name)}
-          />
-          <View className="flex-1">
-            <Text
-              className="font-medium text-foreground text-xs"
-              numberOfLines={1}
-            >
-              {tool.name}
-            </Text>
-            {tool.description ? (
-              <Text
-                className="mt-0.5 text-muted-foreground text-xs"
-                numberOfLines={2}
-              >
-                {tool.description}
-              </Text>
-            ) : null}
-          </View>
-        </Pressable>
-        {idx < filteredTools.length - 1 ? (
-          <View className="mx-3 h-px bg-border/50" />
-        ) : null}
-      </View>
-    ));
-  };
-
-  /**
-   * Renders a server section with its tools
-   */
-  const renderServer = (server: McpServer) => {
+  const renderServer = (server: McpServer, isLast: boolean) => {
     const tools = toolsMap.get(server.id) ?? [];
-    const filteredTools = filterTools(tools);
-    const isExpanded = expandedServers.has(server.id);
-    const selectionCount = getServerSelectionCount(server.id);
+    const filteredToolsList = filterTools(server.id, server.name);
     const hasWildcard = isServerWildcard(server.id);
 
-    // Hide server if no tools match search
-    if (search.trim() && filteredTools.length === 0) {
-      return null;
-    }
-
     return (
-      <View className="mb-3" key={server.id}>
+      <View className={isLast ? "" : "mb-4"} key={server.id}>
         {/* Server header */}
         <Pressable
-          className="flex flex-row items-center gap-2 rounded-lg bg-muted/50 px-3 py-2.5 active:bg-accent"
-          onPress={() => toggleExpanded(server.id)}
+          className="flex flex-row items-center gap-3 rounded-t-md border border-border border-b-0 px-3 py-3 active:bg-accent"
+          onPress={() => toggleServerWildcard(server.id)}
         >
-          <Icon
-            as={isExpanded ? ChevronDown : ChevronRight}
-            className="text-muted-foreground"
-            size={16}
-          />
           <Checkbox
             checked={hasWildcard}
+            className="size-5"
             onCheckedChange={() => toggleServerWildcard(server.id)}
           />
+          <Icon as={Server} className="text-muted-foreground" size={18} />
           <View className="flex-1">
-            <Text className="font-medium text-foreground text-sm">
+            <Text
+              className="font-semibold text-foreground text-sm"
+              numberOfLines={1}
+            >
               {server.name}
             </Text>
-            <Text className="text-muted-foreground text-xs">
-              {tools.length} tools
-              {selectionCount > 0 && !hasWildcard
-                ? ` (${selectionCount} selected)`
-                : ""}
-              {hasWildcard ? " (all selected)" : ""}
+            <Text className="mt-0.5 text-muted-foreground text-xs">
+              {tools.length} tool{tools.length !== 1 ? "s" : ""} • Select all
             </Text>
           </View>
         </Pressable>
 
-        {/* Tools list */}
-        {isExpanded ? (
-          <View className="mt-1 ml-6 rounded-lg bg-muted/30">
-            {renderToolsContent(tools, filteredTools, server.id)}
-          </View>
-        ) : null}
+        {/* Tools list - indented content */}
+        <View className="rounded-b-md border border-border border-t-0">
+          {filteredToolsList.length > 0 ? (
+            filteredToolsList.map((tool, idx) => (
+              <View key={tool.id}>
+                <Pressable
+                  className="flex flex-row items-center gap-3 py-2.5 pr-3 pl-6 active:bg-accent"
+                  onPress={() => toggleTool(server.id, tool.toolName)}
+                >
+                  <Checkbox
+                    checked={isToolSelected(server.id, tool.toolName)}
+                    className="size-5"
+                    onCheckedChange={() => toggleTool(server.id, tool.toolName)}
+                  />
+                  <View className="flex-1">
+                    <Text className="text-foreground text-sm" numberOfLines={1}>
+                      {tool.displayName}
+                    </Text>
+                    {tool.description ? (
+                      <Text
+                        className="mt-0.5 text-muted-foreground text-xs"
+                        numberOfLines={2}
+                      >
+                        {tool.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+                {idx < filteredToolsList.length - 1 && (
+                  <View className="h-px bg-border" />
+                )}
+              </View>
+            ))
+          ) : (
+            <View className="px-3 py-3 pl-6">
+              <Text className="text-muted-foreground text-xs">
+                No tools available
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     );
   };
@@ -383,69 +352,111 @@ export default function McpToolsScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
-      style={{ paddingTop: 16 }}
     >
-      {/* Header */}
-      <View className="flex flex-row items-center justify-between px-4 pb-3">
-        <View>
-          <Text className="font-semibold text-foreground text-lg">
-            MCP Tools
-          </Text>
-          {totalSelected > 0 && (
-            <Text className="text-muted-foreground text-xs">
-              {totalSelected} tool{totalSelected !== 1 ? "s" : ""} selected
-            </Text>
-          )}
-        </View>
-        <Pressable
-          className="rounded-lg bg-primary px-3 py-1.5 active:opacity-80"
-          onPress={handleClose}
-        >
-          <Text className="font-medium text-primary-foreground text-sm">
-            Done
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Search */}
-      {enabledServers.length > 0 && (
-        <View className="px-4 pb-3">
-          <Input
-            className="h-9 rounded-lg border-0 bg-muted/50"
-            onChangeText={setSearch}
-            placeholder="Search tools..."
-            ref={inputRef}
-            value={search}
-          />
-        </View>
-      )}
-
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}
+        className="flex"
+        contentContainerStyle={{ paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
       >
-        {enabledServers.length > 0
-          ? enabledServers.map(renderServer)
-          : renderEmptyState()}
-
-        {enabledServers.length > 0 && (
-          <View className="mt-2 items-center">
-            <Pressable
-              className="flex flex-row items-center gap-1 active:opacity-60"
-              onPress={openWebSettings}
-            >
+        {/* Header */}
+        <View className="flex flex-row items-center justify-between p-6 pb-4">
+          <View className="flex flex-row items-center gap-2">
+            <Text className="font-semibold text-foreground text-lg">
+              MCP Tools
+            </Text>
+            {totalSelected > 0 && (
               <Text className="text-muted-foreground text-xs">
-                Manage servers in web settings
+                {totalSelected} server{totalSelected !== 1 ? "s" : ""} selected
               </Text>
-              <Icon
-                as={ExternalLink}
-                className="text-muted-foreground"
-                size={10}
+            )}
+          </View>
+          <GlassView
+            isInteractive={true}
+            style={{
+              borderRadius: 32,
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <Button
+              aria-label="Done"
+              className="bg-muted"
+              onPress={() => {
+                lightTap();
+                handleClose();
+              }}
+              size="icon"
+              variant="ghost"
+            >
+              <Icon as={Check} className="size-6 text-primary" />
+            </Button>
+          </GlassView>
+        </View>
+
+        {/* Search */}
+        {enabledServers.length > 0 && (
+          <View className="px-6 pb-4">
+            <GlassView
+              isInteractive={true}
+              style={{
+                borderRadius: 12,
+                padding: 0,
+                overflow: "hidden",
+              }}
+            >
+              <Input
+                className="rounded-md border-input bg-transparent"
+                onChangeText={setSearch}
+                placeholder="Search servers..."
+                ref={inputRef}
+                value={search}
               />
-            </Pressable>
+            </GlassView>
           </View>
         )}
+
+        {/* Server list */}
+        <View className="px-6">
+          {enabledServers.length === 0 && renderEmptyState()}
+          {enabledServers.length > 0 && isLoadingTools && (
+            <View className="items-center justify-center px-4 py-12">
+              <Text className="text-muted-foreground text-sm">
+                Loading tools...
+              </Text>
+            </View>
+          )}
+          {enabledServers.length > 0 &&
+            !isLoadingTools &&
+            filteredServers.length === 0 && (
+              <View className="rounded-lg border border-border px-4 py-2">
+                <Text className="text-muted-foreground text-sm">
+                  No matches for "{search}"
+                </Text>
+              </View>
+            )}
+          {!isLoadingTools &&
+            filteredServers.map((server, index) =>
+              renderServer(server, index === filteredServers.length - 1)
+            )}
+
+          {/* {enabledServers.length > 0 && (
+            <View className="mt-4 items-center">
+              <Pressable
+                className="flex flex-row items-center gap-1 active:opacity-60"
+                onPress={openWebSettings}
+              >
+                <Text className="text-muted-foreground text-xs">
+                  Manage servers in web settings
+                </Text>
+                <Icon
+                  as={ExternalLink}
+                  className="text-muted-foreground"
+                  size={10}
+                />
+              </Pressable>
+            </View>
+          )} */}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
