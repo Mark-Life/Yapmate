@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { BANNED_MODELS, TOP_MODELS } from "@yapmate/core/models/config";
+import { useMemo } from "react";
+import {
+  APPLE_LOCAL_MODEL,
+  checkAppleModelAvailability,
+} from "../lib/local-model";
 import { parseModel } from "../lib/parse-model";
 import { rpcClient } from "../lib/rpc-client";
 
@@ -21,6 +26,7 @@ export type TransformedModel = {
   outputLimit?: number;
   supportsTools?: boolean;
   supportsReasoning?: boolean;
+  isLocal?: boolean;
 };
 
 type ApiModel = {
@@ -82,6 +88,7 @@ const processModels = (modelsData: ApiModel[]): TransformedModel[] => {
  * Fetches and transforms models from the service using TanStack Query
  * Returns cached data for 1 hour to prevent redundant requests
  * Filters banned models and prioritizes top models
+ * Injects local Apple model when available on iOS 26+
  */
 export const useModels = () => {
   const { data, isLoading } = useQuery({
@@ -92,5 +99,27 @@ export const useModels = () => {
     select: processModels,
   });
 
-  return { models: data ?? [], loading: isLoading };
+  const { data: appleAvailable } = useQuery({
+    queryKey: ["apple-model-availability"],
+    queryFn: checkAppleModelAvailability,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+
+  const models = useMemo(() => {
+    const serverModels = data ?? [];
+    if (!appleAvailable) return serverModels;
+
+    const localModel: TransformedModel = {
+      name: APPLE_LOCAL_MODEL.name,
+      value: APPLE_LOCAL_MODEL.id,
+      provider: APPLE_LOCAL_MODEL.provider,
+      description: APPLE_LOCAL_MODEL.description,
+      isLocal: true,
+    };
+
+    return [localModel, ...serverModels];
+  }, [data, appleAvailable]);
+
+  return { models, loading: isLoading };
 };

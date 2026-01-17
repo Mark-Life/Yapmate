@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list";
 import { TOP_MODELS } from "@yapmate/core/models/config";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Smartphone } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -14,23 +14,42 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
+import type { TransformedModel } from "@/hooks/use-models";
 import { useModels } from "@/hooks/use-models";
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
 
 /**
- * Groups models by provider, with top models in a "Common" group first
+ * Groups models by provider, with local models first, then top models in "Common"
  */
-const groupModelsByProvider = (
-  modelsList: Array<{ name: string; value: string; provider: string }>
-) => {
+const groupModelsByProvider = (modelsList: TransformedModel[]) => {
   const topModelsSet = new Set(TOP_MODELS);
-  const commonModels: Array<{ name: string; value: string; provider: string }> =
-    [];
-  const grouped = new Map<string, Array<{ name: string; value: string }>>();
+  const localModels: Array<{
+    name: string;
+    value: string;
+    provider: string;
+    isLocal?: boolean;
+  }> = [];
+  const commonModels: Array<{
+    name: string;
+    value: string;
+    provider: string;
+    isLocal?: boolean;
+  }> = [];
+  const grouped = new Map<
+    string,
+    Array<{ name: string; value: string; isLocal?: boolean }>
+  >();
 
   for (const model of modelsList) {
-    if (topModelsSet.has(model.value)) {
+    if (model.isLocal) {
+      localModels.push({
+        name: model.name,
+        value: model.value,
+        provider: model.provider,
+        isLocal: true,
+      });
+    } else if (topModelsSet.has(model.value)) {
       commonModels.push({
         name: model.name,
         value: model.value,
@@ -47,10 +66,20 @@ const groupModelsByProvider = (
 
   const result: Array<{
     provider: string;
-    items: Array<{ name: string; value: string; provider?: string }>;
+    items: Array<{
+      name: string;
+      value: string;
+      provider?: string;
+      isLocal?: boolean;
+    }>;
   }> = [];
 
-  // Add Common group first if it has models
+  // Add On-Device group first if it has models
+  if (localModels.length > 0) {
+    result.push({ provider: "on-device", items: localModels });
+  }
+
+  // Add Common group if it has models
   if (commonModels.length > 0) {
     result.push({ provider: "common", items: commonModels });
   }
@@ -70,6 +99,9 @@ const groupModelsByProvider = (
  * Formats provider name for display
  */
 const getProviderDisplayName = (provider: string): string => {
+  if (provider === "on-device") {
+    return "On-Device";
+  }
   if (provider === "common") {
     return "Common";
   }
@@ -90,6 +122,7 @@ type ListItem =
       value: string;
       provider: string;
       groupProvider?: string;
+      isLocal?: boolean;
     };
 
 /**
@@ -98,7 +131,7 @@ type ListItem =
 const flattenGroupedModels = (
   grouped: Array<{
     provider: string;
-    items: Array<{ name: string; value: string }>;
+    items: Array<{ name: string; value: string; isLocal?: boolean }>;
   }>
 ): ListItem[] => {
   const result: ListItem[] = [];
@@ -109,8 +142,9 @@ const flattenGroupedModels = (
         type: "model",
         name: item.name,
         value: item.value,
-        provider: item.provider ?? group.provider,
+        provider: (item as { provider?: string }).provider ?? group.provider,
         groupProvider: group.provider,
+        isLocal: item.isLocal,
       });
     }
   }
@@ -213,6 +247,9 @@ export default function ModelSelectorScreen() {
         className="flex flex-row items-center gap-2 rounded-sm px-3 py-2 active:bg-accent"
         onPress={() => handleSelect(item.value)}
       >
+        {item.isLocal && (
+          <Icon as={Smartphone} className="size-4 text-muted-foreground" />
+        )}
         <Text className="flex-1 text-foreground text-sm">{item.name}</Text>
         {item.value === currentModel && (
           <Icon as={Check} className="size-4 text-muted-foreground" />

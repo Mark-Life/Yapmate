@@ -29,6 +29,7 @@ type ChatInputProps = {
   onStop?: () => void;
   attachments: AttachmentsContext;
   isNew?: boolean;
+  disableSearch?: boolean;
 };
 
 /**
@@ -46,6 +47,7 @@ export const ChatInput = ({
   onStop,
   attachments,
   isNew = false,
+  disableSearch = false,
 }: ChatInputProps) => {
   const [_, setIsFocused] = useState(false);
   const { colorScheme } = useColorScheme();
@@ -141,37 +143,39 @@ export const ChatInput = ({
         >
           <AttachmentPicker attachments={attachments} />
         </GlassView>
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
-          tintColor={searchButtonTintColor}
-        >
-          <Button
-            aria-label="Toggle search"
-            className="transition-all duration-200"
-            onPress={() => {
-              lightTap();
-              capture(AnalyticsEvents.SEARCH_TOGGLED, {
-                enabled: !searchEnabled,
-              });
-              onSearchEnabledChange(!searchEnabled);
+        {!disableSearch && (
+          <GlassView
+            isInteractive={true}
+            style={{
+              borderRadius: 32,
+              padding: 0,
+              overflow: "hidden",
             }}
-            size="icon"
-            variant="ghost"
+            tintColor={searchButtonTintColor}
           >
-            <Icon
-              as={GlobeIcon}
-              className={cn(
-                "size-4",
-                searchEnabled ? "text-primary-foreground" : "text-primary"
-              )}
-            />
-          </Button>
-        </GlassView>
+            <Button
+              aria-label="Toggle search"
+              className="transition-all duration-200"
+              onPress={() => {
+                lightTap();
+                capture(AnalyticsEvents.SEARCH_TOGGLED, {
+                  enabled: !searchEnabled,
+                });
+                onSearchEnabledChange(!searchEnabled);
+              }}
+              size="icon"
+              variant="ghost"
+            >
+              <Icon
+                as={GlobeIcon}
+                className={cn(
+                  "size-4",
+                  searchEnabled ? "text-primary-foreground" : "text-primary"
+                )}
+              />
+            </Button>
+          </GlassView>
+        )}
         <GlassView
           isInteractive={true}
           style={{
