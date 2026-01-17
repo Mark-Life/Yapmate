@@ -305,6 +305,8 @@ type TextPartProps = {
   /** True when this message is from another user in multi-user chat */
   isOtherUser?: boolean;
   message: ChatUIMessage;
+  /** Model name/ID for assistant messages (e.g., "google/gemini-2.0-flash") */
+  modelName?: string;
   onCancelEdit: () => void;
   onCopy: (text: string, partId: string) => void;
   onEdit?: (messageId: string, editedText: string) => void;
@@ -337,6 +339,7 @@ export const TextPart = ({
   isEditing,
   isOtherUser = false,
   message,
+  modelName,
   onCancelEdit,
   onCopy,
   onEdit,
@@ -423,17 +426,25 @@ export const TextPart = ({
         {/* Avatar aligned to bottom of bubble */}
         {avatar ? <div className="shrink-0">{avatar}</div> : null}
 
-        <TextPartMessageContent
-          editedText={editedText}
-          isEditing={isEditing}
-          isOtherUser={isOtherUser}
-          isUser={isUser}
-          onKeyDown={handleKeyDown}
-          partText={part.text}
-          senderName={senderName}
-          setEditedText={setEditedText}
-          textareaRef={textareaRef}
-        />
+        <div className="flex flex-col gap-1">
+          <TextPartMessageContent
+            editedText={editedText}
+            isEditing={isEditing}
+            isOtherUser={isOtherUser}
+            isUser={isUser}
+            onKeyDown={handleKeyDown}
+            partText={part.text}
+            senderName={senderName}
+            setEditedText={setEditedText}
+            textareaRef={textareaRef}
+          />
+          {/* Model name display for assistant messages */}
+          {message.role === "assistant" && modelName ? (
+            <span className="text-muted-foreground text-xs">
+              {modelName.split("/").pop()}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {(message.role === "user" || message.role === "assistant") && (

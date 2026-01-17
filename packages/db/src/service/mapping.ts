@@ -54,7 +54,7 @@ const mapToolState = (state: string): ToolState => {
 // ─── UI → DB Mapping ─────────────────────────────────────────────────────────
 
 /** Transient part types that should not be persisted */
-const TRANSIENT_PART_TYPES = ["step-start"] as const;
+const TRANSIENT_PART_TYPES = ["step-start", "data-model"] as const;
 
 /**
  * Maps a single UI part to a DB part insert
