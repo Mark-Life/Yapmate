@@ -27,7 +27,9 @@ import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
 import {
   getSearchEnabled,
+  getSelectedRuleIds,
   setSearchEnabled as persistSearchEnabled,
+  setSelectedRuleIds as persistSelectedRuleIds,
   setLastUsedModel,
 } from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
@@ -71,6 +73,9 @@ export const Chat = ({
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() =>
+    getSelectedRuleIds()
+  );
   const { models } = useModels();
   const attachments = useAttachments();
   const { capture } = useAnalytics();
@@ -169,6 +174,7 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
+  const selectedRuleIdsRef = useRef(selectedRuleIds);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -198,6 +204,9 @@ export const Chat = ({
   useEffect(() => {
     searchEnabledRef.current = searchEnabled;
   }, [searchEnabled]);
+  useEffect(() => {
+    selectedRuleIdsRef.current = selectedRuleIds;
+  }, [selectedRuleIds]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -263,6 +272,7 @@ export const Chat = ({
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
+              selectedRuleIds: selectedRuleIdsRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -454,6 +464,27 @@ export const Chat = ({
       eventTarget.removeEventListener("model-selected", handleModelSelected);
     };
   }, [handleRegenerateCallback, handleModelChange]);
+
+  /**
+   * Listens for controls-updated events from chat-controls screen
+   * Updates selectedRuleIds state and persists to storage
+   */
+  useEffect(() => {
+    const handleControlsUpdated: EventListener = (event) => {
+      const detail = event.detail as { selectedRuleIds: string[] };
+      setSelectedRuleIds(detail.selectedRuleIds);
+      persistSelectedRuleIds(detail.selectedRuleIds);
+    };
+
+    eventTarget.addEventListener("controls-updated", handleControlsUpdated);
+
+    return () => {
+      eventTarget.removeEventListener(
+        "controls-updated",
+        handleControlsUpdated
+      );
+    };
+  }, []);
 
   /**
    * Handles stopping the current stream

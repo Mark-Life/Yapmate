@@ -9,11 +9,13 @@ const STORAGE_KEY = "yapmate_user_preferences";
 type UserPreferences = {
   lastUsedModel: string | null;
   searchEnabled: boolean;
+  selectedRuleIds: string[];
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   lastUsedModel: null,
   searchEnabled: false,
+  selectedRuleIds: [],
 };
 
 // In-memory cache for sync access after initial load
@@ -32,6 +34,7 @@ export const initUserPreferences = async (): Promise<UserPreferences> => {
       cachedPreferences = {
         lastUsedModel: parsed.lastUsedModel ?? null,
         searchEnabled: parsed.searchEnabled ?? false,
+        selectedRuleIds: parsed.selectedRuleIds ?? [],
       };
     }
     isInitialized = true;
@@ -85,6 +88,19 @@ export const getSearchEnabled = (): boolean => cachedPreferences.searchEnabled;
  */
 export const setSearchEnabled = async (enabled: boolean): Promise<void> => {
   await setUserPreferences({ searchEnabled: enabled });
+};
+
+/**
+ * Gets the selected rule IDs from cache
+ */
+export const getSelectedRuleIds = (): string[] =>
+  cachedPreferences.selectedRuleIds;
+
+/**
+ * Sets the selected rule IDs in cache and storage
+ */
+export const setSelectedRuleIds = async (ruleIds: string[]): Promise<void> => {
+  await setUserPreferences({ selectedRuleIds: ruleIds });
 };
 
 /**
