@@ -66,7 +66,7 @@ Comparison of web and mobile implementations to identify missing features in the
 
 ---
 
-### 3. Model Avatar/Logo for Assistant Messages
+### 3. Model Avatar/Logo for Assistant Messages ✅ for now only model name. decided not to do avatars for models
 
 **Web has** (`messages-history.tsx:329-351`, `text-part.tsx:417-424`):
 - Avatar component next to assistant messages
@@ -84,7 +84,7 @@ Comparison of web and mobile implementations to identify missing features in the
 
 ---
 
-### 4. Multi-user Chat Support
+### 4. Multi-user Chat Support ✅ done
 
 **Web has** (`messages-history.tsx:244-319`, `text-part.tsx:246-296`):
 - `memberNames` map of userId → displayName
