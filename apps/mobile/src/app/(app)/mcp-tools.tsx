@@ -346,7 +346,10 @@ export default function McpToolsScreen() {
     );
   };
 
-  const totalSelected = selections.length;
+  const uniqueServersSelected = useMemo(
+    () => new Set(selections.map((s) => s.mcpServerId)).size,
+    [selections]
+  );
 
   return (
     <KeyboardAvoidingView
@@ -364,9 +367,10 @@ export default function McpToolsScreen() {
             <Text className="font-semibold text-foreground text-lg">
               MCP Tools
             </Text>
-            {totalSelected > 0 && (
+            {uniqueServersSelected > 0 && (
               <Text className="text-muted-foreground text-xs">
-                {totalSelected} server{totalSelected !== 1 ? "s" : ""} selected
+                {uniqueServersSelected} server
+                {uniqueServersSelected !== 1 ? "s" : ""} selected
               </Text>
             )}
           </View>

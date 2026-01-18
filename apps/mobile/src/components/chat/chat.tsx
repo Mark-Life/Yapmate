@@ -433,7 +433,7 @@ export const Chat = ({
   // Local on-device chat hook (always called for React rules)
   const localChat = useLocalChat({
     id: chatId,
-    initialMessages: [],
+    initialMessages,
     onFinish: async ({ messages: finalMessages }) => {
       // Only sync for authenticated users
       if (!session?.user?.id) {
