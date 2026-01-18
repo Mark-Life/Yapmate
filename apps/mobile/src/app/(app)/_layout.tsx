@@ -92,6 +92,30 @@ const AppLayoutInner = () => {
                 }}
               />
               <Stack.Screen
+                name="chat-controls"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.5, 0.98],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
+              <Stack.Screen
+                name="mcp-tools"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.5, 0.98],
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              />
+              <Stack.Screen
                 name="delete-account"
                 options={{
                   headerShown: false,

@@ -8,9 +8,20 @@ import { useEffect, useRef, useState } from "react";
 import { createCustomEvent, eventTarget } from "@/lib/event-emitter";
 
 type WsEvent = {
-  type: "chat_created" | "chat_updated" | "message_created" | "stream_started";
+  type:
+    | "chat_created"
+    | "chat_updated"
+    | "message_created"
+    | "stream_started"
+    | "member_joined"
+    | "member_left"
+    | "member_typing"
+    | "member_stopped_typing"
+    | "presence_update";
   chatId?: string;
   hasActiveStream?: boolean;
+  userId?: string;
+  displayName?: string;
 };
 
 type UseWebSocketSyncOptions = {
@@ -92,6 +103,15 @@ export const useWebSocketSync = (options: UseWebSocketSyncOptions): void => {
             createCustomEvent("stream-started", { chatId: data.chatId })
           );
         }
+        break;
+
+      case "member_joined":
+      case "member_left":
+      case "member_typing":
+      case "member_stopped_typing":
+      case "presence_update":
+        // Dispatch multi-user events for the useMultiUserChat hook to handle
+        eventTarget.dispatchEvent(createCustomEvent("multi-user-event", data));
         break;
 
       default:

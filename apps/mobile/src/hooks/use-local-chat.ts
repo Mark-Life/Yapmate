@@ -2,7 +2,7 @@ import { apple } from "@react-native-ai/apple";
 import type { LanguageModel, UIMessage } from "ai";
 import { streamText } from "ai";
 import * as Crypto from "expo-crypto";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type LocalChatStatus = "ready" | "submitted" | "streaming" | "error";
 
@@ -39,6 +39,14 @@ export const useLocalChat = ({
     abortControllerRef.current = null;
     setStatus("ready");
   }, []);
+
+  // Abort stream on unmount to prevent state updates on unmounted component
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+    },
+    []
+  );
 
   const sendMessage = useCallback(
     async (input: { text: string }) => {

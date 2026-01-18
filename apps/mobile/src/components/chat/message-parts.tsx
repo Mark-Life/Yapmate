@@ -16,6 +16,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ViewStyle,
 } from "react-native";
 import ContextMenu from "react-native-context-menu-view";
 import Animated, {
@@ -35,6 +36,7 @@ import { Icon } from "@/components/ui/icon";
 import { StreamingMarkdown } from "@/components/ui/markdown";
 import { Text } from "@/components/ui/text";
 import { getThemeColors, radius, type ThemeColors } from "@/lib/colors";
+import { parseModel } from "@/lib/parse-model";
 import { EditActions } from "./message-actions";
 
 type ChatUIMessage = UIMessage;
@@ -50,6 +52,8 @@ type NativeMarkdownMessageProps = {
   paddingVertical?: number;
   borderRadius?: number;
   isUser?: boolean;
+  /** For other users: shrink-to-fit width like user, but left-aligned */
+  isOtherUser?: boolean;
 };
 
 /**
@@ -65,9 +69,13 @@ const NativeMarkdownMessage = ({
   paddingVertical,
   borderRadius: bubbleRadius,
   isUser = false,
+  isOtherUser = false,
 }: NativeMarkdownMessageProps) => {
   const [height, setHeight] = useState(20);
   const [width, setWidth] = useState<number | undefined>(undefined);
+
+  // Other user messages need shrink-to-fit width like user messages
+  const useShrinkToFit = isUser || isOtherUser;
 
   const handleContentSizeChange = useCallback(
     (event: ContentSizeEvent) => {
@@ -75,13 +83,21 @@ const NativeMarkdownMessage = ({
       if (newHeight > 0) {
         setHeight(newHeight);
       }
-      // For user messages, use native-calculated width
-      if (isUser && newWidth > 0) {
+      // For user/other user messages, use native-calculated width
+      if (useShrinkToFit && newWidth > 0) {
         setWidth(newWidth);
       }
     },
-    [isUser]
+    [useShrinkToFit]
   );
+
+  // Determine alignment: user = right, other user = left, assistant = stretch
+  let alignSelf: "flex-end" | "flex-start" | "stretch" = "stretch";
+  if (isUser) {
+    alignSelf = "flex-end";
+  } else if (isOtherUser) {
+    alignSelf = "flex-start";
+  }
 
   return (
     <NativeMarkdownView
@@ -89,18 +105,18 @@ const NativeMarkdownMessage = ({
       borderRadius={bubbleRadius}
       content={content}
       contextMenuActions={contextMenuActions}
-      isUser={isUser}
+      isUser={useShrinkToFit}
       onContentSizeChange={handleContentSizeChange}
       onContextMenuAction={onContextMenuAction}
       paddingHorizontal={paddingHorizontal}
       paddingVertical={paddingVertical}
       style={{
         height,
-        alignSelf: isUser ? "flex-end" : "stretch",
-        maxWidth: "95%",
-        // For user messages, use native-calculated width (shrink to fit)
+        alignSelf,
+        maxWidth: isOtherUser ? "80%" : "95%",
+        // For user/other user messages, use native-calculated width (shrink to fit)
         // For assistant, let it stretch to fill available width
-        width: isUser ? width : undefined,
+        width: useShrinkToFit ? width : undefined,
       }}
       textColor={textColor}
     />
@@ -174,9 +190,12 @@ export const FilePart = ({
 
 type TextPartProps = {
   part: Extract<ChatUIMessage["parts"][number], { type: "text" }>;
+  isOtherUser?: boolean;
   isUser: boolean;
   isEditing: boolean;
   messageId: string;
+  modelName?: string;
+  senderName?: string;
   onCancelEdit: () => void;
   onEdit?: (messageId: string, editedText: string) => void;
   contextMenuActions?: ContextMenuAction[];
@@ -192,6 +211,7 @@ type TextPartProps = {
 const MessageContent = ({
   isEditing,
   isUser,
+  isOtherUser = false,
   editedText,
   textContent,
   textInputRef,
@@ -200,6 +220,7 @@ const MessageContent = ({
 }: {
   isEditing: boolean;
   isUser: boolean;
+  isOtherUser?: boolean;
   editedText: string;
   textContent: string;
   textInputRef: React.RefObject<TextInput>;
@@ -215,6 +236,15 @@ const MessageContent = ({
         style={[styles.editInput, { color: theme.primaryForeground }]}
         value={editedText}
       />
+    );
+  }
+
+  // Other user's message: use foreground color (not primary foreground)
+  if (isOtherUser) {
+    return (
+      <Text style={[styles.userText, { color: theme.foreground }]}>
+        {textContent}
+      </Text>
     );
   }
 
@@ -246,30 +276,49 @@ const MessageContent = ({
  */
 const MessageBubble = ({
   isUser,
+  isOtherUser = false,
   isEditing,
   editedText,
   textContent,
   textInputRef,
   onTextChange,
   theme,
+  senderName,
 }: {
   isUser: boolean;
+  isOtherUser?: boolean;
   isEditing: boolean;
   editedText: string;
   textContent: string;
   textInputRef: React.RefObject<TextInput>;
   onTextChange: (text: string) => void;
   theme: ThemeColors;
+  senderName?: string;
 }) => {
-  const bubbleStyle = isUser
-    ? [styles.userBubble, { backgroundColor: theme.primary }]
-    : [styles.assistantBubble, { backgroundColor: theme.background }];
+  // Other user's message: muted bubble, left-aligned
+  // Current user's message: primary bubble, right-aligned
+  // Assistant message: no bubble
+  let bubbleStyle: ViewStyle[] = [
+    styles.assistantBubble,
+    { backgroundColor: theme.background },
+  ];
+  if (isOtherUser) {
+    bubbleStyle = [styles.userBubble, { backgroundColor: theme.muted }];
+  } else if (isUser) {
+    bubbleStyle = [styles.userBubble, { backgroundColor: theme.primary }];
+  }
 
   return (
     <View style={bubbleStyle}>
+      {isOtherUser && senderName ? (
+        <Text style={[styles.senderNameInBubble, { color: theme.primary }]}>
+          {senderName}
+        </Text>
+      ) : null}
       <MessageContent
         editedText={editedText}
         isEditing={isEditing}
+        isOtherUser={isOtherUser}
         isUser={isUser}
         onTextChange={onTextChange}
         textContent={textContent}
@@ -281,18 +330,32 @@ const MessageBubble = ({
 };
 
 /**
+ * Renders a formatted model name label below assistant messages
+ */
+const ModelLabel = ({ modelName }: { modelName: string }) => {
+  const { modelName: formattedName } = parseModel(modelName);
+  return (
+    <Text className="mt-1 text-muted-foreground text-xs">{formattedName}</Text>
+  );
+};
+
+/**
  * Renders a text message part with inline styles
  */
 export const TextPart = ({
   part,
+  isOtherUser = false,
   isUser,
   isEditing,
   messageId,
+  modelName,
+  senderName,
   onCancelEdit,
   onEdit,
   contextMenuActions,
   contextMenuKey,
   onContextMenuPress,
+  // todo: fix this linter error
 }: TextPartProps) => {
   const { colorScheme } = useColorScheme();
   const theme = getThemeColors(colorScheme);
@@ -336,8 +399,29 @@ export const TextPart = ({
 
   // iOS messages use native markdown with native context menu (when not editing)
   if (Platform.OS === "ios" && !isEditing) {
+    // Other user's message: left-aligned with muted bubble and sender name inside
+    if (isOtherUser) {
+      return (
+        <View
+          style={[styles.otherUserBubble, { backgroundColor: theme.muted }]}
+        >
+          {senderName ? (
+            <Text style={[styles.senderNameInBubble, { color: theme.primary }]}>
+              {senderName}
+            </Text>
+          ) : null}
+          <NativeMarkdownMessage
+            content={textContent ?? ""}
+            contextMenuActions={contextMenuActions}
+            isOtherUser={true}
+            onContextMenuAction={onContextMenuPress}
+            textColor={theme.foreground}
+          />
+        </View>
+      );
+    }
     if (isUser) {
-      // User message: bubble styling handled natively
+      // Current user's message: bubble styling handled natively
       return (
         <NativeMarkdownMessage
           backgroundColor={theme.primary}
@@ -354,22 +438,32 @@ export const TextPart = ({
     }
     // Assistant message: no bubble styling
     return (
-      <NativeMarkdownMessage
-        content={textContent ?? ""}
-        contextMenuActions={contextMenuActions}
-        onContextMenuAction={onContextMenuPress}
-      />
+      <>
+        <NativeMarkdownMessage
+          content={textContent ?? ""}
+          contextMenuActions={contextMenuActions}
+          onContextMenuAction={onContextMenuPress}
+        />
+        {modelName ? <ModelLabel modelName={modelName} /> : null}
+      </>
     );
   }
 
-  const wrapperStyle = isUser ? styles.userWrapper : styles.assistantWrapper;
+  let wrapperStyle: ViewStyle = styles.assistantWrapper;
+  if (isOtherUser) {
+    wrapperStyle = styles.otherUserWrapper;
+  } else if (isUser) {
+    wrapperStyle = styles.userWrapper;
+  }
 
   const bubbleContent = (
     <MessageBubble
       editedText={editedText}
       isEditing={isEditing}
+      isOtherUser={isOtherUser}
       isUser={isUser}
       onTextChange={setEditedText}
+      senderName={senderName}
       textContent={textContent}
       textInputRef={textInputRef as React.RefObject<TextInput>}
       theme={theme}
@@ -387,8 +481,10 @@ export const TextPart = ({
             <MessageBubble
               editedText={editedText}
               isEditing={false}
+              isOtherUser={isOtherUser}
               isUser={isUser}
               onTextChange={setEditedText}
+              senderName={senderName}
               textContent={textContent}
               textInputRef={textInputRef as React.RefObject<TextInput>}
               theme={theme}
@@ -401,17 +497,18 @@ export const TextPart = ({
       ) : (
         bubbleContent
       )}
+      {!isUser && modelName ? <ModelLabel modelName={modelName} /> : null}
       {isEditing ? (
         <View
           style={[
             styles.editActionsRow,
-            isUser ? styles.justifyEnd : styles.justifyStart,
+            isUser && !isOtherUser ? styles.justifyEnd : styles.justifyStart,
           ]}
         >
           <EditActions
             hasChanges={hasChanges}
             iconColor={iconColor}
-            isUser={isUser}
+            isUser={isUser && !isOtherUser}
             onCancel={handleCancel}
             onSave={handleEdit}
           />
@@ -475,9 +572,6 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     isStreaming ? "reasoning" : ""
   );
 
-  // Track if we've already auto-collapsed
-  const hasAutoCollapsed = useRef(false);
-
   // Track content height for NativeMarkdownView auto-sizing
   const [contentHeight, setContentHeight] = useState(20);
 
@@ -488,20 +582,11 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     }
   }, []);
 
-  // Handle streaming end - record duration and auto-collapse after delay
+  // Handle streaming end - record duration
   useEffect(() => {
     if (!isStreaming && startTime && duration === null) {
       const elapsed = Math.ceil((Date.now() - startTime) / 1000);
       setDuration(elapsed);
-
-      // Auto-collapse after 1 second delay
-      if (!hasAutoCollapsed.current) {
-        hasAutoCollapsed.current = true;
-        const timer = setTimeout(() => {
-          setAccordionValue("");
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
     }
   }, [isStreaming, startTime, duration]);
 
@@ -510,16 +595,19 @@ export const ReasoningPart = ({ part, isStreaming }: ReasoningPartProps) => {
     return null;
   }
 
-  const headerText = isStreaming
-    ? "Thinking..."
-    : `Thought for ${duration ?? 0} seconds`;
+  let headerText = "Thought";
+  if (isStreaming) {
+    headerText = "Thinking...";
+  } else if (duration) {
+    headerText = `Thought for ${duration} seconds`;
+  }
 
   return (
     <View style={[styles.reasoningContainer, { borderColor: theme.border }]}>
       <Accordion
         collapsible
-        onValueChange={(value) =>
-          setAccordionValue((value as string | undefined) ?? "")
+        onValueChange={(value: string | undefined) =>
+          setAccordionValue(value ?? "")
         }
         type="single"
         value={accordionValue}
@@ -623,6 +711,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: radius.lg,
   },
+  otherUserBubble: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.lg,
+    maxWidth: "80%",
+    alignSelf: "flex-start",
+  },
   assistantBubble: {
     paddingVertical: 6,
     paddingBottom: 0,
@@ -636,6 +731,22 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     maxWidth: "95%",
     alignItems: "flex-start",
+  },
+  otherUserWrapper: {
+    flexDirection: "column",
+    maxWidth: "80%",
+    alignItems: "flex-start",
+  },
+  senderName: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  senderNameInBubble: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 0,
+    marginTop: 0,
   },
   editActionsRow: {
     marginTop: 8,

@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -21,20 +21,32 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useSession } from "@/contexts/auth";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { useAttachments } from "@/hooks/use-attachments";
 import { useLocalChat } from "@/hooks/use-local-chat";
 import { useModels } from "@/hooks/use-models";
+import { useMultiUserChat } from "@/hooks/use-multi-user-chat";
 import {
+  getMemoryEnabled,
+  getReasoningEffort,
   getSearchEnabled,
+  getSelectedMcpTools,
+  getSelectedRuleIds,
+  type McpToolSelection,
+  setMemoryEnabled as persistMemoryEnabled,
+  setReasoningEffort as persistReasoningEffort,
   setSearchEnabled as persistSearchEnabled,
+  setSelectedMcpTools as persistSelectedMcpTools,
+  setSelectedRuleIds as persistSelectedRuleIds,
+  type ReasoningEffort,
   setLastUsedModel,
 } from "@/hooks/use-user-preferences";
 import { generateAPIUrl } from "@/lib/api-url";
 import type { EventListener } from "@/lib/event-emitter";
 import { eventTarget } from "@/lib/event-emitter";
 import { lightTap } from "@/lib/haptics";
-import { isLocalModel } from "@/lib/local-model";
+import { APPLE_LOCAL_MODEL, isLocalModel } from "@/lib/local-model";
 import { rpcClient } from "@/lib/rpc-client";
 import { supabase } from "@/lib/supabase";
 import { YapmateIcon } from "../yapmate-icon";
@@ -66,15 +78,43 @@ export const Chat = ({
   initialMessages = [],
   isNew = false,
   onChatCreated,
+  // todo: fix this linter error
 }: ChatProps) => {
   const queryClient = useQueryClient();
   const { colorScheme } = useColorScheme();
   const [input, setInput] = useState("");
   const [searchEnabled, setSearchEnabled] = useState(() => getSearchEnabled());
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() =>
+    getSelectedRuleIds()
+  );
+  const [memoryEnabled, setMemoryEnabled] = useState(() => getMemoryEnabled());
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() =>
+    getReasoningEffort()
+  );
+  const [selectedMcpTools, setSelectedMcpTools] = useState<McpToolSelection[]>(
+    () => getSelectedMcpTools()
+  );
   const { models } = useModels();
   const attachments = useAttachments();
   const { capture } = useAnalytics();
+  const { session } = useSession();
   const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+
+  // Multi-user chat support
+  const currentUserId = session?.user?.id;
+  const { members, isMultiUser, typingMembers } = useMultiUserChat({
+    chatId: initialId ?? null,
+    enabled: Boolean(initialId),
+  });
+
+  // Build member names map for display
+  const memberNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const member of members) {
+      map.set(member.userId, member.displayName);
+    }
+    return map;
+  }, [members]);
 
   // Determine default model based on context
   const [model, setModel] = useState(() => {
@@ -169,6 +209,10 @@ export const Chat = ({
   // Use refs to always have latest values for transport closure
   const modelRef = useRef(model);
   const searchEnabledRef = useRef(searchEnabled);
+  const selectedRuleIdsRef = useRef(selectedRuleIds);
+  const memoryEnabledRef = useRef(memoryEnabled);
+  const reasoningEffortRef = useRef(reasoningEffort);
+  const selectedMcpToolsRef = useRef(selectedMcpTools);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
   const regenerateRoleRef = useRef<"user" | "assistant" | undefined>(undefined);
   const editMessageIdRef = useRef<string | undefined>(undefined);
@@ -179,6 +223,11 @@ export const Chat = ({
   } | null>(null);
   // Store model per assistant message for avatar display after streaming
   const messageModelMapRef = useRef<Map<string, string>>(new Map());
+  // Track isNewChat for local model sync
+  const isNewChatRef = useRef(isNewChat);
+  useEffect(() => {
+    isNewChatRef.current = isNewChat;
+  }, [isNewChat]);
   useEffect(() => {
     modelRef.current = model;
   }, [model]);
@@ -198,6 +247,18 @@ export const Chat = ({
   useEffect(() => {
     searchEnabledRef.current = searchEnabled;
   }, [searchEnabled]);
+  useEffect(() => {
+    selectedRuleIdsRef.current = selectedRuleIds;
+  }, [selectedRuleIds]);
+  useEffect(() => {
+    memoryEnabledRef.current = memoryEnabled;
+  }, [memoryEnabled]);
+  useEffect(() => {
+    reasoningEffortRef.current = reasoningEffort;
+  }, [reasoningEffort]);
+  useEffect(() => {
+    selectedMcpToolsRef.current = selectedMcpTools;
+  }, [selectedMcpTools]);
 
   // Create transport once with refs to avoid stale closures
   const [transport] = useState(
@@ -206,9 +267,9 @@ export const Chat = ({
         fetch: (async (url: string | URL | Request, init?: RequestInit) => {
           // Get current session token
           const {
-            data: { session },
+            data: { session: authSession },
           } = await supabase.auth.getSession();
-          const token = session?.access_token;
+          const token = authSession?.access_token;
 
           // Add Authorization header if token exists
           const headers = new Headers(init?.headers);
@@ -263,6 +324,10 @@ export const Chat = ({
               id: transportChatId,
               model: modelRef.current,
               searchEnabled: searchEnabledRef.current,
+              selectedRuleIds: selectedRuleIdsRef.current,
+              memoryEnabled: memoryEnabledRef.current,
+              reasoningEffort: reasoningEffortRef.current,
+              selectedMcpTools: selectedMcpToolsRef.current,
               ...(regenerateMessageId
                 ? { regenerateMessageId, regenerateRole }
                 : {}),
@@ -275,78 +340,130 @@ export const Chat = ({
       })
   );
 
-  const { messages, sendMessage, status, regenerate, setMessages } =
-    useChat<ChatUIMessage>({
-      id: chatId,
-      messages: initialMessages,
-      transport,
-      generateId: () => Crypto.randomUUID(),
-      onData: (dataPart) => {
-        // Handle streamed title updates
-        if (dataPart.type === "data-chat-title") {
-          // Refresh chats list to show new title
-          queryClient.invalidateQueries({ queryKey: ["chats"] });
+  const {
+    messages,
+    sendMessage,
+    status,
+    regenerate,
+    setMessages,
+    addToolApprovalResponse,
+  } = useChat<ChatUIMessage>({
+    id: chatId,
+    messages: initialMessages,
+    transport,
+    generateId: () => Crypto.randomUUID(),
+    onData: (dataPart) => {
+      // Handle streamed title updates
+      if (dataPart.type === "data-chat-title") {
+        // Refresh chats list to show new title
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      }
+      // Handle model info for avatar display
+      const part = dataPart as { type: string; data?: unknown };
+      if (part.type === "data-model" && part.data) {
+        const { model: streamedModel, assistantMessageId } = part.data as {
+          model: string;
+          assistantMessageId: string;
+        };
+        messageModelMapRef.current.set(assistantMessageId, streamedModel);
+      }
+    },
+    onFinish: ({ messages: finishedMessages }) => {
+      // Patch assistant messages with model from our stored map
+      const patchedMessages = finishedMessages.map((msg) => {
+        if (msg.role !== "assistant") {
+          return msg;
         }
-        // Handle model info for avatar display
-        const part = dataPart as { type: string; data?: unknown };
-        if (part.type === "data-model" && part.data) {
-          const { model: streamedModel, assistantMessageId } = part.data as {
-            model: string;
-            assistantMessageId: string;
-          };
-          messageModelMapRef.current.set(assistantMessageId, streamedModel);
+        const storedModel = messageModelMapRef.current.get(msg.id);
+        if (!storedModel) {
+          return msg;
         }
-      },
-      onFinish: ({ messages: finishedMessages }) => {
-        // Patch assistant messages with model from our stored map
-        const patchedMessages = finishedMessages.map((msg) => {
-          if (msg.role !== "assistant") {
-            return msg;
-          }
-          const storedModel = messageModelMapRef.current.get(msg.id);
-          if (!storedModel) {
-            return msg;
-          }
-          return {
-            ...msg,
-            metadata: {
-              ...(msg.metadata as { model?: string }),
-              model: storedModel,
-            },
-          };
-        });
-        setMessages(patchedMessages as ChatUIMessage[]);
-        // Invalidate cache so navigation back to this chat fetches fresh DB data
-        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
-      },
-      onError: (error) => {
-        // Handle 402 Payment Required (rate limit exceeded)
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          error.status === 402
-        ) {
-          capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
-            error: "rate_limit_exceeded",
-          });
-          Alert.alert(
-            "Message limit reached",
-            "You've reached your free monthly message limit. Your allowance will reset next month."
-          );
-          return;
-        }
+        return {
+          ...msg,
+          metadata: {
+            ...(msg.metadata as { model?: string }),
+            model: storedModel,
+          },
+        };
+      });
+      setMessages(patchedMessages as ChatUIMessage[]);
+      // Invalidate cache so navigation back to this chat fetches fresh DB data
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+    },
+    onError: (error) => {
+      // Handle 402 Payment Required (rate limit exceeded)
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 402
+      ) {
         capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "rate_limit_exceeded",
         });
-        console.error("useChat error:", error);
-      },
-    });
+        Alert.alert(
+          "Message limit reached",
+          "You've reached your free monthly message limit. Your allowance will reset next month."
+        );
+        return;
+      }
+      capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      console.error("useChat error:", error);
+    },
+  });
+
+  /**
+   * Extracts title from first user message (truncated to 50 chars)
+   */
+  const getTitleFromMessages = (msgs: ChatUIMessage[]): string => {
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    if (!firstUserMsg) {
+      return "Local Chat";
+    }
+    const textPart = firstUserMsg.parts.find((p) => p.type === "text");
+    if (!textPart || textPart.type !== "text") {
+      return "Local Chat";
+    }
+    const text = textPart.text.trim();
+    return text.length > 50 ? `${text.slice(0, 47)}...` : text;
+  };
 
   // Local on-device chat hook (always called for React rules)
   const localChat = useLocalChat({
     id: chatId,
-    initialMessages: [],
+    initialMessages,
+    onFinish: async ({ messages: finalMessages }) => {
+      // Only sync for authenticated users
+      if (!session?.user?.id) {
+        return;
+      }
+
+      try {
+        // Create chat in DB if this is a new chat
+        if (isNewChatRef.current) {
+          const title = getTitleFromMessages(finalMessages);
+          await createChatMutation.mutateAsync({ id: chatId, title });
+          isNewChatRef.current = false;
+          setIsNewChat(false);
+          onChatCreated?.(chatId);
+        }
+
+        // Sync messages to database
+        await rpcClient.messages.sync({
+          chatId,
+          messages: finalMessages,
+          model: APPLE_LOCAL_MODEL.id,
+        });
+
+        // Invalidate cache so chat list shows updated data
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+      } catch (error) {
+        console.error("Failed to sync local messages:", error);
+      }
+    },
     onError: (error: Error) => {
       capture(AnalyticsEvents.MESSAGE_SEND_FAILED, {
         error: error.message,
@@ -456,6 +573,38 @@ export const Chat = ({
   }, [handleRegenerateCallback, handleModelChange]);
 
   /**
+   * Listens for controls-updated events from chat-controls screen
+   * Updates state and persists to storage
+   */
+  useEffect(() => {
+    const handleControlsUpdated: EventListener = (event) => {
+      const detail = event.detail as {
+        selectedRuleIds: string[];
+        memoryEnabled: boolean;
+        reasoningEffort: ReasoningEffort;
+        selectedMcpTools: McpToolSelection[];
+      };
+      setSelectedRuleIds(detail.selectedRuleIds);
+      persistSelectedRuleIds(detail.selectedRuleIds);
+      setMemoryEnabled(detail.memoryEnabled);
+      persistMemoryEnabled(detail.memoryEnabled);
+      setReasoningEffort(detail.reasoningEffort);
+      persistReasoningEffort(detail.reasoningEffort);
+      setSelectedMcpTools(detail.selectedMcpTools);
+      persistSelectedMcpTools(detail.selectedMcpTools);
+    };
+
+    eventTarget.addEventListener("controls-updated", handleControlsUpdated);
+
+    return () => {
+      eventTarget.removeEventListener(
+        "controls-updated",
+        handleControlsUpdated
+      );
+    };
+  }, []);
+
+  /**
    * Handles stopping the current stream
    */
   const handleStop = useCallback(async () => {
@@ -534,7 +683,6 @@ export const Chat = ({
       model,
       has_attachments: hasAttachments,
       search_enabled: searchEnabled,
-      is_local: usingLocalModel,
     });
 
     if (usingLocalModel) {
@@ -608,6 +756,10 @@ export const Chat = ({
       ) : (
         <View className="flex-1">
           <MessagesHistory
+            addToolApprovalResponse={addToolApprovalResponse}
+            currentUserId={currentUserId}
+            isMultiUser={isMultiUser}
+            memberNames={memberNames}
             messages={activeMessages}
             onEdit={handleEditCallback}
             onRegenerate={handleRegenerateCallback}
@@ -615,6 +767,7 @@ export const Chat = ({
             onScrollStateChange={setIsAtBottom}
             scrollToBottomRef={scrollToBottomRef}
             status={activeStatus}
+            typingMembers={typingMembers}
           />
           <LinearGradient
             colors={

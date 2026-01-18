@@ -7,14 +7,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { lightTap } from "@/lib/haptics";
 import { MessageItem } from "./message-item";
+import { TypingIndicator } from "./typing-indicator";
 
 const CONTENT_PADDING_BOTTOM = 140;
 
 type ChatUIMessage = UIMessage;
 
 type MessagesHistoryProps = {
+  addToolApprovalResponse?: (response: {
+    id: string;
+    approved: boolean;
+  }) => void;
+  currentUserId?: string;
+  isMultiUser?: boolean;
+  memberNames?: Map<string, string>;
   messages: ChatUIMessage[];
   status: ChatStatus;
+  typingMembers?: Map<string, string>;
   onScrollStateChange?: (isAtBottom: boolean) => void;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | null>;
   onEdit?: (messageId: string, editedText: string) => void;
@@ -30,9 +39,33 @@ type MessagesHistoryProps = {
  * Displays chat messages in a LegendList
  * Content scrolls behind safe areas with padding applied
  */
+/**
+ * Gets sender information for a message in multi-user context
+ */
+const getMessageSenderInfo = (
+  message: ChatUIMessage,
+  currentUserId?: string,
+  isMultiUser?: boolean,
+  memberNames?: Map<string, string>
+): { senderName?: string; isOtherUser: boolean } => {
+  const userId = (message.metadata as { userId?: string })?.userId;
+  const senderName = userId ? memberNames?.get(userId) : undefined;
+  // A message is from the current user if no userId (old format) or userId matches currentUserId
+  const isCurrentUser = userId === undefined || userId === currentUserId;
+  // It's "other user" only if it's a user message and not from current user in multi-user context
+  const isOtherUser =
+    message.role === "user" && !isCurrentUser && Boolean(isMultiUser);
+  return { senderName, isOtherUser };
+};
+
 export const MessagesHistory = ({
+  addToolApprovalResponse,
+  currentUserId,
+  isMultiUser,
+  memberNames,
   messages,
   status,
+  typingMembers,
   onScrollStateChange,
   scrollToBottomRef,
   onEdit,
@@ -124,7 +157,7 @@ export const MessagesHistory = ({
     <LegendList
       className="flex-1"
       contentContainerStyle={{
-        marginTop: insets.top + 20,
+        marginTop: insets.top + 38,
         paddingBottom: CONTENT_PADDING_BOTTOM,
         marginBottom: insets.bottom,
       }}
@@ -135,25 +168,35 @@ export const MessagesHistory = ({
       keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.id}
       ListFooterComponent={useMemo(() => {
+        const hasTypingMembers = typingMembers && typingMembers.size > 0;
+
         // Don't show "Thinking..." if last message already has a reasoning part
         // (the reasoning part will show its own thinking indicator)
-        if (status !== "submitted") {
-          return null;
-        }
+        const showThinking = status === "submitted";
         const lastMessage = messages.at(-1);
         const hasReasoningPart = lastMessage?.parts?.some(
           (part) => part.type === "reasoning"
         );
-        if (hasReasoningPart) {
+
+        if (!hasTypingMembers && (!showThinking || hasReasoningPart)) {
           return null;
         }
 
         return (
-          <View className="mx-4 my-2">
-            <Text className="text-muted-foreground text-sm">Thinking...</Text>
-          </View>
+          <>
+            {hasTypingMembers ? (
+              <TypingIndicator typingMembers={typingMembers} />
+            ) : null}
+            {showThinking && !hasReasoningPart ? (
+              <View className="mx-4 my-2">
+                <Text className="text-muted-foreground text-sm">
+                  Thinking...
+                </Text>
+              </View>
+            ) : null}
+          </>
         );
-      }, [status, messages])}
+      }, [status, messages, typingMembers])}
       onContentSizeChange={(_width, contentHeight) => {
         contentHeightRef.current = contentHeight;
 
@@ -164,7 +207,8 @@ export const MessagesHistory = ({
         const messagesChanged =
           messages.length !== prevMessagesLengthRef.current;
         const isStreaming = status === "streaming" || status === "submitted";
-        const shouldAutoScroll = messagesChanged || isStreaming;
+        // Only auto-scroll if user is already at bottom (or a new message was just added)
+        const shouldAutoScroll = messagesChanged || (isStreaming && isAtBottom);
 
         // Update the ref for next comparison
         prevMessagesLengthRef.current = messages.length;
@@ -200,19 +244,30 @@ export const MessagesHistory = ({
       }}
       recycleItems
       ref={listRef}
-      renderItem={({ item }) => (
-        <MessageItem
-          isEditing={editingMessageId === item.id}
-          message={item}
-          onCancelEdit={() => setEditingMessageId(null)}
-          onCopy={handleCopy}
-          onEdit={onEdit}
-          onRegenerate={onRegenerate}
-          onRequestModelForRegeneration={onRequestModelForRegeneration}
-          onStartEdit={setEditingMessageId}
-          status={status}
-        />
-      )}
+      renderItem={({ item }) => {
+        const { senderName, isOtherUser } = getMessageSenderInfo(
+          item,
+          currentUserId,
+          isMultiUser,
+          memberNames
+        );
+        return (
+          <MessageItem
+            addToolApprovalResponse={addToolApprovalResponse}
+            isEditing={editingMessageId === item.id}
+            isOtherUser={isOtherUser}
+            message={item}
+            onCancelEdit={() => setEditingMessageId(null)}
+            onCopy={handleCopy}
+            onEdit={onEdit}
+            onRegenerate={onRegenerate}
+            onRequestModelForRegeneration={onRequestModelForRegeneration}
+            onStartEdit={setEditingMessageId}
+            senderName={senderName}
+            status={status}
+          />
+        );
+      }}
       scrollEventThrottle={16}
     />
   );
