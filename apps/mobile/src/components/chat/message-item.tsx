@@ -252,15 +252,6 @@ export const MessageItem = ({
                 part={part as ReasoningUIPart}
               />
             );
-          case "reasoning":
-            // Reasoning is streaming if this is the last part and message is streaming
-            return (
-              <ReasoningPart
-                isStreaming={isStreaming && isLastPart}
-                key={partId}
-                part={part as ReasoningUIPart}
-              />
-            );
           default:
             // Handle tool parts (type starts with "tool-" or "dynamic-tool")
             if (isToolPart(part.type)) {
