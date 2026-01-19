@@ -11,6 +11,7 @@ import { networkInterfaces } from "node:os";
 import { join, relative, sep } from "node:path";
 import { RPCHandler } from "@orpc/server/fetch";
 import { router } from "@yapmate/api/router";
+import { getStreamStatus } from "@yapmate/server/lib/redis/stream";
 import { getCurrentUserId } from "@yapmate/server/lib/supabase";
 import {
   addConnection,
@@ -24,6 +25,7 @@ import {
   type WsIncomingMessage,
 } from "@yapmate/server/lib/websocket";
 import { chatHandler } from "@yapmate/server/routes/api/chat/handler";
+import { getChat } from "@yapmate/server/routes/api/chat/store";
 import { checkoutHandler } from "@yapmate/server/routes/api/checkout/handler";
 import { checkoutSuccessHandler } from "@yapmate/server/routes/api/checkout/success";
 import { streamResumeHandler } from "@yapmate/server/routes/api/stream";
@@ -534,12 +536,10 @@ const server = serve<WsClientData>({
   // WebSocket handler
   websocket: {
     async open(wsConnection: ServerWebSocket<WsClientData>) {
-      const userId = wsConnection.data.userId;
-      await addConnection(userId, wsConnection);
+      await addConnection(wsConnection.data.userId, wsConnection);
     },
     async close(wsConnection: ServerWebSocket<WsClientData>) {
-      const userId = wsConnection.data.userId;
-      await removeConnection(userId, wsConnection);
+      await removeConnection(wsConnection.data.userId, wsConnection);
     },
     async message(
       wsConnection: ServerWebSocket<WsClientData>,
@@ -558,13 +558,26 @@ const server = serve<WsClientData>({
             wsConnection.send(JSON.stringify({ type: "pong" }));
             break;
 
-          case "join_chat":
+          case "join_chat": {
             // User opened a chat - join the room and update presence
             await joinChat(data.chatId, wsConnection);
             if (data.displayName) {
               await updatePresence(data.chatId, userId, data.displayName);
             }
+            // Notify late joiners of active stream
+            const chat = await getChat(data.chatId);
+            const streamId = chat?.activeStreamId;
+            if (streamId && (await getStreamStatus(streamId)) === "streaming") {
+              wsConnection.send(
+                JSON.stringify({
+                  type: "stream_active",
+                  chatId: data.chatId,
+                  streamId,
+                })
+              );
+            }
             break;
+          }
 
           case "leave_chat":
             // User closed a chat - leave the room

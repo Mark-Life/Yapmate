@@ -17,6 +17,7 @@ type WsEventType =
   | "chat_updated"
   | "message_created"
   | "stream_started"
+  | "stream_active"
   // Multi-user events
   | "member_joined"
   | "member_left"
@@ -31,6 +32,8 @@ type WsEvent = {
   userId?: string;
   displayName?: string;
   hasActiveStream?: boolean;
+  // For stream_active event (late joiner notification)
+  streamId?: string;
   // For stream chunks
   chunk?: unknown;
   chunkIndex?: number;
@@ -149,6 +152,16 @@ export const useWebSocketSync = (
         if (data.chatId) {
           window.dispatchEvent(
             new CustomEvent("stream-started", { detail: data })
+          );
+        }
+        break;
+
+      case "stream_active":
+        // Late joiner notification - stream already in progress
+        // Dispatch so Chat component can connect to SSE resume endpoint
+        if (data.chatId && data.streamId) {
+          window.dispatchEvent(
+            new CustomEvent("stream-active", { detail: data })
           );
         }
         break;

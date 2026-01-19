@@ -478,15 +478,15 @@ export const Chat = ({
   }, [chatId, isNewChat, setMessages, queryClient, status]);
 
   /**
-   * Listens for stream-started events from WebSocket sync
-   * Resumes stream when another device starts streaming to this chat
+   * Listens for stream-started and stream-active events from WebSocket sync
+   * Resumes stream when another device starts streaming or late joiner opens chat
    */
   useEffect(() => {
     if (!chatId || isNewChat) {
       return;
     }
 
-    const handleStreamStarted = (event: CustomEvent<{ chatId: string }>) => {
+    const handleStreamEvent = (event: CustomEvent<{ chatId: string }>) => {
       if (event.detail.chatId === chatId) {
         // Don't resume if useChat is already handling a stream or if we're already resuming
         if (
@@ -508,13 +508,21 @@ export const Chat = ({
 
     window.addEventListener(
       "stream-started",
-      handleStreamStarted as EventListener
+      handleStreamEvent as EventListener
+    );
+    window.addEventListener(
+      "stream-active",
+      handleStreamEvent as EventListener
     );
 
     return () => {
       window.removeEventListener(
         "stream-started",
-        handleStreamStarted as EventListener
+        handleStreamEvent as EventListener
+      );
+      window.removeEventListener(
+        "stream-active",
+        handleStreamEvent as EventListener
       );
     };
   }, [chatId, isNewChat, setMessages, queryClient, status]);
