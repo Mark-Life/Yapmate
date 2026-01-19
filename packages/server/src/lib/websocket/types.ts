@@ -8,6 +8,7 @@ export type WsEventType =
   | "chat_updated"
   | "message_created"
   | "stream_started"
+  | "stream_active"
   // Multi-user events
   | "member_joined"
   | "member_left"
@@ -23,6 +24,8 @@ export type WsEvent = {
   userId?: string;
   displayName?: string;
   hasActiveStream?: boolean;
+  // For stream_active event (late joiner notification)
+  streamId?: string;
   // For stream chunks
   chunk?: unknown;
   chunkIndex?: number;

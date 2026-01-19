@@ -27,10 +27,10 @@ export const publishStreamChunk = async (
   const channel = `stream:${streamId}`;
   const payload = JSON.stringify(chunk);
 
-  await Promise.all([
-    redis.send("RPUSH", [bufferKey, payload]),
-    redis.publish(channel, payload),
-  ]);
+  // Sequential: buffer first, then broadcast (prevents race condition where
+  // late joiners receive publish before chunk is in buffer)
+  await redis.send("RPUSH", [bufferKey, payload]);
+  await redis.publish(channel, payload);
 };
 
 /**

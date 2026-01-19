@@ -4,6 +4,7 @@
 
 import type { MessageMetadata } from "@yapmate/db/schema";
 import {
+  clearActiveStreamId,
   createChat as dbCreateChat,
   deleteChat as dbDeleteChat,
   getChat as dbGetChat,
@@ -14,6 +15,7 @@ import {
   getMessagesByChatId,
   syncMessages,
 } from "@yapmate/db/service";
+import { getStreamStatus } from "@yapmate/server/lib/redis/stream";
 import type { UIMessage } from "ai";
 
 /**
@@ -29,10 +31,20 @@ export const createChat = async (
 ): Promise<string> => dbCreateChat(userId, title, id);
 
 /**
- * Gets a chat by ID
+ * Gets a chat by ID, cleaning up stale activeStreamId if stream is no longer active
  * @param chatId - ID of the chat
  */
-export const getChat = dbGetChat;
+export const getChat = async (chatId: string) => {
+  const chat = await dbGetChat(chatId);
+  if (chat?.activeStreamId) {
+    const status = await getStreamStatus(chat.activeStreamId);
+    if (status === null || status === "complete" || status === "error") {
+      await clearActiveStreamId(chatId, chat.activeStreamId);
+      return { ...chat, activeStreamId: null };
+    }
+  }
+  return chat;
+};
 
 /**
  * Gets all chats for a user

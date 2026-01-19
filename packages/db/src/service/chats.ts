@@ -179,6 +179,21 @@ export const updateActiveStreamIdTx = async (
 };
 
 /**
+ * Clears activeStreamId only if it matches the given streamId (prevents race conditions)
+ * @param chatId - ID of the chat
+ * @param streamId - Stream ID to match before clearing
+ */
+export const clearActiveStreamId = async (
+  chatId: string,
+  streamId: string
+): Promise<void> => {
+  await db
+    .update(chats)
+    .set({ activeStreamId: null, updatedAt: new Date() })
+    .where(and(eq(chats.id, chatId), eq(chats.activeStreamId, streamId)));
+};
+
+/**
  * Touches a chat (updates updatedAt timestamp)
  * Useful when adding messages to keep sort order correct
  * @param chatId - ID of the chat
