@@ -119,10 +119,14 @@ const HeroSection = () => (
         >
           Start Yapping
         </a>
-        {/* TODO: Replace with actual App Store link once approved */}
-        <span className="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-border px-8 py-3 font-semibold text-muted-foreground">
-          App Store — Coming Soon
-        </span>
+        <a
+          className="inline-flex items-center justify-center rounded-lg border border-border px-8 py-3 font-semibold transition-opacity hover:opacity-90"
+          href="https://apps.apple.com/us/app/yapmate/id6757226545"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Get on App Store
+        </a>
       </div>
     </div>
     {/* <div className="flex-1">
