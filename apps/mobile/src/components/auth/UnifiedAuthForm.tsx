@@ -34,10 +34,12 @@ function EmailInput({
       </Label>
       <Input
         autoCapitalize="none"
+        autoComplete="email"
         className={error ? "border-red-500" : ""}
         keyboardType="email-address"
         onChangeText={onChange}
         placeholder="your@email.com"
+        textContentType="emailAddress"
         value={email}
       />
       {error ? (
@@ -185,7 +187,8 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
         Alert.alert("Success", "You have been successfully signed in!");
         router.replace("/");
       } else {
-        await signUp(email.trim(), password);
+        const redirectTo = generateAPIUrl("/auth/mobile");
+        await signUp(email.trim(), password, redirectTo);
         Alert.alert(
           "Success",
           "Account created! Please check your email for verification."

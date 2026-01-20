@@ -1,3 +1,4 @@
+import { Button } from "@yapmate/components/ui/button";
 import { PRICE_IDS, PricingCards } from "@yapmate/components/ui/pricing-cards";
 import {
   Brain,
@@ -109,24 +110,47 @@ const HeroSection = () => (
         models freely and pick the best for each task.
       </p>
       <div className="flex flex-col justify-center gap-4 sm:flex-row">
-        <a
-          className="inline-flex items-center justify-center rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.href = "/";
-          }}
+        <Button
+          asChild
+          className="h-[46px] rounded-lg px-8 font-semibold"
+          size="lg"
         >
-          Start Yapping
-        </a>
-        <a
-          className="inline-flex items-center justify-center rounded-lg border border-border px-8 py-3 font-semibold transition-opacity hover:opacity-90"
-          href="https://apps.apple.com/us/app/yapmate/id6757226545"
-          rel="noopener noreferrer"
-          target="_blank"
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/";
+            }}
+          >
+            Start Yapping
+          </a>
+        </Button>
+        <Button
+          asChild
+          className="h-[46px] p-0 hover:opacity-80"
+          variant="ghost"
         >
-          Get on App Store
-        </a>
+          <a
+            href="https://apps.apple.com/us/app/yapmate/id6757226545"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <img
+              alt="Download on the App Store"
+              className="h-[46px] dark:hidden"
+              height={46}
+              src="/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+              width={138}
+            />
+            <img
+              alt="Download on the App Store"
+              className="hidden h-[46px] dark:block"
+              height={46}
+              src="/Download_on_the_App_Store_Badge_US-UK_RGB_wht_092917.svg"
+              width={138}
+            />
+          </a>
+        </Button>
       </div>
     </div>
     {/* <div className="flex-1">
@@ -311,12 +335,13 @@ const CTASection = () => (
       Start Yapping with the world's best AI models today.
     </p>
     <div className="flex flex-col justify-center gap-4 sm:flex-row">
-      <a
-        className="inline-flex items-center justify-center rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        href="/"
+      <Button
+        asChild
+        className="h-[46px] rounded-lg px-8 font-semibold"
+        size="lg"
       >
-        Get Started — Free
-      </a>
+        <a href="/">Get Started — Free</a>
+      </Button>
     </div>
   </section>
 );

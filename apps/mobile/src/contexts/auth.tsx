@@ -13,7 +13,11 @@ import { useStorageState } from "@/lib/useStorageState";
 
 type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    redirectTo?: string
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   sendMagicLink: (email: string, redirectTo?: string) => Promise<void>;
   verifyOtp: (
@@ -92,10 +96,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
   };
 
-  const signUp = async (email: string, password: string): Promise<void> => {
+  const signUp = async (
+    email: string,
+    password: string,
+    redirectTo?: string
+  ): Promise<void> => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
     });
 
     if (error) {

@@ -1,4 +1,4 @@
-import type { Session } from "@supabase/supabase-js";
+import type { EmailOtpType, Session } from "@supabase/supabase-js";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { supabase } from "./supabase";
 
@@ -24,6 +24,7 @@ export const isAuthCallbackUrl = (url: string): boolean => {
       "token_hash",
       "type=magiclink",
       "type=email",
+      "type=signup",
       "access_token",
       "refresh_token",
     ];
@@ -73,25 +74,28 @@ const extractAuthParams = (params: Record<string, string | undefined>) => {
 };
 
 /**
- * Verifies magic link token and creates session
+ * Verifies OTP token and creates session
  */
-const verifyMagicLink = async (token_hash: string): Promise<AuthUrlResult> => {
-  console.log("Processing magic link with token_hash");
+const verifyOtpToken = async (
+  token_hash: string,
+  type: EmailOtpType
+): Promise<AuthUrlResult> => {
+  console.log(`Processing ${type} with token_hash`);
 
   const { data, error: verifyError } = await supabase.auth.verifyOtp({
     token_hash,
-    type: "magiclink",
+    type,
   });
 
   if (verifyError) {
-    console.error("Error verifying magic link:", verifyError);
+    console.error(`Error verifying ${type}:`, verifyError);
     return {
       session: null,
       error: verifyError,
     };
   }
 
-  console.log("Magic link verified successfully");
+  console.log(`${type} verified successfully`);
   return { session: data.session, error: null };
 };
 
@@ -130,10 +134,11 @@ export const createSessionFromUrl = async (
       throw new Error(String(error_description ?? error));
     }
 
-    // For magic links, we need to verify the token_hash
+    // Verify token_hash with appropriate type
     // Supabase sends type=email for magic links, but we verify with type=magiclink
-    if (token_hash && (type === "magiclink" || type === "email")) {
-      return await verifyMagicLink(token_hash);
+    if (token_hash && type) {
+      const otpType: EmailOtpType = type === "signup" ? "signup" : "magiclink";
+      return await verifyOtpToken(token_hash, otpType);
     }
 
     // If we got here, URL had auth params but they weren't valid

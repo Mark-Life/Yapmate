@@ -1,6 +1,14 @@
 {
+  "cli": {
+    "requireCommit": false
+  },
   "build": {
+    "base": {
+      "node": "20.18.0",
+      "bun": "1.3.5"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -9,6 +17,7 @@
       "channel": "development"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "preview"
@@ -16,6 +25,7 @@
       "channel": "preview"
     },
     "production": {
+      "extends": "base",
       "distribution": "store",
       "env": {
         "APP_VARIANT": "production"
