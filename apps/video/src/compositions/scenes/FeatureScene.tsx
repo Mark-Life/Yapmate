@@ -55,7 +55,7 @@ export const FeatureScene = ({
         style={{
           justifyContent: "center",
           alignItems: "center",
-          padding: 60,
+          padding: isSmall ? 32 : 40,
         }}
       >
         {/* Feature card */}
@@ -64,25 +64,25 @@ export const FeatureScene = ({
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            padding: isSmall ? 48 : 64,
+            padding: isSmall ? 56 : 80,
             background: colors.bgCard,
-            borderRadius: 24,
+            borderRadius: 32,
             border: `2px solid ${colors.primary}40`,
             transform: `scale(${cardScale}) translateY(${cardY}px)`,
-            maxWidth: isSmall ? 500 : 600,
-            boxShadow: `0 0 60px ${colors.primary}20`,
+            maxWidth: isSmall ? 600 : 800,
+            boxShadow: `0 0 80px ${colors.primary}20`,
           }}
         >
           {/* Icon */}
           <div
             style={{
               transform: `scale(${iconScale})`,
-              marginBottom: 32,
+              marginBottom: 40,
             }}
           >
             <Icon
-              size={isSmall ? 72 : 96}
               color={colors.primary}
+              size={isSmall ? 96 : 120}
               strokeWidth={1.5}
             />
           </div>
@@ -91,11 +91,11 @@ export const FeatureScene = ({
           <h2
             style={{
               fontFamily: poppinsFont,
-              fontSize: isSmall ? 40 : 52,
+              fontSize: isSmall ? 52 : 64,
               fontWeight: 700,
               color: colors.textPrimary,
               margin: 0,
-              marginBottom: 16,
+              marginBottom: 20,
               textAlign: "center",
               opacity: textOpacity,
               transform: `translateY(${textY}px)`,
@@ -108,7 +108,7 @@ export const FeatureScene = ({
           <p
             style={{
               fontFamily: interFont,
-              fontSize: isSmall ? 22 : 26,
+              fontSize: isSmall ? 26 : 32,
               color: colors.textSecondary,
               margin: 0,
               textAlign: "center",

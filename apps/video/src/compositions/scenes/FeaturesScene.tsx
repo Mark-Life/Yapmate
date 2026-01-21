@@ -106,8 +106,8 @@ const FeatureCard = ({
       }}
     >
       <Icon
-        size={isSmall ? 36 : 44}
         color={colors.primary}
+        size={isSmall ? 36 : 44}
         style={{ marginBottom: 16 }}
       />
       <span
@@ -158,7 +158,11 @@ export const FeaturesScene = () => {
           padding: isSmall ? 32 : 60,
         }}
       >
-        <Sequence from={0} durationInFrames={Infinity} layout="none">
+        <Sequence
+          durationInFrames={Number.POSITIVE_INFINITY}
+          from={0}
+          layout="none"
+        >
           <div
             style={{
               display: "flex",
@@ -212,9 +216,9 @@ export const FeaturesScene = () => {
             >
               {FEATURES.map((feature, index) => (
                 <FeatureCard
-                  key={feature.title}
                   feature={feature}
                   index={index}
+                  key={feature.title}
                 />
               ))}
             </div>
