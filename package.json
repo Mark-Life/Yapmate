@@ -21,7 +21,9 @@
     "db:generate:custom": "bun --filter '@yapmate/db' generate:custom",
     "db:migrate": "bun --filter '@yapmate/db' migrate",
     "db:studio": "bun --filter '@yapmate/db' studio",
-    "db:pull": "bun --filter '@yapmate/db' pull"
+    "db:pull": "bun --filter '@yapmate/db' pull",
+    "video:studio": "bun --filter '@yapmate/video' studio",
+    "video:render": "bun --filter '@yapmate/video' render"
   },
   "dependencies": {},
   "devDependencies": {
