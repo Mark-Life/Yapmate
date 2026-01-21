@@ -1,9 +1,12 @@
-import { GlassContainer, GlassView } from "expo-glass-effect";
 import { useRouter } from "expo-router";
 import { Menu, Plus, SlidersHorizontal } from "lucide-react-native";
 import { Keyboard } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
+import {
+  GlassContainerWrapper,
+  GlassWrapper,
+} from "@/components/ui/glass-wrapper";
 import { Icon } from "@/components/ui/icon";
 import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
@@ -50,7 +53,7 @@ export const HeaderControls = () => {
   return (
     <>
       {/* Left side: Menu + New chat */}
-      <GlassContainer
+      <GlassContainerWrapper
         spacing={8}
         style={{
           position: "absolute",
@@ -62,13 +65,8 @@ export const HeaderControls = () => {
           gap: 8,
         }}
       >
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <Button
             className="p-0"
@@ -82,14 +80,9 @@ export const HeaderControls = () => {
           >
             <Icon as={Menu} className="text-foreground" size={20} />
           </Button>
-        </GlassView>
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        </GlassWrapper>
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <Button
             className="p-0"
@@ -103,11 +96,11 @@ export const HeaderControls = () => {
           >
             <Icon as={Plus} className="text-foreground" size={20} />
           </Button>
-        </GlassView>
-      </GlassContainer>
+        </GlassWrapper>
+      </GlassContainerWrapper>
 
       {/* Right side: Controls */}
-      <GlassContainer
+      <GlassContainerWrapper
         spacing={8}
         style={{
           position: "absolute",
@@ -116,13 +109,8 @@ export const HeaderControls = () => {
           zIndex: 60,
         }}
       >
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <Button
             className="p-0"
@@ -136,8 +124,8 @@ export const HeaderControls = () => {
               size={20}
             />
           </Button>
-        </GlassView>
-      </GlassContainer>
+        </GlassWrapper>
+      </GlassContainerWrapper>
     </>
   );
 };

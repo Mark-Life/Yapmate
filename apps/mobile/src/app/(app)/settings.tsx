@@ -1,10 +1,13 @@
 import { Host, Switch } from "@expo/ui/swift-ui";
-import { GlassContainer, GlassView } from "expo-glass-effect";
 import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
+import {
+  GlassContainerWrapper,
+  GlassWrapper,
+} from "@/components/ui/glass-wrapper";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useUser } from "@/contexts/user-context";
@@ -73,7 +76,7 @@ export default function SettingsScreen() {
     <View className="flex-1" style={{ paddingTop: 16 }}>
       <View className="flex-1 gap-4 p-4">
         {/* Privacy section */}
-        <GlassContainer
+        <GlassContainerWrapper
           spacing={8}
           style={{ borderRadius: 24, padding: 16, gap: 16 }}
         >
@@ -92,13 +95,12 @@ export default function SettingsScreen() {
               />
             </Host>
           </SettingsRow>
-        </GlassContainer>
+        </GlassContainerWrapper>
 
         {/* Danger zone */}
-        <GlassContainer
+        <GlassContainerWrapper
           spacing={8}
           style={{ borderRadius: 24, padding: 16, gap: 12 }}
-          // tintColor="#ef4444"
         >
           <Text className="font-semibold text-base text-destructive">
             Danger Zone
@@ -109,8 +111,7 @@ export default function SettingsScreen() {
               action cannot be undone.
             </Text>
           </View>
-          <GlassView
-            isInteractive={true}
+          <GlassWrapper
             style={{
               borderRadius: 32,
               padding: 0,
@@ -131,8 +132,8 @@ export default function SettingsScreen() {
               />
               <Text>Delete account</Text>
             </Button>
-          </GlassView>
-        </GlassContainer>
+          </GlassWrapper>
+        </GlassContainerWrapper>
       </View>
     </View>
   );

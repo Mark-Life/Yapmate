@@ -1,5 +1,4 @@
 import { Host, Picker, Switch } from "@expo/ui/swift-ui";
-import { GlassView } from "expo-glass-effect";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   BookText,
@@ -21,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GlassWrapper } from "@/components/ui/glass-wrapper";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { useRules } from "@/hooks/use-rules";
@@ -390,13 +390,8 @@ export default function ChatControlsScreen() {
           {/* Search input */}
           {rules.length > 0 && (
             <View className="pb-2">
-              <GlassView
-                isInteractive={true}
-                style={{
-                  borderRadius: 12,
-                  padding: 0,
-                  overflow: "hidden",
-                }}
+              <GlassWrapper
+                style={{ borderRadius: 12, padding: 0, overflow: "hidden" }}
               >
                 <Input
                   className="rounded-md border-input bg-transparent"
@@ -405,7 +400,7 @@ export default function ChatControlsScreen() {
                   ref={inputRef}
                   value={search}
                 />
-              </GlassView>
+              </GlassWrapper>
             </View>
           )}
 

@@ -1,5 +1,4 @@
 import type { ChatStatus, FileUIPart } from "ai";
-import { GlassContainer, GlassView } from "expo-glass-effect";
 import { ArrowUpIcon, GlobeIcon, SquareIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +6,10 @@ import type { TextInput } from "react-native";
 import { Keyboard, View } from "react-native";
 import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
+import {
+  GlassContainerWrapper,
+  GlassWrapper,
+} from "@/components/ui/glass-wrapper";
 import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
@@ -84,9 +87,6 @@ export const ChatInput = ({
     onSubmit({ text: input.trim(), files });
   };
 
-  // Check if input is multiline by checking for newlines
-  const isMultiline = input.includes("\n");
-
   const isStreaming = status === "streaming" || status === "submitted";
   const hasText = input.trim().length > 0;
   const hasAttachments = attachments.files.length > 0;
@@ -98,7 +98,7 @@ export const ChatInput = ({
   }
 
   return (
-    <GlassContainer
+    <GlassContainerWrapper
       spacing={8}
       style={{
         borderRadius: 24,
@@ -114,13 +114,8 @@ export const ChatInput = ({
       ) : null}
       <View className="mb-2 flex-row items-center gap-2">
         <View className="flex-1">
-          <GlassView
-            isInteractive={true}
-            style={{
-              borderRadius: 32,
-              padding: 0,
-              overflow: "hidden",
-            }}
+          <GlassWrapper
+            style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
           >
             <ModelSelector
               model={model}
@@ -131,26 +126,16 @@ export const ChatInput = ({
               }}
               triggerClassName="border-0 bg-transparent rounded-none"
             />
-          </GlassView>
+          </GlassWrapper>
         </View>
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <AttachmentPicker attachments={attachments} />
-        </GlassView>
+        </GlassWrapper>
         {!disableSearch && (
-          <GlassView
-            isInteractive={true}
-            style={{
-              borderRadius: 32,
-              padding: 0,
-              overflow: "hidden",
-            }}
+          <GlassWrapper
+            style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
             tintColor={searchButtonTintColor}
           >
             <Button
@@ -174,15 +159,10 @@ export const ChatInput = ({
                 )}
               />
             </Button>
-          </GlassView>
+          </GlassWrapper>
         )}
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <TranscribeButton
             onTranscriptionChange={(text) => {
@@ -191,17 +171,12 @@ export const ChatInput = ({
               onInputChange(newValue);
             }}
           />
-        </GlassView>
+        </GlassWrapper>
       </View>
       <View className="flex-row items-end gap-2">
         <View className="flex-1">
-          <GlassView
-            isInteractive={true}
-            style={{
-              borderRadius: isMultiline ? 32 : 32,
-              padding: 0,
-              overflow: "hidden",
-            }}
+          <GlassWrapper
+            style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
           >
             <Textarea
               className="max-h-32 min-h-10 rounded-none border-0 bg-transparent text-sm"
@@ -214,15 +189,10 @@ export const ChatInput = ({
               ref={textareaRef}
               value={input}
             />
-          </GlassView>
+          </GlassWrapper>
         </View>
-        <GlassView
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           {isStreaming ? (
             <Button
@@ -245,8 +215,8 @@ export const ChatInput = ({
               />
             </Button>
           )}
-        </GlassView>
+        </GlassWrapper>
       </View>
-    </GlassContainer>
+    </GlassContainerWrapper>
   );
 };

@@ -1,7 +1,12 @@
+import { isLiquidGlassAvailable } from "expo-glass-effect";
+
 /**
  * Color tokens matching globals.css CSS variables.
  * Use with useColorScheme() from nativewind to get the correct theme.
  */
+
+/** Check liquid glass availability once at module load */
+const hasLiquidGlass = isLiquidGlassAvailable();
 
 /** Converts HSL to hex color */
 const hslToHex = (h: number, s: number, l: number): string => {
@@ -126,3 +131,11 @@ export const radius = {
 } as const;
 
 export type RadiusKey = keyof typeof radius;
+
+/**
+ * Returns modal background color - transparent for liquid glass, themed color otherwise
+ */
+export const getModalBackground = (
+  colorScheme: "light" | "dark" | undefined
+): string =>
+  hasLiquidGlass ? "transparent" : getThemeColors(colorScheme).background;

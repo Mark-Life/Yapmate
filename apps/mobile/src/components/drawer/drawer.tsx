@@ -1,6 +1,5 @@
 import { Button, ContextMenu, Host } from "@expo/ui/swift-ui";
 import { BlurView } from "expo-blur";
-import { GlassView } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Plus, Search, Settings } from "lucide-react-native";
@@ -16,6 +15,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsList } from "@/components/chat/chats-list";
 import { Button as UIButton } from "@/components/ui/button";
+import { GlassWrapper } from "@/components/ui/glass-wrapper";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -95,14 +95,8 @@ const DrawerContent = ({
         className="absolute right-0 left-0 flex-row items-center gap-2 px-2"
         style={{ top: insets.top }}
       >
-        <GlassView
-          glassEffectStyle={"clear"}
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 0,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
         >
           <UIButton
             className="size-10"
@@ -111,7 +105,7 @@ const DrawerContent = ({
           >
             <Icon as={Settings} className="text-foreground" size={20} />
           </UIButton>
-        </GlassView>
+        </GlassWrapper>
         <View className="flex-1">
           <Host>
             <ContextMenu activationMethod="longPress">
@@ -126,14 +120,8 @@ const DrawerContent = ({
                 </Button>
               </ContextMenu.Items>
               <ContextMenu.Trigger>
-                <GlassView
-                  glassEffectStyle={"clear"}
-                  isInteractive={true}
-                  style={{
-                    borderRadius: 32,
-                    padding: 0,
-                    overflow: "hidden",
-                  }}
+                <GlassWrapper
+                  style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
                 >
                   <UIButton
                     className="w-full justify-start gap-2 overflow-hidden rounded-full"
@@ -153,7 +141,7 @@ const DrawerContent = ({
                       />
                     ) : null}
                   </UIButton>
-                </GlassView>
+                </GlassWrapper>
               </ContextMenu.Trigger>
             </ContextMenu>
           </Host>
@@ -167,28 +155,16 @@ const DrawerContent = ({
         bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
       }}
     >
-      <GlassView
-        glassEffectStyle={"clear"}
-        isInteractive={true}
-        style={{
-          borderRadius: 32,
-          padding: 1,
-          overflow: "hidden",
-        }}
+      <GlassWrapper
+        style={{ borderRadius: 32, padding: 1, overflow: "hidden" }}
       >
         <UIButton className="size-9" onPress={handleNewChat} variant="ghost">
           <Icon as={Plus} className="text-primary" size={22} />
         </UIButton>
-      </GlassView>
+      </GlassWrapper>
       <View className="flex-1">
-        <GlassView
-          glassEffectStyle={"clear"}
-          isInteractive={true}
-          style={{
-            borderRadius: 32,
-            padding: 1,
-            overflow: "hidden",
-          }}
+        <GlassWrapper
+          style={{ borderRadius: 32, padding: 1, overflow: "hidden" }}
         >
           <View className="relative flex-row items-center">
             <Icon
@@ -202,7 +178,7 @@ const DrawerContent = ({
               value={searchQuery}
             />
           </View>
-        </GlassView>
+        </GlassWrapper>
       </View>
     </View>
   </View>
