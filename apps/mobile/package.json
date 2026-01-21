@@ -8,7 +8,8 @@
     "ios": "APP_VARIANT=development dotenv -e ../../.env -- bunx expo start --ios",
     "web": "dotenv -e ../../.env -- bunx expo start --web",
     "run": "APP_VARIANT=development bunx expo run:ios --device",
-    "build": "eas build --platform ios --local"
+    "build": "eas build --platform ios --local",
+    "air": "eas update -p ios --channel production"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.29",
