@@ -3,6 +3,7 @@ import {
   Img,
   Sequence,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -53,7 +54,7 @@ const ProviderCard = ({
       }}
     >
       <Img
-        src={`https://models.dev/logos/${provider.id}.svg`}
+        src={staticFile(`assets/${provider.id}.svg`)}
         style={{
           width: 56,
           height: 56,
