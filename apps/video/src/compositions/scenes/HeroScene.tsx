@@ -3,6 +3,7 @@ import {
   Img,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -40,12 +41,12 @@ export const HeroScene = () => {
 
   const subtitleY = interpolate(subtitleOpacity, [0, 1], [30, 0]);
 
-  // Calculate responsive sizes
+  // Calculate responsive sizes - larger for better visibility
   const isSmallWidth = width <= 1080;
-  const logoSize = isSmallWidth ? 140 : 180;
-  const titleSize = isSmallWidth ? 64 : 80;
-  const highlightSize = isSmallWidth ? 72 : 96;
-  const subtitleSize = isSmallWidth ? 24 : 28;
+  const logoSize = isSmallWidth ? 180 : 220;
+  const titleSize = isSmallWidth ? 72 : 96;
+  const highlightSize = isSmallWidth ? 84 : 112;
+  const subtitleSize = isSmallWidth ? 28 : 32;
 
   return (
     <AbsoluteFill>
@@ -64,8 +65,7 @@ export const HeroScene = () => {
           }}
         >
           <Img
-            src="https://yapmate.com/yapmate-apple-2-dark-iOS-Default.png"
-            // src="./yapmate-apple-2-dark-iOS-Default.png"
+            src={staticFile("yapmate-apple-2-dark-iOS-Default.png")}
             style={{
               width: logoSize,
               height: logoSize,

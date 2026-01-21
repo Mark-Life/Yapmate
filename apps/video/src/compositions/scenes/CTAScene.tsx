@@ -3,6 +3,7 @@ import {
   Img,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -43,7 +44,7 @@ export const CTAScene = () => {
         style={{
           justifyContent: "center",
           alignItems: "center",
-          gap: 32,
+          gap: 40,
         }}
       >
         {/* Logo */}
@@ -53,10 +54,10 @@ export const CTAScene = () => {
           }}
         >
           <Img
-            src="https://yapmate.com/YAP.svg"
+            src={staticFile("yapmate-apple-2-dark-iOS-Default.png")}
             style={{
-              width: isSmall ? 100 : 120,
-              height: isSmall ? 100 : 120,
+              width: isSmall ? 140 : 160,
+              height: isSmall ? 140 : 160,
             }}
           />
         </div>
@@ -72,11 +73,11 @@ export const CTAScene = () => {
           <h2
             style={{
               fontFamily: poppinsFont,
-              fontSize: isSmall ? 48 : 64,
+              fontSize: isSmall ? 64 : 80,
               fontWeight: 700,
               color: colors.textPrimary,
               margin: 0,
-              marginBottom: 16,
+              marginBottom: 20,
             }}
           >
             Ready to Chat?
@@ -84,7 +85,7 @@ export const CTAScene = () => {
           <p
             style={{
               fontFamily: poppinsFont,
-              fontSize: isSmall ? 20 : 24,
+              fontSize: isSmall ? 26 : 32,
               color: colors.textSecondary,
               margin: 0,
             }}
@@ -103,10 +104,10 @@ export const CTAScene = () => {
           <div
             style={{
               background: colors.primary,
-              padding: "16px 48px",
-              borderRadius: 12,
+              padding: "20px 64px",
+              borderRadius: 16,
               fontFamily: poppinsFont,
-              fontSize: isSmall ? 20 : 24,
+              fontSize: isSmall ? 26 : 32,
               fontWeight: 600,
               color: colors.textPrimary,
             }}

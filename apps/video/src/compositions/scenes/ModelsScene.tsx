@@ -106,10 +106,14 @@ export const ModelsScene = () => {
         style={{
           justifyContent: "center",
           alignItems: "center",
-          padding: isSmall ? 40 : 80,
+          padding: isSmall ? 24 : 40,
         }}
       >
-        <Sequence from={0} durationInFrames={Infinity} layout="none">
+        <Sequence
+          durationInFrames={Number.POSITIVE_INFINITY}
+          from={0}
+          layout="none"
+        >
           <div
             style={{
               display: "flex",
@@ -130,7 +134,7 @@ export const ModelsScene = () => {
               <h2
                 style={{
                   fontFamily: poppinsFont,
-                  fontSize: isSmall ? 48 : 56,
+                  fontSize: isSmall ? 56 : 72,
                   fontWeight: 700,
                   color: colors.textPrimary,
                   margin: 0,
@@ -142,7 +146,7 @@ export const ModelsScene = () => {
               <p
                 style={{
                   fontFamily: interFont,
-                  fontSize: isSmall ? 20 : 24,
+                  fontSize: isSmall ? 24 : 28,
                   color: colors.textSecondary,
                   margin: 0,
                 }}
@@ -163,9 +167,9 @@ export const ModelsScene = () => {
             >
               {AI_PROVIDERS.map((provider, index) => (
                 <ProviderCard
+                  index={index}
                   key={provider.id}
                   provider={provider}
-                  index={index}
                 />
               ))}
             </div>

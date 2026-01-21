@@ -45,7 +45,7 @@ export const PlatformScene = () => {
         style={{
           justifyContent: "center",
           alignItems: "center",
-          padding: isSmall ? 40 : 80,
+          padding: isSmall ? 24 : 40,
         }}
       >
         <div
@@ -53,7 +53,7 @@ export const PlatformScene = () => {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: isVertical ? 32 : 40,
+            gap: isVertical ? 28 : 32,
             width: "100%",
           }}
         >
@@ -68,7 +68,7 @@ export const PlatformScene = () => {
             <h2
               style={{
                 fontFamily: poppinsFont,
-                fontSize: isSmall ? 48 : 56,
+                fontSize: isSmall ? 56 : 72,
                 fontWeight: 700,
                 color: colors.textPrimary,
                 margin: 0,
@@ -80,7 +80,7 @@ export const PlatformScene = () => {
             <p
               style={{
                 fontFamily: interFont,
-                fontSize: isSmall ? 20 : 24,
+                fontSize: isSmall ? 24 : 28,
                 color: colors.textSecondary,
                 margin: 0,
               }}
@@ -109,7 +109,7 @@ export const PlatformScene = () => {
               <Img
                 src="https://esvxscqmjmnbktpyifcg.supabase.co/storage/v1/object/public/yapmate/website/about/yapmate-example-model-selection.png"
                 style={{
-                  width: isVertical ? "90%" : isSmall ? 500 : 700,
+                  width: isVertical ? "90%" : isSmall ? 600 : 900,
                   maxWidth: "100%",
                   borderRadius: 16,
                   boxShadow: `0 20px 60px ${colors.bgDark}aa`,
@@ -128,7 +128,7 @@ export const PlatformScene = () => {
               <Img
                 src="https://esvxscqmjmnbktpyifcg.supabase.co/storage/v1/object/public/yapmate/website/about/yapmate-ios-markdown-render-small.jpg"
                 style={{
-                  width: isVertical ? 180 : isSmall ? 180 : 240,
+                  width: isVertical ? 220 : isSmall ? 220 : 300,
                   borderRadius: 24,
                   boxShadow: `0 20px 60px ${colors.bgDark}aa`,
                   border: `1px solid ${colors.bgCardHover}`,

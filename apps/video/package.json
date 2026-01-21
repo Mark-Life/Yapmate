@@ -6,7 +6,9 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render PromoVideo --output=out/promo.mp4",
-    "render:gif": "remotion render PromoVideo --output=out/promo.gif --image-format=png",
+    "render:vertical": "remotion render PromoVideoVertical --output=out/promo-vertical.mp4",
+    "render:square": "remotion render PromoVideoSquare --output=out/promo-square.mp4",
+    "render:all": "bun run render && bun run render:vertical && bun run render:square",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
