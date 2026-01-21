@@ -84,7 +84,7 @@ export const UpgradeSheet = ({
    */
   useEffect(() => {
     if (open && !hasTrackedOpenRef.current) {
-      capture("upgrade_sheet_opened", {
+      capture("upgrade sheet opened", {
         current_tier: currentTier,
       });
       hasTrackedOpenRef.current = true;
@@ -109,7 +109,7 @@ export const UpgradeSheet = ({
    * Portal opens in new tab, sheet closes, and app-sidebar focus listener handles refresh
    */
   const handleManageSubscription = useCallback(async () => {
-    capture("subscription_manage_clicked", {
+    capture("subscription manage clicked", {
       location: "upgrade_sheet",
       current_tier: currentTier,
     });
@@ -121,7 +121,7 @@ export const UpgradeSheet = ({
       onOpenChange(false);
       // Note: Subscription refresh handled by window focus listener in app-sidebar
     } catch (err) {
-      capture("subscription_manage_error", {
+      capture("subscription manage error", {
         current_tier: currentTier,
         error: err instanceof Error ? err.message : "Unknown error",
       });
@@ -143,7 +143,7 @@ export const UpgradeSheet = ({
       const selectedTier = getTierFromPriceId(priceId);
       selectedPriceIdRef.current = priceId;
 
-      capture("tier_selected", {
+      capture("tier selected", {
         price_id: priceId,
         tier: selectedTier,
         current_tier: currentTier,
@@ -172,13 +172,13 @@ export const UpgradeSheet = ({
         const { clientSecret: secret } = await response.json();
         setClientSecret(secret);
 
-        capture("checkout_started", {
+        capture("checkout started", {
           price_id: priceId,
           tier: selectedTier,
           current_tier: currentTier,
         });
       } catch (checkoutError) {
-        capture("checkout_error", {
+        capture("checkout error", {
           price_id: priceId,
           tier: selectedTier,
           current_tier: currentTier,
@@ -210,7 +210,7 @@ export const UpgradeSheet = ({
         : "unknown";
 
       if (!sessionId) {
-        capture("checkout_error", {
+        capture("checkout error", {
           price_id: selectedPriceId,
           tier: selectedTier,
           current_tier: currentTier,
@@ -234,7 +234,7 @@ export const UpgradeSheet = ({
           const errorData = await response.json().catch(() => ({}));
           const errorMessage =
             errorData.error || "Failed to link subscription to account";
-          capture("checkout_error", {
+          capture("checkout error", {
             price_id: selectedPriceId,
             tier: selectedTier,
             current_tier: currentTier,
@@ -246,7 +246,7 @@ export const UpgradeSheet = ({
         }
 
         // Success - track subscription completion
-        capture("checkout_completed", {
+        capture("checkout completed", {
           price_id: selectedPriceId,
           tier: selectedTier,
           previous_tier: currentTier,
@@ -280,7 +280,7 @@ export const UpgradeSheet = ({
       if (!newOpen) {
         // Track sheet closed if checkout was in progress
         if (clientSecret) {
-          capture("upgrade_sheet_closed", {
+          capture("upgrade sheet closed", {
             had_checkout: true,
             current_tier: currentTier,
           });

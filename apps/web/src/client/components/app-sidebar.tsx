@@ -175,7 +175,7 @@ export const AppSidebar = ({
    * Handle logout
    */
   const handleLogout = useCallback(async () => {
-    capture("logout_clicked", { location: "sidebar" });
+    capture("logout clicked", { location: "sidebar" });
     const supabase = createClient();
     await supabase.auth.signOut({ scope: "local" });
     // Use window.location for full page navigation to ensure auth state is cleared
@@ -186,7 +186,7 @@ export const AppSidebar = ({
    * Navigate to new chat
    */
   const openNewChat = useCallback(() => {
-    capture("new_chat_clicked", { location: "sidebar" });
+    capture("new chat clicked", { location: "sidebar" });
     navigateToNew();
   }, [navigateToNew, capture]);
 
@@ -204,7 +204,7 @@ export const AppSidebar = ({
       await rpcClient.chats.update({ id: chatId, title });
     },
     onSuccess: (_, variables) => {
-      capture("chat_renamed", { chat_id: variables.chatId });
+      capture("chat renamed", { chat_id: variables.chatId });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       setChatToRename(null);
       setRenameInput("");
@@ -219,7 +219,7 @@ export const AppSidebar = ({
       await rpcClient.chats.delete({ id: chatId });
     },
     onSuccess: (_, deletedChatId) => {
-      capture("chat_deleted", {
+      capture("chat deleted", {
         chat_id: deletedChatId,
         was_active: deletedChatId === currentChatId,
       });
@@ -274,7 +274,7 @@ export const AppSidebar = ({
   const handleManageSubscription = useCallback(async () => {
     try {
       const { url } = await rpcClient.subscription.createPortalSession();
-      capture("subscription_manage_clicked", {
+      capture("subscription manage clicked", {
         action: "portal_opened",
         current_tier: usage?.tier,
       });
@@ -283,7 +283,7 @@ export const AppSidebar = ({
       // Open Stripe Customer Portal in new tab
       window.open(url, "_blank");
     } catch {
-      capture("subscription_manage_clicked", {
+      capture("subscription manage clicked", {
         action: "upgrade_sheet_opened",
         current_tier: usage?.tier,
       });
@@ -320,7 +320,7 @@ export const AppSidebar = ({
                               className="w-full select-none"
                               isActive={chat.id === currentChatId}
                               onClick={() => {
-                                capture("chat_selected", {
+                                capture("chat selected", {
                                   chat_id: chat.id,
                                   location: "sidebar",
                                 });
@@ -377,7 +377,7 @@ export const AppSidebar = ({
               count={usage.count}
               limit={usage.limit}
               onUpgradeClick={() => {
-                capture("upgrade_clicked", {
+                capture("upgrade clicked", {
                   location: "usage_badge",
                   current_tier: usage.tier,
                   usage_count: usage.count,

@@ -33,7 +33,7 @@ export const FeedbackButtons = ({
   const [openValue, setOpenValue] = useState<0 | 1 | null>(null);
 
   const handleSubmit = (value: 0 | 1) => {
-    capture("feedback_submitted", {
+    capture("feedback submitted", {
       message_id: messageId,
       feedback_value: value,
       has_comment: !!comment,

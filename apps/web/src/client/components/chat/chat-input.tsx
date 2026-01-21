@@ -125,7 +125,7 @@ export const ChatInput = ({
     if (currentFileCount > previousFileCount) {
       const newFiles = attachments.files.slice(previousFileCount);
       for (const file of newFiles) {
-        capture("file_attachment_added", {
+        capture("attachment added", {
           media_type: file.mediaType,
           has_url: !!file.url,
         });
@@ -140,7 +140,7 @@ export const ChatInput = ({
    */
   const handleTranscriptionChange = (transcription: string) => {
     if (transcription) {
-      capture("transcription_used", {
+      capture("transcription used", {
         transcription_length: transcription.length,
       });
     }

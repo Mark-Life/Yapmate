@@ -74,7 +74,7 @@ export const FeedbackDialog = ({ open, onOpenChange }: FeedbackDialogProps) => {
       });
     },
     onSuccess: () => {
-      capture("feedback_submitted", { category });
+      capture("feedback submitted", { category });
       toast.success("Thanks for your feedback!");
       resetForm();
       onOpenChange(false);

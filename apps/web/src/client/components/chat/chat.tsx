@@ -132,7 +132,7 @@ export const Chat = ({
    */
   const handleModelChange = useCallback(
     (newModel: string) => {
-      capture("model_changed", {
+      capture("model changed", {
         previous_model: model,
         new_model: newModel,
         chat_id: chatId,
@@ -148,7 +148,7 @@ export const Chat = ({
    */
   const handleSearchEnabledChange = useCallback(
     (enabled: boolean) => {
-      capture("search_toggled", {
+      capture("search toggled", {
         enabled,
         chat_id: chatId,
       });
@@ -163,7 +163,7 @@ export const Chat = ({
    */
   const handleMemoryEnabledChange = useCallback(
     (enabled: boolean) => {
-      capture("memory_toggled", {
+      capture("memory toggled", {
         enabled,
         chat_id: chatId,
       });
@@ -178,7 +178,7 @@ export const Chat = ({
    */
   const handleReasoningEffortChange = useCallback(
     (effort: ReasoningEffort) => {
-      capture("reasoning_effort_changed", {
+      capture("reasoning effort changed", {
         effort,
         chat_id: chatId,
       });
@@ -193,7 +193,7 @@ export const Chat = ({
    */
   const handleSelectedMcpToolsChange = useCallback(
     (tools: McpToolSelection[]) => {
-      capture("mcp_tools_changed", {
+      capture("mcp tools changed", {
         tool_count: tools.length,
         chat_id: chatId,
       });
@@ -208,7 +208,7 @@ export const Chat = ({
    */
   const handleSelectedRuleIdsChange = useCallback(
     (ids: string[]) => {
-      capture("rules_changed", {
+      capture("rules changed", {
         rule_count: ids.length,
         chat_id: chatId,
       });
@@ -372,7 +372,7 @@ export const Chat = ({
       const assistantMessage = finishedMessages.find(
         (msg) => msg.role === "assistant"
       );
-      capture("message_completed", {
+      capture("message completed", {
         chat_id: chatId,
         model,
         search_enabled: searchEnabled,
@@ -406,7 +406,7 @@ export const Chat = ({
         "status" in error &&
         error.status === 402
       ) {
-        capture("rate_limit_exceeded", {
+        capture("rate limit exceeded", {
           chat_id: chatId,
           model,
         });
@@ -422,7 +422,7 @@ export const Chat = ({
         });
         return;
       }
-      capture("message_error", {
+      capture("message error", {
         chat_id: chatId,
         model,
         error_type: error?.constructor?.name ?? "unknown",
@@ -439,7 +439,7 @@ export const Chat = ({
       return;
     }
 
-    capture("stream_stopped", { chat_id: chatId });
+    capture("stream stopped", { chat_id: chatId });
     try {
       await rpcClient.chat.stop({ chatId });
     } catch (error) {
@@ -538,7 +538,7 @@ export const Chat = ({
     // Create with placeholder - real title comes via stream
     await createChatMutation.mutateAsync({ id: chatId, title: "New chat" });
     setIsNewChat(false);
-    capture("chat_created", { chat_id: chatId });
+    capture("chat created", { chat_id: chatId });
 
     // Notify parent BEFORE URL update
     onChatCreated?.(chatId);
@@ -560,7 +560,7 @@ export const Chat = ({
     await ensureChatExists();
 
     // Track message sent event
-    capture("message_sent", {
+    capture("message sent", {
       chat_id: chatId,
       model,
       search_enabled: searchEnabled,
@@ -602,7 +602,7 @@ export const Chat = ({
       // Store current messages for rollback on error (optimistic update recovery)
       previousMessagesRef.current = [...messages];
 
-      capture("message_regenerated", {
+      capture("message regenerated", {
         chat_id: chatId,
         message_id: messageId,
         role,
@@ -642,7 +642,7 @@ export const Chat = ({
       // Store current messages for rollback on error (optimistic update recovery)
       previousMessagesRef.current = [...messages];
 
-      capture("message_edited", {
+      capture("message edited", {
         chat_id: chatId,
         message_id: messageId,
         model,
