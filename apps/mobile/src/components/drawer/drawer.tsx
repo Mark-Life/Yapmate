@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { useChatContext } from "@/contexts/chat-context";
-import { DRAWER_WIDTH, useDrawer } from "@/contexts/drawer-context";
+import { useDrawer } from "@/contexts/drawer-context";
 import { useUser } from "@/contexts/user-context";
 import { AnalyticsEvents, useAnalytics } from "@/hooks/use-analytics";
 import { lightTap } from "@/lib/haptics";
@@ -37,17 +37,208 @@ type AnimatedContentProps = {
   children: React.ReactNode;
 };
 
+type DrawerContentProps = {
+  colorScheme: "light" | "dark" | undefined;
+  session: ReturnType<typeof useSession>["session"];
+  user: ReturnType<typeof useUser>["user"];
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  keyboardHeight: number;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  handleSettings: () => void;
+  handleLogout: () => Promise<void>;
+  handleNewChat: () => void;
+};
+
+/**
+ * Inner content of the drawer - extracted for reuse in permanent and animated modes
+ */
+const DrawerContent = ({
+  colorScheme,
+  session,
+  user,
+  insets,
+  keyboardHeight,
+  searchQuery,
+  setSearchQuery,
+  handleSettings,
+  handleLogout,
+  handleNewChat,
+}: DrawerContentProps) => (
+  <View className="flex-1 flex-col">
+    <View className="flex-1">
+      <ChatsList searchQuery={searchQuery} />
+      <LinearGradient
+        colors={
+          colorScheme === "dark"
+            ? ["#0a0a0a", "rgba(10, 10, 10, 0.8)", "rgba(10, 10, 10, 0)"]
+            : ["#f5f5f5", "rgba(245, 245, 245, 0.8)", "rgba(245, 245, 245, 0)"]
+        }
+        locations={[0, 0.5, 1]}
+        pointerEvents="none"
+        style={styles.fadeOverlayTop}
+      />
+      <LinearGradient
+        colors={
+          colorScheme === "dark"
+            ? ["rgba(10, 10, 10, 0)", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
+            : ["rgba(245, 245, 245, 0)", "rgba(245, 245, 245, 0.8)", "#f5f5f5"]
+        }
+        locations={[0, 0.5, 1]}
+        pointerEvents="none"
+        style={styles.fadeOverlayBottom}
+      />
+    </View>
+    {/* Settings and email overlay at top */}
+    {session?.user ? (
+      <View
+        className="absolute right-0 left-0 flex-row items-center gap-2 px-2"
+        style={{ top: insets.top }}
+      >
+        <GlassView
+          glassEffectStyle={"clear"}
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          <UIButton
+            className="size-10"
+            onPress={handleSettings}
+            variant="ghost"
+          >
+            <Icon as={Settings} className="text-foreground" size={20} />
+          </UIButton>
+        </GlassView>
+        <View className="flex-1">
+          <Host>
+            <ContextMenu activationMethod="longPress">
+              <ContextMenu.Items>
+                {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
+                <Button
+                  onPress={handleLogout}
+                  role="destructive"
+                  systemImage="rectangle.portrait.and.arrow.right"
+                >
+                  Log out
+                </Button>
+              </ContextMenu.Items>
+              <ContextMenu.Trigger>
+                <GlassView
+                  glassEffectStyle={"clear"}
+                  isInteractive={true}
+                  style={{
+                    borderRadius: 32,
+                    padding: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  <UIButton
+                    className="w-full justify-start gap-2 overflow-hidden rounded-full"
+                    variant="ghost"
+                  >
+                    <Text className="flex-1 text-sm" numberOfLines={1}>
+                      {user?.hideEmailInUi
+                        ? "redacted@email.com"
+                        : (session.user.email ?? "User")}
+                    </Text>
+                    {user?.hideEmailInUi ? (
+                      <BlurView
+                        className="absolute inset-0 rounded-full"
+                        intensity={30}
+                        style={{ borderRadius: 32 }}
+                        tint={colorScheme === "dark" ? "dark" : "light"}
+                      />
+                    ) : null}
+                  </UIButton>
+                </GlassView>
+              </ContextMenu.Trigger>
+            </ContextMenu>
+          </Host>
+        </View>
+      </View>
+    ) : null}
+    {/* New Chat button and Search input overlay at bottom */}
+    <View
+      className="absolute right-0 left-0 flex-row items-center gap-2 px-4"
+      style={{
+        bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
+      }}
+    >
+      <GlassView
+        glassEffectStyle={"clear"}
+        isInteractive={true}
+        style={{
+          borderRadius: 32,
+          padding: 1,
+          overflow: "hidden",
+        }}
+      >
+        <UIButton className="size-9" onPress={handleNewChat} variant="ghost">
+          <Icon as={Plus} className="text-primary" size={22} />
+        </UIButton>
+      </GlassView>
+      <View className="flex-1">
+        <GlassView
+          glassEffectStyle={"clear"}
+          isInteractive={true}
+          style={{
+            borderRadius: 32,
+            padding: 1,
+            overflow: "hidden",
+          }}
+        >
+          <View className="relative flex-row items-center">
+            <Icon
+              as={Search}
+              className="absolute left-3 size-4 text-muted-foreground"
+            />
+            <Input
+              className="h-9 flex-1 rounded-none border-0 bg-transparent pr-3 pl-10"
+              onChangeText={setSearchQuery}
+              placeholder="Search chats..."
+              value={searchQuery}
+            />
+          </View>
+        </GlassView>
+      </View>
+    </View>
+  </View>
+);
+
+// StyleSheet needs to be defined before DrawerContent uses it
+const styles = StyleSheet.create({
+  fadeOverlayTop: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 120,
+  },
+  fadeOverlayBottom: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 100,
+  },
+});
+
 /**
  * Shared pan gesture logic for opening/closing drawer
  */
 const useDrawerPanGesture = () => {
-  const { position, setPositionAndState } = useDrawer();
+  const { position, setPositionAndState, drawerWidth, isPermanent } =
+    useDrawer();
   const startPosition = useSharedValue(0);
 
   const createPanGesture = (alwaysActive = false) =>
     Gesture.Pan()
       .activeOffsetX([-10, 10])
       .failOffsetY([-20, 20])
+      .enabled(!isPermanent) // Disable gestures in permanent mode
       .onStart(() => {
         "worklet";
         startPosition.value = position.value;
@@ -58,7 +249,7 @@ const useDrawerPanGesture = () => {
           return;
         }
         const newPosition = startPosition.value + event.translationX;
-        position.value = Math.max(0, Math.min(DRAWER_WIDTH, newPosition));
+        position.value = Math.max(0, Math.min(drawerWidth, newPosition));
       })
       .onEnd((event) => {
         "worklet";
@@ -69,21 +260,22 @@ const useDrawerPanGesture = () => {
         if (Math.abs(velocity) > VELOCITY_THRESHOLD) {
           shouldOpen = velocity > 0;
         } else {
-          shouldOpen = currentPosition > DRAWER_WIDTH * POSITION_THRESHOLD;
+          shouldOpen = currentPosition > drawerWidth * POSITION_THRESHOLD;
         }
 
         setPositionAndState(shouldOpen);
       });
 
-  return { createPanGesture, position };
+  return { createPanGesture, position, drawerWidth };
 };
 
 /**
  * Wrapper component that shifts content to the right when drawer opens
  * Handles pan gestures to open/close drawer with swipe
+ * In permanent mode (iPad landscape), renders as static flexbox layout
  */
 export const AnimatedContent = ({ children }: AnimatedContentProps) => {
-  const { closeDrawer, position } = useDrawer();
+  const { closeDrawer, position, drawerWidth, isPermanent } = useDrawer();
   const { createPanGesture } = useDrawerPanGesture();
 
   const closeDrawerJS = useCallback(() => {
@@ -97,16 +289,25 @@ export const AnimatedContent = ({ children }: AnimatedContentProps) => {
   const contentGesture = createPanGesture(false);
 
   const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: position.value }],
+    transform: isPermanent ? [] : [{ translateX: position.value }],
   }));
 
   const overlayStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(position.value, [0, DRAWER_WIDTH], [0, 1]),
+    opacity: interpolate(position.value, [0, drawerWidth], [0, 1]),
   }));
 
   const overlayPointerEvents = useAnimatedStyle(() => ({
-    pointerEvents: position.value > DRAWER_WIDTH * 0.1 ? "auto" : "none",
+    pointerEvents: position.value > drawerWidth * 0.1 ? "auto" : "none",
   }));
+
+  // In permanent mode, just render children with max-width constraint
+  if (isPermanent) {
+    return (
+      <View className="flex-1 items-center">
+        <View className="max-w-4xl flex-1 self-stretch">{children}</View>
+      </View>
+    );
+  }
 
   return (
     <Animated.View className="flex-1" style={contentStyle}>
@@ -137,10 +338,11 @@ export const AnimatedContent = ({ children }: AnimatedContentProps) => {
  * Drawer component that slides in from the left
  * Contains the chats list and can be toggled open/closed
  * Position is driven by shared context value for gesture support
+ * In permanent mode (iPad landscape), renders as static sidebar
  */
 export const Drawer = () => {
   const { colorScheme } = useColorScheme();
-  const { position, closeDrawer } = useDrawer();
+  const { position, closeDrawer, drawerWidth, isPermanent } = useDrawer();
   const { session, signOut } = useSession();
   const { user } = useUser();
   const { navigateToNew } = useChatContext();
@@ -157,17 +359,21 @@ export const Drawer = () => {
     lightTap();
     capture(AnalyticsEvents.USER_SIGNED_OUT);
     await signOut();
-    closeDrawer();
-  }, [signOut, closeDrawer, capture]);
+    if (!isPermanent) {
+      closeDrawer();
+    }
+  }, [signOut, closeDrawer, capture, isPermanent]);
 
   /**
-   * Handle new chat creation and close drawer
+   * Handle new chat creation and close drawer (only on non-permanent)
    */
   const handleNewChat = useCallback(() => {
     capture(AnalyticsEvents.CHAT_CREATED);
     navigateToNew();
-    closeDrawer();
-  }, [navigateToNew, closeDrawer, capture]);
+    if (!isPermanent) {
+      closeDrawer();
+    }
+  }, [navigateToNew, closeDrawer, capture, isPermanent]);
 
   /**
    * Handle settings navigation
@@ -204,191 +410,55 @@ export const Drawer = () => {
     };
   }, []);
 
-  // Drawer translateX: maps position (0 to DRAWER_WIDTH) to (-DRAWER_WIDTH to 0)
+  // Animated drawer style - must be called unconditionally (hooks rule)
   const drawerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: position.value - DRAWER_WIDTH }],
+    transform: [{ translateX: position.value - drawerWidth }],
   }));
 
-  return (
-    <>
-      {/* Drawer content - full screen height, padding for safe area */}
-      <Animated.View
-        className={`absolute top-0 left-0 z-50 h-full w-[80%] border-border border-r bg-background ${
+  // In permanent mode, render as static sidebar
+  if (isPermanent) {
+    return (
+      <View
+        className={`h-full border-border border-r bg-background ${
           colorScheme === "dark" ? "dark" : ""
         }`}
-        style={drawerStyle}
+        style={{ width: drawerWidth }}
       >
-        <View className="flex-1 flex-col">
-          <View className="flex-1">
-            <ChatsList searchQuery={searchQuery} />
-            <LinearGradient
-              colors={
-                colorScheme === "dark"
-                  ? ["#0a0a0a", "rgba(10, 10, 10, 0.8)", "rgba(10, 10, 10, 0)"]
-                  : [
-                      "#f5f5f5",
-                      "rgba(245, 245, 245, 0.8)",
-                      "rgba(245, 245, 245, 0)",
-                    ]
-              }
-              locations={[0, 0.5, 1]}
-              pointerEvents="none"
-              style={styles.fadeOverlayTop}
-            />
-            <LinearGradient
-              colors={
-                colorScheme === "dark"
-                  ? ["rgba(10, 10, 10, 0)", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]
-                  : [
-                      "rgba(245, 245, 245, 0)",
-                      "rgba(245, 245, 245, 0.8)",
-                      "#f5f5f5",
-                    ]
-              }
-              locations={[0, 0.5, 1]}
-              pointerEvents="none"
-              style={styles.fadeOverlayBottom}
-            />
-          </View>
-          {/* Settings and email overlay at top */}
-          {session?.user ? (
-            <View
-              className="absolute right-0 left-0 flex-row items-center gap-2 px-2"
-              style={{ top: insets.top }}
-            >
-              <GlassView
-                glassEffectStyle={"clear"}
-                isInteractive={true}
-                style={{
-                  borderRadius: 32,
-                  padding: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <UIButton
-                  className="size-10"
-                  onPress={handleSettings}
-                  variant="ghost"
-                >
-                  <Icon as={Settings} className="text-foreground" size={20} />
-                </UIButton>
-              </GlassView>
-              <View className="flex-1">
-                <Host>
-                  <ContextMenu activationMethod="longPress">
-                    <ContextMenu.Items>
-                      {/* biome-ignore lint/a11y/useValidAriaRole: swift-ui */}
-                      <Button
-                        onPress={handleLogout}
-                        role="destructive"
-                        systemImage="rectangle.portrait.and.arrow.right"
-                      >
-                        Log out
-                      </Button>
-                    </ContextMenu.Items>
-                    <ContextMenu.Trigger>
-                      <GlassView
-                        glassEffectStyle={"clear"}
-                        isInteractive={true}
-                        style={{
-                          borderRadius: 32,
-                          padding: 0,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <UIButton
-                          className="w-full justify-start gap-2 overflow-hidden rounded-full"
-                          variant="ghost"
-                        >
-                          <Text className="flex-1 text-sm" numberOfLines={1}>
-                            {user?.hideEmailInUi
-                              ? "redacted@email.com"
-                              : (session.user.email ?? "User")}
-                          </Text>
-                          {user?.hideEmailInUi ? (
-                            <BlurView
-                              className="absolute inset-0 rounded-full"
-                              intensity={30}
-                              style={{ borderRadius: 32 }}
-                              tint={colorScheme === "dark" ? "dark" : "light"}
-                            />
-                          ) : null}
-                        </UIButton>
-                      </GlassView>
-                    </ContextMenu.Trigger>
-                  </ContextMenu>
-                </Host>
-              </View>
-            </View>
-          ) : null}
-          {/* New Chat button and Search input overlay at bottom */}
-          <View
-            className="absolute right-0 left-0 flex-row items-center gap-2 px-4"
-            style={{
-              bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
-            }}
-          >
-            <GlassView
-              glassEffectStyle={"clear"}
-              isInteractive={true}
-              style={{
-                borderRadius: 32,
-                padding: 1,
-                overflow: "hidden",
-              }}
-            >
-              <UIButton
-                className="size-9"
-                onPress={handleNewChat}
-                variant="ghost"
-              >
-                <Icon as={Plus} className="text-primary" size={22} />
-              </UIButton>
-            </GlassView>
-            <View className="flex-1">
-              <GlassView
-                glassEffectStyle={"clear"}
-                isInteractive={true}
-                style={{
-                  borderRadius: 32,
-                  padding: 1,
-                  overflow: "hidden",
-                }}
-              >
-                <View className="relative flex-row items-center">
-                  <Icon
-                    as={Search}
-                    className="absolute left-3 size-4 text-muted-foreground"
-                  />
-                  <Input
-                    className="h-9 flex-1 rounded-none border-0 bg-transparent pr-3 pl-10"
-                    onChangeText={setSearchQuery}
-                    placeholder="Search chats..."
-                    value={searchQuery}
-                  />
-                </View>
-              </GlassView>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-    </>
+        <DrawerContent
+          colorScheme={colorScheme}
+          handleLogout={handleLogout}
+          handleNewChat={handleNewChat}
+          handleSettings={handleSettings}
+          insets={insets}
+          keyboardHeight={keyboardHeight}
+          searchQuery={searchQuery}
+          session={session}
+          setSearchQuery={setSearchQuery}
+          user={user}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View
+      className={`absolute top-0 left-0 z-50 h-full border-border border-r bg-background ${
+        colorScheme === "dark" ? "dark" : ""
+      }`}
+      style={[drawerStyle, { width: drawerWidth }]}
+    >
+      <DrawerContent
+        colorScheme={colorScheme}
+        handleLogout={handleLogout}
+        handleNewChat={handleNewChat}
+        handleSettings={handleSettings}
+        insets={insets}
+        keyboardHeight={keyboardHeight}
+        searchQuery={searchQuery}
+        session={session}
+        setSearchQuery={setSearchQuery}
+        user={user}
+      />
+    </Animated.View>
   );
 };
-
-const styles = StyleSheet.create({
-  fadeOverlayTop: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 120,
-  },
-  fadeOverlayBottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 100,
-  },
-});
