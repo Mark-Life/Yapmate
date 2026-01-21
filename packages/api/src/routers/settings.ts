@@ -41,6 +41,7 @@ export const settings = {
       try {
         await updateUserSettings(context.userId, {
           hideEmailInUi: input.hideEmailInUi,
+          useSerifFont: input.useSerifFont,
         });
         return { success: true };
       } catch (error) {

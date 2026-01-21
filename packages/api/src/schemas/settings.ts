@@ -5,6 +5,7 @@ import { z } from "zod";
  */
 export const getSettingsResponseSchema = z.object({
   hideEmailInUi: z.boolean(),
+  useSerifFont: z.boolean(),
 });
 
 export type GetSettingsResponse = z.infer<typeof getSettingsResponseSchema>;
@@ -13,7 +14,8 @@ export type GetSettingsResponse = z.infer<typeof getSettingsResponseSchema>;
  * Update settings input schema
  */
 export const updateSettingsInputSchema = z.object({
-  hideEmailInUi: z.boolean(),
+  hideEmailInUi: z.boolean().optional(),
+  useSerifFont: z.boolean().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsInputSchema>;

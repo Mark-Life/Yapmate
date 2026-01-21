@@ -11,12 +11,14 @@ type User = {
   id: string;
   email: string | undefined;
   hideEmailInUi: boolean;
+  useSerifFont: boolean;
 };
 
 type UserContextValue = {
   user: User | null;
   isLoading: boolean;
   updateHideEmailInUi: (hideEmailInUi: boolean) => Promise<void>;
+  updateUseSerifFont: (useSerifFont: boolean) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
@@ -62,7 +64,23 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       }
     },
     onSuccess: () => {
-      // Invalidate and refetch settings
+      queryClient.invalidateQueries({
+        queryKey: ["userSettings", authUser?.id],
+      });
+    },
+  });
+
+  /**
+   * Update useSerifFont setting
+   */
+  const updateUseSerifFontMutation = useMutation({
+    mutationFn: async (useSerifFont: boolean) => {
+      const result = await rpcClient.settings.update({ useSerifFont });
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to update settings");
+      }
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["userSettings", authUser?.id],
       });
@@ -81,12 +99,14 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         id: authUser.id,
         email: authUser.email,
         hideEmailInUi: settings.hideEmailInUi,
+        useSerifFont: settings.useSerifFont,
       };
     }
     return {
       id: authUser.id,
       email: authUser.email,
-      hideEmailInUi: false, // Default until settings load
+      hideEmailInUi: false,
+      useSerifFont: true, // Default until settings load
     };
   };
 
@@ -97,6 +117,13 @@ export const UserProvider = ({ children }: UserProviderProps) => {
    */
   const updateHideEmailInUi = async (hideEmailInUi: boolean): Promise<void> => {
     await updateHideEmailInUiMutation.mutateAsync(hideEmailInUi);
+  };
+
+  /**
+   * Update useSerifFont setting
+   */
+  const updateUseSerifFont = async (useSerifFont: boolean): Promise<void> => {
+    await updateUseSerifFontMutation.mutateAsync(useSerifFont);
   };
 
   useEffect(() => {
@@ -154,6 +181,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         user,
         isLoading: isLoading || (authUser !== null && isLoadingSettings),
         updateHideEmailInUi,
+        updateUseSerifFont,
       }}
     >
       {children}

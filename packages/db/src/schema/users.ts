@@ -24,6 +24,9 @@ export const users = pgTable("users", {
   /** Whether to blur/hide email in UI (privacy mode) */
   hideEmailInUi: boolean().default(false).notNull(),
 
+  /** Whether to use serif font for AI assistant messages */
+  useSerifFont: boolean().default(true).notNull(),
+
   ...timestamps,
 });
 
