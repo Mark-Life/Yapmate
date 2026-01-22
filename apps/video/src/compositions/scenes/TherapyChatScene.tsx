@@ -104,27 +104,27 @@ export const TherapyChatScene = () => {
         >
           {/* Partner 1 message */}
           <TherapyChatBubble
+            delay={20}
             message="You never listen to me! 😤"
             sender="partner1"
             senderName="Alex"
-            delay={20}
           />
 
           {/* Partner 2 message */}
           <TherapyChatBubble
+            delay={55}
             message="I'm literally HERE! In the same chat! 🙄"
             sender="partner2"
             senderName="Sam"
-            delay={55}
           />
 
           {/* AI response */}
           <TherapyChatBubble
+            delay={100}
             message="I sense some tension here. Let's try a breathing exercise... Just kidding. You're both valid. 🧘‍♀️"
+            modelLogo={staticFile("assets/claude-logo.svg")}
             sender="ai"
             senderName="Claude"
-            modelLogo={staticFile("assets/claude-logo.svg")}
-            delay={100}
             typewriter
           />
         </div>

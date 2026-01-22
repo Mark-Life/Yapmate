@@ -506,6 +506,7 @@ type MessageRequestRefs = {
   memoryEnabledRef: React.MutableRefObject<boolean>;
   reasoningEffortRef: React.MutableRefObject<string>;
   supportsReasoningRef: React.MutableRefObject<boolean>;
+  supportsToolsRef: React.MutableRefObject<boolean>;
   selectedMcpToolsRef: React.MutableRefObject<unknown[]>;
   selectedRuleIdsRef: React.MutableRefObject<string[]>;
   regenerateMessageIdRef: React.MutableRefObject<string | undefined>;
@@ -529,6 +530,7 @@ export const createMessageRequestBody = (
     memoryEnabledRef,
     reasoningEffortRef,
     supportsReasoningRef,
+    supportsToolsRef,
     selectedMcpToolsRef,
     selectedRuleIdsRef,
     regenerateMessageIdRef,
@@ -554,7 +556,8 @@ export const createMessageRequestBody = (
     id: transportChatId,
     model: modelRef.current,
     searchEnabled: searchEnabledRef.current,
-    memoryEnabled: memoryEnabledRef.current,
+    // Only include memory when model supports tools
+    memoryEnabled: supportsToolsRef.current ? memoryEnabledRef.current : false,
   };
 
   // Add optional fields
@@ -562,7 +565,8 @@ export const createMessageRequestBody = (
     body.reasoningEffort = reasoningEffortRef.current;
   }
 
-  if (selectedMcpToolsRef.current.length > 0) {
+  // Only include MCP tools when model supports tools
+  if (supportsToolsRef.current && selectedMcpToolsRef.current.length > 0) {
     body.selectedMcpTools = selectedMcpToolsRef.current;
   }
 

@@ -56,6 +56,78 @@ const REASONING_LABELS: Record<ReasoningEffort, string> = {
   high: "Deep",
 };
 
+/** Memory label for mobile dropdown - avoids nested ternary */
+const MobileMemoryLabel = ({
+  supportsTools,
+  memoryEnabled,
+}: {
+  supportsTools: boolean;
+  memoryEnabled: boolean;
+}) => {
+  if (!supportsTools) {
+    return "Memory (not supported)";
+  }
+  if (memoryEnabled) {
+    return "Disable memory";
+  }
+  return "Enable memory";
+};
+
+/** Memory toggle button - extracted to reduce complexity */
+const MemoryButton = ({
+  supportsTools,
+  memoryEnabled,
+  onMemoryEnabledChange,
+}: {
+  supportsTools: boolean;
+  memoryEnabled: boolean;
+  onMemoryEnabledChange: (enabled: boolean) => void;
+}) => {
+  const getVariant = () => {
+    if (!supportsTools) {
+      return "outline";
+    }
+    if (memoryEnabled) {
+      return "primaryOutline";
+    }
+    return "ghost";
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <PromptInputButton
+          aria-label="Toggle memory"
+          className={
+            supportsTools
+              ? undefined
+              : "border-destructive/50 text-muted-foreground/50"
+          }
+          disabled={!supportsTools}
+          onClick={() => onMemoryEnabledChange(!memoryEnabled)}
+          variant={getVariant()}
+        >
+          <DatabaseIcon className="size-4" />
+        </PromptInputButton>
+      </TooltipTrigger>
+      <TooltipContent hideArrow side="top" sideOffset={8}>
+        {supportsTools ? (
+          <>
+            Memory{" "}
+            <KbdGroup>
+              {splitHotkey(HOTKEYS.toggleMemory).map((key, idx) => (
+                <Kbd key={idx}>{key}</Kbd>
+              ))}
+            </KbdGroup>
+          </>
+        ) : (
+          "This model doesn't support memory"
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 type ChatInputProps = {
   input: string;
   onInputChange: (value: string) => void;
@@ -72,6 +144,7 @@ type ChatInputProps = {
   selectedRuleIds: string[];
   onSelectedRuleIdsChange: (ids: string[]) => void;
   supportsReasoning: boolean;
+  supportsTools: boolean;
   status: ChatStatus;
   onSubmit: (message: PromptInputMessage) => void;
   onStop?: () => void;
@@ -100,6 +173,7 @@ export const ChatInput = ({
   selectedRuleIds,
   onSelectedRuleIdsChange,
   supportsReasoning,
+  supportsTools,
   status,
   onSubmit,
   onStop,
@@ -216,7 +290,9 @@ export const ChatInput = ({
     HOTKEYS.openToolSelector,
     (e) => {
       e.preventDefault();
-      setToolSelectorOpen(true);
+      if (supportsTools) {
+        setToolSelectorOpen(true);
+      }
     },
     { enableOnFormTags: true }
   );
@@ -234,7 +310,9 @@ export const ChatInput = ({
     HOTKEYS.toggleMemory,
     (e) => {
       e.preventDefault();
-      onMemoryEnabledChange(!memoryEnabled);
+      if (supportsTools) {
+        onMemoryEnabledChange(!memoryEnabled);
+      }
     },
     { enableOnFormTags: true }
   );
@@ -296,6 +374,7 @@ export const ChatInput = ({
             open={modelSelectorOpen}
           />
           <ToolSelector
+            disabled={!supportsTools}
             onOpenChange={setToolSelectorOpen}
             onSelectionsChange={onSelectedMcpToolsChange}
             open={toolSelectorOpen}
@@ -341,25 +420,11 @@ export const ChatInput = ({
                 </KbdGroup>
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PromptInputButton
-                  aria-label="Toggle memory"
-                  onClick={() => onMemoryEnabledChange(!memoryEnabled)}
-                  variant={memoryEnabled ? "primaryOutline" : "ghost"}
-                >
-                  <DatabaseIcon className="size-4" />
-                </PromptInputButton>
-              </TooltipTrigger>
-              <TooltipContent hideArrow side="top" sideOffset={8}>
-                Memory{" "}
-                <KbdGroup>
-                  {splitHotkey(HOTKEYS.toggleMemory).map((key, idx) => (
-                    <Kbd key={idx}>{key}</Kbd>
-                  ))}
-                </KbdGroup>
-              </TooltipContent>
-            </Tooltip>
+            <MemoryButton
+              memoryEnabled={memoryEnabled}
+              onMemoryEnabledChange={onMemoryEnabledChange}
+              supportsTools={supportsTools}
+            />
             {supportsReasoning ? (
               <DropdownMenu>
                 <Tooltip>
@@ -449,10 +514,14 @@ export const ChatInput = ({
                   {searchEnabled ? "Disable search" : "Enable search"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  disabled={!supportsTools}
                   onClick={() => onMemoryEnabledChange(!memoryEnabled)}
                 >
                   <DatabaseIcon className="mr-2 size-4" />
-                  {memoryEnabled ? "Disable memory" : "Enable memory"}
+                  <MobileMemoryLabel
+                    memoryEnabled={memoryEnabled}
+                    supportsTools={supportsTools}
+                  />
                 </DropdownMenuItem>
                 {supportsReasoning ? (
                   <DropdownMenuItem

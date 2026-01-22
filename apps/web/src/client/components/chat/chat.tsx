@@ -222,6 +222,10 @@ export const Chat = ({
   const supportsReasoning =
     models.find((m) => m.value === model)?.supportsReasoning ?? false;
 
+  /** Check if current model supports tools (MCP, memory) */
+  const supportsTools =
+    models.find((m) => m.value === model)?.supportsTools ?? true;
+
   const [isNewChat, setIsNewChat] = useState(!initialId);
 
   // Mutation to create chat
@@ -240,6 +244,7 @@ export const Chat = ({
   const memoryEnabledRef = useRef(memoryEnabled);
   const reasoningEffortRef = useRef(reasoningEffort);
   const supportsReasoningRef = useRef(supportsReasoning);
+  const supportsToolsRef = useRef(supportsTools);
   const selectedMcpToolsRef = useRef(selectedMcpTools);
   const selectedRuleIdsRef = useRef(selectedRuleIds);
   const regenerateMessageIdRef = useRef<string | undefined>(undefined);
@@ -257,6 +262,7 @@ export const Chat = ({
   memoryEnabledRef.current = memoryEnabled;
   reasoningEffortRef.current = reasoningEffort;
   supportsReasoningRef.current = supportsReasoning;
+  supportsToolsRef.current = supportsTools;
   selectedMcpToolsRef.current = selectedMcpTools;
   selectedRuleIdsRef.current = selectedRuleIds;
 
@@ -291,6 +297,7 @@ export const Chat = ({
               memoryEnabledRef,
               reasoningEffortRef,
               supportsReasoningRef,
+              supportsToolsRef,
               selectedMcpToolsRef,
               selectedRuleIdsRef,
               regenerateMessageIdRef,
@@ -730,6 +737,7 @@ export const Chat = ({
                 selectedRuleIds={selectedRuleIds}
                 status={status}
                 supportsReasoning={supportsReasoning}
+                supportsTools={supportsTools}
               />
             </div>
           </div>

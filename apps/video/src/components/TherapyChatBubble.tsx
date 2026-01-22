@@ -1,9 +1,4 @@
-import {
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { colors } from "./colors";
 import { interFont } from "./fonts";
 
@@ -51,11 +46,7 @@ export const TherapyChatBubble = ({
     config: { damping: 15, stiffness: 120 },
   });
 
-  const translateX = interpolate(
-    entrance,
-    [0, 1],
-    [alignLeft ? -100 : 100, 0]
-  );
+  const translateX = interpolate(entrance, [0, 1], [alignLeft ? -100 : 100, 0]);
   const opacity = interpolate(entrance, [0, 1], [0, 1]);
 
   // Typewriter effect for AI messages

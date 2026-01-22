@@ -88,8 +88,7 @@ export const ChatCTAScene = () => {
               textAlign: "center",
             }}
           >
-            Start{" "}
-            <span style={{ color: colors.primary }}>Chatting</span>
+            Start <span style={{ color: colors.primary }}>Chatting</span>
           </span>
           <span
             style={{
@@ -134,17 +133,17 @@ export const ChatCTAScene = () => {
               yapmate.com
             </span>
             <svg
-              width={isSmall ? 24 : 28}
+              fill="none"
               height={isSmall ? 24 : 28}
               viewBox="0 0 24 24"
-              fill="none"
+              width={isSmall ? 24 : 28}
             >
               <path
                 d="M5 12h14m-6-6l6 6-6 6"
                 stroke={colors.bgDark}
-                strokeWidth={2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                strokeWidth={2.5}
               />
             </svg>
           </div>

@@ -1,9 +1,4 @@
-import {
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { colors } from "./colors";
 import { interFont } from "./fonts";
 
@@ -117,20 +112,20 @@ export const ModelSelector = ({
           {selectedModel.name}
         </span>
         <svg
-          width={isSmall ? 16 : 20}
-          height={isSmall ? 16 : 20}
-          viewBox="0 0 24 24"
           fill="none"
+          height={isSmall ? 16 : 20}
           style={{
             transform: `rotate(${interpolate(expandProgress, [0, 1], [0, 180])}deg)`,
           }}
+          viewBox="0 0 24 24"
+          width={isSmall ? 16 : 20}
         >
           <path
             d="M6 9l6 6 6-6"
             stroke={colors.textSecondary}
-            strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeWidth={2}
           />
         </svg>
       </div>
@@ -162,8 +157,12 @@ export const ModelSelector = ({
                   gap: 12,
                   padding: isSmall ? "10px 16px" : "12px 20px",
                   borderRadius: 12,
-                  backgroundColor: isSelected ? `${colors.primary}20` : "transparent",
-                  border: isSelected ? `1px solid ${colors.primary}40` : "1px solid transparent",
+                  backgroundColor: isSelected
+                    ? `${colors.primary}20`
+                    : "transparent",
+                  border: isSelected
+                    ? `1px solid ${colors.primary}40`
+                    : "1px solid transparent",
                 }}
               >
                 <img

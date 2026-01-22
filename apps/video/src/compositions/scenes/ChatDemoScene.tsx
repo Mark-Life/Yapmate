@@ -8,9 +8,9 @@ import {
 } from "remotion";
 import { Background } from "../../components/Background";
 import { ChatBubble } from "../../components/ChatBubble";
-import { TypingIndicator } from "../../components/TypingIndicator";
 import { colors } from "../../components/colors";
 import { interFont } from "../../components/fonts";
+import { TypingIndicator } from "../../components/TypingIndicator";
 
 const CLAUDE_LOGO = staticFile("assets/anthropic.svg");
 
@@ -132,27 +132,27 @@ export const ChatDemoScene = () => {
           >
             {/* User message */}
             <ChatBubble
-              message="Help me write a creative tagline for my AI startup"
-              isUser={true}
               delay={userMessageDelay}
+              isUser={true}
+              message="Help me write a creative tagline for my AI startup"
             />
 
             {/* Typing indicator */}
             <TypingIndicator
               delay={typingDelay}
               duration={typingDuration}
-              modelName="Claude 4"
               modelLogo={CLAUDE_LOGO}
+              modelName="Claude 4"
             />
 
             {/* AI response */}
             <ChatBubble
-              message="Here are some creative taglines: 'Intelligence, Amplified.' or 'Where Ideas Meet AI.' — which direction resonates with your brand?"
-              isUser={false}
               delay={aiResponseDelay}
-              typewriter={true}
-              modelName="Claude 4"
+              isUser={false}
+              message="Here are some creative taglines: 'Intelligence, Amplified.' or 'Where Ideas Meet AI.' — which direction resonates with your brand?"
               modelLogo={CLAUDE_LOGO}
+              modelName="Claude 4"
+              typewriter={true}
             />
           </div>
         </div>

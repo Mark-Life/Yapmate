@@ -7,7 +7,7 @@ import {
 } from "remotion";
 import { Background } from "../../components/Background";
 import { colors } from "../../components/colors";
-import { poppinsFont, interFont } from "../../components/fonts";
+import { interFont, poppinsFont } from "../../components/fonts";
 
 export const TherapyIntroScene = () => {
   const frame = useCurrentFrame();

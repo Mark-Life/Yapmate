@@ -8,16 +8,24 @@ import {
 } from "remotion";
 import { Background } from "../../components/Background";
 import { ChatBubble } from "../../components/ChatBubble";
+import { colors } from "../../components/colors";
+import { poppinsFont } from "../../components/fonts";
 import { ModelSelector } from "../../components/ModelSelector";
 import { TypingIndicator } from "../../components/TypingIndicator";
-import { colors } from "../../components/colors";
-import { interFont, poppinsFont } from "../../components/fonts";
 
 const MODELS = [
-  { id: "anthropic", name: "Claude 4", logo: staticFile("assets/anthropic.svg") },
+  {
+    id: "anthropic",
+    name: "Claude 4",
+    logo: staticFile("assets/anthropic.svg"),
+  },
   { id: "openai", name: "GPT-4o", logo: staticFile("assets/openai.svg") },
   { id: "google", name: "Gemini 2.5", logo: staticFile("assets/google.svg") },
-  { id: "deepseek", name: "DeepSeek R1", logo: staticFile("assets/deepseek.svg") },
+  {
+    id: "deepseek",
+    name: "DeepSeek R1",
+    logo: staticFile("assets/deepseek.svg"),
+  },
 ];
 
 export const ModelSwitchScene = () => {
@@ -83,13 +91,13 @@ export const ModelSwitchScene = () => {
 
         {/* Model selector */}
         <ModelSelector
-          models={MODELS}
-          selectedIndex={0}
           delay={20}
-          expanded={frame >= expandStart}
           expandDelay={expandStart - 20}
-          selectDelay={selectStart - 20}
+          expanded={frame >= expandStart}
+          models={MODELS}
           newSelectedIndex={1}
+          selectDelay={selectStart - 20}
+          selectedIndex={0}
         />
 
         {/* Response preview */}
@@ -105,17 +113,17 @@ export const ModelSwitchScene = () => {
           <TypingIndicator
             delay={typingStart}
             duration={typingDuration}
-            modelName="GPT-4o"
             modelLogo={staticFile("assets/openai.svg")}
+            modelName="GPT-4o"
           />
 
           <ChatBubble
-            message="'Think Beyond Limits' — bold and aspirational. Or try 'AI That Gets You' for a more personal touch."
-            isUser={false}
             delay={responseDelay}
-            typewriter={true}
-            modelName="GPT-4o"
+            isUser={false}
+            message="'Think Beyond Limits' — bold and aspirational. Or try 'AI That Gets You' for a more personal touch."
             modelLogo={staticFile("assets/openai.svg")}
+            modelName="GPT-4o"
+            typewriter={true}
           />
         </div>
       </AbsoluteFill>

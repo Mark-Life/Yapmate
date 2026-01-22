@@ -46,6 +46,8 @@ type ToolSelectorProps = {
   onSelectionsChange: (selections: McpToolSelection[]) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When disabled, shows grayed out state with tooltip explaining model doesn't support tools */
+  disabled?: boolean;
 };
 
 /** Tool data from server */
@@ -74,6 +76,7 @@ export const ToolSelector = ({
   onSelectionsChange,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  disabled = false,
 }: ToolSelectorProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -288,6 +291,16 @@ export const ToolSelector = ({
   const hasServers = serversWithTools.length > 0;
   const hasTools = serversWithTools.some((s) => s.tools.length > 0);
 
+  const getButtonVariant = () => {
+    if (disabled) {
+      return "outline";
+    }
+    if (selectedCount > 0) {
+      return "primaryOutline";
+    }
+    return "ghost";
+  };
+
   return (
     <>
       <Tooltip>
@@ -295,12 +308,17 @@ export const ToolSelector = ({
           <PromptInputButton
             aria-expanded={open}
             aria-label="MCP Tools"
-            className="gap-1.5"
+            className={
+              disabled
+                ? "gap-1.5 border-destructive/50 text-muted-foreground/50"
+                : "gap-1.5"
+            }
+            disabled={disabled}
             onClick={() => setOpen(true)}
-            variant={selectedCount > 0 ? "primaryOutline" : "ghost"}
+            variant={getButtonVariant()}
           >
             <WrenchIcon className="size-4" />
-            {selectedCount > 0 ? (
+            {selectedCount > 0 && !disabled ? (
               <Badge className="h-4 min-w-4 px-1 text-[10px] text-primary-foreground">
                 {selectedCount}
               </Badge>
@@ -308,12 +326,18 @@ export const ToolSelector = ({
           </PromptInputButton>
         </TooltipTrigger>
         <TooltipContent hideArrow side="top" sideOffset={8}>
-          MCP Tools{" "}
-          <KbdGroup>
-            {splitHotkey(HOTKEYS.openToolSelector).map((key, idx) => (
-              <Kbd key={idx}>{key}</Kbd>
-            ))}
-          </KbdGroup>
+          {disabled ? (
+            "This model doesn't support MCP tools"
+          ) : (
+            <>
+              MCP Tools{" "}
+              <KbdGroup>
+                {splitHotkey(HOTKEYS.openToolSelector).map((key, idx) => (
+                  <Kbd key={idx}>{key}</Kbd>
+                ))}
+              </KbdGroup>
+            </>
+          )}
         </TooltipContent>
       </Tooltip>
 

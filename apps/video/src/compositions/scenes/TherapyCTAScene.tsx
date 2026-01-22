@@ -130,18 +130,13 @@ export const TherapyCTAScene = () => {
             >
               yapmate.com
             </span>
-            <svg
-              width={44}
-              height={44}
-              viewBox="0 0 24 24"
-              fill="none"
-            >
+            <svg fill="none" height={44} viewBox="0 0 24 24" width={44}>
               <path
                 d="M5 12h14m-6-6l6 6-6 6"
                 stroke={colors.bgDark}
-                strokeWidth={2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                strokeWidth={2.5}
               />
             </svg>
           </div>

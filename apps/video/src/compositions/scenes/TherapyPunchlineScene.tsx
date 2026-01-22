@@ -7,7 +7,7 @@ import {
 } from "remotion";
 import { Background } from "../../components/Background";
 import { colors } from "../../components/colors";
-import { poppinsFont, interFont } from "../../components/fonts";
+import { interFont, poppinsFont } from "../../components/fonts";
 
 export const TherapyPunchlineScene = () => {
   const frame = useCurrentFrame();
@@ -37,12 +37,10 @@ export const TherapyPunchlineScene = () => {
 
   // Strikethrough animation for "Couples Therapy: $200/hr"
   const strikeDelay = 10;
-  const strikeProgress = interpolate(
-    frame - strikeDelay,
-    [0, 15],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
+  const strikeProgress = interpolate(frame - strikeDelay, [0, 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   // Subtitle
   const subtitleDelay = 50;
