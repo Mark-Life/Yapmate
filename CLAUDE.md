@@ -94,3 +94,18 @@ Uses Biome via Ultracite preset. Config in `biome.json`.
 - **Auth**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`)
 - **UI**: React 19, Tailwind CSS 4, Radix UI
 - **Validation**: Zod 4
+- **Functional**: Effect (`effect`, `@effect/platform`)
+
+<!-- effect-solutions:start -->
+## Effect Best Practices
+
+**IMPORTANT:** Always consult effect-solutions before writing Effect code.
+
+1. Run `effect-solutions list` to see available guides
+2. Run `effect-solutions show <topic>...` for relevant patterns (supports multiple topics)
+3. Search `.reference/effect/` for real implementations (run `effect-solutions setup` first)
+
+Topics: quick-start, project-setup, tsconfig, basics, services-and-layers, data-modeling, error-handling, config, testing, cli.
+
+Never guess at Effect patterns - check the guide first.
+<!-- effect-solutions:end -->
