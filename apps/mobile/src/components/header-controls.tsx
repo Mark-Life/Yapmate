@@ -10,7 +10,9 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { useChatContext } from "@/contexts/chat-context";
 import { useDrawer } from "@/contexts/drawer-context";
+import { useModels } from "@/hooks/use-models";
 import {
+  getLastUsedModel,
   getMemoryEnabled,
   getReasoningEffort,
   getSelectedMcpTools,
@@ -28,6 +30,7 @@ export const HeaderControls = () => {
   const { navigateToNew } = useChatContext();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { models } = useModels();
 
   /**
    * Opens chat controls sheet with current preferences
@@ -35,6 +38,9 @@ export const HeaderControls = () => {
   const openControls = () => {
     Keyboard.dismiss();
     lightTap();
+    const currentModel = getLastUsedModel();
+    const supportsTools =
+      models.find((m) => m.value === currentModel)?.supportsTools ?? true;
     router.push({
       pathname: "/chat-controls",
       params: {
@@ -42,6 +48,7 @@ export const HeaderControls = () => {
         memoryEnabled: String(getMemoryEnabled()),
         reasoningEffort: getReasoningEffort(),
         selectedMcpTools: JSON.stringify(getSelectedMcpTools()),
+        supportsTools: String(supportsTools),
       },
     });
   };

@@ -64,12 +64,16 @@ export default function ChatControlsScreen() {
     memoryEnabled: memoryEnabledParam,
     reasoningEffort: reasoningEffortParam,
     selectedMcpTools: selectedMcpToolsParam,
+    supportsTools: supportsToolsParam,
   } = useLocalSearchParams<{
     selectedRuleIds?: string;
     memoryEnabled?: string;
     reasoningEffort?: string;
     selectedMcpTools?: string;
+    supportsTools?: string;
   }>();
+
+  const supportsTools = supportsToolsParam !== "false";
   const { rules, isLoading } = useRules();
   const [search, setSearch] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -316,27 +320,49 @@ export default function ChatControlsScreen() {
         {/* Memory Section */}
         <View className="flex flex-col p-6">
           <View className="flex flex-row items-center gap-2 pb-2">
-            <Icon as={Database} className="text-muted-foreground" size={16} />
-            <Text className="font-semibold text-base text-foreground">
+            <Icon
+              as={Database}
+              className={
+                supportsTools
+                  ? "text-muted-foreground"
+                  : "text-muted-foreground/50"
+              }
+              size={16}
+            />
+            <Text
+              className={`font-semibold text-base ${supportsTools ? "text-foreground" : "text-muted-foreground/50"}`}
+            >
               Memory
             </Text>
           </View>
           <View className="flex flex-row items-center justify-between rounded-lg py-3">
             <View className="flex-1">
-              <Text className="font-medium text-foreground text-sm">
+              <Text
+                className={`font-medium text-sm ${supportsTools ? "text-foreground" : "text-muted-foreground/50"}`}
+              >
                 Enable Memory
               </Text>
               <Text className="text-muted-foreground text-xs">
-                AI remembers context across conversations
+                {supportsTools
+                  ? "AI remembers context across conversations"
+                  : "This model doesn't support memory"}
               </Text>
             </View>
-            <Host matchContents>
-              <Switch
-                onValueChange={toggleMemory}
-                value={memoryEnabled}
-                variant="switch"
-              />
-            </Host>
+            {supportsTools ? (
+              <Host matchContents>
+                <Switch
+                  onValueChange={toggleMemory}
+                  value={memoryEnabled}
+                  variant="switch"
+                />
+              </Host>
+            ) : (
+              <View pointerEvents="none" style={{ opacity: 0.5 }}>
+                <Host matchContents>
+                  <Switch value={false} variant="switch" />
+                </Host>
+              </View>
+            )}
           </View>
         </View>
 
@@ -434,25 +460,45 @@ export default function ChatControlsScreen() {
         {/* MCP Tools Section */}
         <View className="p-6 py-8">
           <Pressable
-            className="flex flex-row items-center justify-between rounded-full px-3 py-3 active:bg-accent"
+            className={`flex flex-row items-center justify-between rounded-full px-3 py-3 ${supportsTools ? "active:bg-accent" : ""}`}
+            disabled={!supportsTools}
             onPress={openMcpTools}
           >
-            <View className="flex flex-row items-center gap-2">
-              <Icon as={Wrench} className="text-muted-foreground" size={16} />
-              <Text className="font-semibold text-base text-foreground">
-                MCP Tools
-              </Text>
-              {mcpToolsCount > 0 && (
+            <View className="flex flex-col gap-1">
+              <View className="flex flex-row items-center gap-2">
+                <Icon
+                  as={Wrench}
+                  className={
+                    supportsTools
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/50"
+                  }
+                  size={16}
+                />
+                <Text
+                  className={`font-semibold text-base ${supportsTools ? "text-foreground" : "text-muted-foreground/50"}`}
+                >
+                  MCP Tools
+                </Text>
+                {supportsTools && mcpToolsCount > 0 ? (
+                  <Text className="text-muted-foreground text-xs">
+                    {mcpToolsCount} selected
+                  </Text>
+                ) : null}
+              </View>
+              {!supportsTools && (
                 <Text className="text-muted-foreground text-xs">
-                  {mcpToolsCount} selected
+                  This model doesn't support tools
                 </Text>
               )}
             </View>
-            <Icon
-              as={ChevronRight}
-              className="text-muted-foreground"
-              size={20}
-            />
+            {supportsTools ? (
+              <Icon
+                as={ChevronRight}
+                className="text-muted-foreground"
+                size={20}
+              />
+            ) : null}
           </Pressable>
         </View>
       </ScrollView>

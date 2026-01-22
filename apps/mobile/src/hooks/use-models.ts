@@ -108,7 +108,9 @@ export const useModels = () => {
 
   const models = useMemo(() => {
     const serverModels = data ?? [];
-    if (!appleAvailable) return serverModels;
+    if (!appleAvailable) {
+      return serverModels;
+    }
 
     const localModel: TransformedModel = {
       name: APPLE_LOCAL_MODEL.name,
@@ -116,6 +118,7 @@ export const useModels = () => {
       provider: APPLE_LOCAL_MODEL.provider,
       description: APPLE_LOCAL_MODEL.description,
       isLocal: true,
+      supportsTools: false, // On-device models don't support tools
     };
 
     return [localModel, ...serverModels];

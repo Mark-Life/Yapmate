@@ -179,9 +179,9 @@ export const ChatInput = ({
             style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
           >
             <Textarea
-              className="max-h-32 min-h-10 rounded-none border-0 bg-transparent text-sm"
+              className="max-h-64 min-h-10 rounded-none border-0 bg-transparent text-sm"
               multiline
-              numberOfLines={5}
+              numberOfLines={12}
               onBlur={() => setIsFocused(false)}
               onChangeText={onInputChange}
               onFocus={() => setIsFocused(true)}

@@ -35,7 +35,6 @@ export const TOP_MODELS = [
 
   // Perplexity
   "perplexity/sonar",
-  "perplexity/sonar-deep-research",
   "perplexity/sonar-pro-search",
 ] as const;
 
