@@ -3,6 +3,7 @@ import { Button } from "@yapmate/components/ui/button";
 import {
   ArrowLeftIcon,
   FileTextIcon,
+  PaletteIcon,
   ServerIcon,
   UserIcon,
 } from "lucide-react";
@@ -11,12 +12,13 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { HOTKEYS } from "../../hooks/use-hotkeys-config";
 import { navigate } from "../../router";
 import { AiRulesSection } from "./ai-rules-section";
+import { AppearanceSection } from "./appearance-section";
 import { McpServersSection } from "./mcp-servers-section";
 import { ProfileSection } from "./profile-section";
 
-type SettingsSection = "profile" | "models" | "mcp" | "rules";
+type SettingsSection = "profile" | "appearance" | "models" | "mcp" | "rules";
 
-const VALID_SECTIONS: SettingsSection[] = ["profile", "models", "mcp", "rules"];
+const VALID_SECTIONS: SettingsSection[] = ["profile", "appearance", "models", "mcp", "rules"];
 const SETTINGS_PATH_REGEX = /^\/settings\/([^/]+)/;
 
 /**
@@ -40,6 +42,11 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "profile", label: "Profile", icon: <UserIcon className="size-4" /> },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: <PaletteIcon className="size-4" />,
+  },
   {
     id: "rules",
     label: "AI Rules",
@@ -87,6 +94,9 @@ const SectionContent = ({ section }: { section: SettingsSection }) => {
   switch (section) {
     case "profile":
       return <ProfileSection />;
+
+    case "appearance":
+      return <AppearanceSection />;
 
     case "rules":
       return <AiRulesSection />;

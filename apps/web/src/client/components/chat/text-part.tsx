@@ -41,6 +41,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useUser } from "../../contexts/user-context";
 import { FeedbackButtons, type FeedbackState } from "./feedback-buttons";
 import { getProviderDisplayName } from "./model-utils";
 
@@ -253,6 +254,7 @@ type TextPartMessageContentProps = {
   senderName?: string;
   setEditedText: (text: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  useSerifFont: boolean;
 };
 
 /**
@@ -268,10 +270,12 @@ const TextPartMessageContent = ({
   senderName,
   setEditedText,
   textareaRef,
+  useSerifFont,
 }: TextPartMessageContentProps) => (
   <MessageContent
     className={cn(
-      isOtherUser && "rounded-sm bg-muted px-3 py-1 text-foreground"
+      isOtherUser && "rounded-sm bg-muted px-3 py-1 text-foreground",
+      !isUser && useSerifFont && "font-serif leading-loose"
     )}
   >
     {/* Sender name inside bubble for other users in multi-user chats */}
@@ -352,6 +356,7 @@ export const TextPart = ({
   status,
   groupedModels,
 }: TextPartProps) => {
+  const { user } = useUser();
   const [editedText, setEditedText] = useState(part.text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -437,6 +442,7 @@ export const TextPart = ({
             senderName={senderName}
             setEditedText={setEditedText}
             textareaRef={textareaRef}
+            useSerifFont={user?.useSerifFont ?? true}
           />
           {/* Model name display for assistant messages */}
           {message.role === "assistant" && modelName ? (

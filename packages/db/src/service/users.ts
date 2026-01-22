@@ -124,15 +124,16 @@ export const deleteUserAccount = async (
 /**
  * Gets user settings
  * @param userId - User ID to query
- * @returns User settings object with hideEmailInUi
+ * @returns User settings object with hideEmailInUi and useSerifFont
  */
 export const getUserSettings = async (
   userId: string
 ): Promise<{
   hideEmailInUi: boolean;
+  useSerifFont: boolean;
 }> => {
   const result = await db
-    .select({ hideEmailInUi: users.hideEmailInUi })
+    .select({ hideEmailInUi: users.hideEmailInUi, useSerifFont: users.useSerifFont })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -143,20 +144,25 @@ export const getUserSettings = async (
 
   return {
     hideEmailInUi: result[0].hideEmailInUi,
+    useSerifFont: result[0].useSerifFont,
   };
 };
 
 /**
  * Updates user settings
  * @param userId - User ID to update
- * @param settings - Settings object with hideEmailInUi
+ * @param settings - Settings object with optional hideEmailInUi and useSerifFont
  */
 export const updateUserSettings = async (
   userId: string,
-  settings: { hideEmailInUi: boolean }
+  settings: { hideEmailInUi?: boolean; useSerifFont?: boolean }
 ): Promise<void> => {
-  await db
-    .update(users)
-    .set({ hideEmailInUi: settings.hideEmailInUi })
-    .where(eq(users.id, userId));
+  const updateData: { hideEmailInUi?: boolean; useSerifFont?: boolean } = {};
+  if (settings.hideEmailInUi !== undefined) {
+    updateData.hideEmailInUi = settings.hideEmailInUi;
+  }
+  if (settings.useSerifFont !== undefined) {
+    updateData.useSerifFont = settings.useSerifFont;
+  }
+  await db.update(users).set(updateData).where(eq(users.id, userId));
 };
