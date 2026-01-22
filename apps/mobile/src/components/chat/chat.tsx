@@ -800,41 +800,35 @@ export const Chat = ({
         </View>
       )}
 
-      {!isAtBottom && activeMessages.length > 0 ? (
-        <View
-          className="absolute right-0 left-0 z-20 items-center"
-          style={{
-            bottom:
-              (keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom) + 94,
-          }}
-        >
-          <GlassView
-            isInteractive={true}
-            style={{
-              borderRadius: 32,
-              padding: 0,
-              overflow: "hidden",
-            }}
-          >
-            <Button
-              className="size-8"
-              onPress={() => {
-                lightTap();
-                scrollToBottomRef.current?.();
-              }}
-              variant="ghost"
-            >
-              <Icon as={ChevronDown} className="text-primary" size={20} />
-            </Button>
-          </GlassView>
-        </View>
-      ) : null}
       <View
         className="absolute right-0 left-0 z-10 p-1 pb-0"
         style={{
           bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom,
         }}
       >
+        {!isAtBottom && activeMessages.length > 0 ? (
+          <View className="items-center">
+            <GlassView
+              isInteractive={true}
+              style={{
+                borderRadius: 32,
+                padding: 0,
+                overflow: "hidden",
+              }}
+            >
+              <Button
+                className="size-8"
+                onPress={() => {
+                  lightTap();
+                  scrollToBottomRef.current?.();
+                }}
+                variant="ghost"
+              >
+                <Icon as={ChevronDown} className="text-primary" size={20} />
+              </Button>
+            </GlassView>
+          </View>
+        ) : null}
         <ChatInput
           attachments={attachments}
           disableSearch={usingLocalModel}

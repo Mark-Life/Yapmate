@@ -13,6 +13,7 @@ type GlassWrapperProps = {
   children: ReactNode;
   style?: ComponentProps<typeof GlassView>["style"];
   tintColor?: string;
+  glassEffectStyle?: ComponentProps<typeof GlassView>["glassEffectStyle"];
 };
 
 /**
@@ -22,10 +23,11 @@ export const GlassWrapper = ({
   children,
   style,
   tintColor,
+  glassEffectStyle = "clear",
 }: GlassWrapperProps) =>
   hasLiquidGlass ? (
     <GlassView
-      glassEffectStyle="clear"
+      glassEffectStyle={glassEffectStyle}
       isInteractive={true}
       style={style}
       tintColor={tintColor}

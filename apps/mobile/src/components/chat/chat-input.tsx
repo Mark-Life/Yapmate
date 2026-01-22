@@ -176,6 +176,7 @@ export const ChatInput = ({
       <View className="flex-row items-end gap-2">
         <View className="flex-1">
           <GlassWrapper
+            glassEffectStyle="regular"
             style={{ borderRadius: 32, padding: 0, overflow: "hidden" }}
           >
             <Textarea
