@@ -13,6 +13,7 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@yapmate/components/ai-elements/reasoning";
+import { Source } from "@yapmate/components/ai-elements/sources";
 import {
   Tool,
   ToolContent,
@@ -432,10 +433,20 @@ export const MessagesHistory = ({
   const { user } = useUser();
   const currentUserId = user?.id;
 
+  // Deduplicate messages by ID to prevent React key warnings during stream resumption
+  // This is a safety net - duplicates can occur when useChat and resumeStream both update state
+  const uniqueMessages = useMemo(() => {
+    const seen = new Map<string, ChatUIMessage>();
+    for (const msg of messages) {
+      seen.set(msg.id, msg);
+    }
+    return [...seen.values()];
+  }, [messages]);
+
   const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
 
   // Show loader when waiting for response OR streaming without visible content yet
-  const lastMessage = messages.at(-1);
+  const lastMessage = uniqueMessages.at(-1);
   const isStreamingWithoutContent =
     status === "streaming" &&
     lastMessage?.role === "assistant" &&
@@ -483,7 +494,7 @@ export const MessagesHistory = ({
     <Conversation className="h-full">
       <ConversationContent>
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-12 pb-34">
-          {messages.map((message, messageIndex) => {
+          {uniqueMessages.map((message, messageIndex) => {
             // Get sender info for multi-user chat avatars
             const senderInfo = getMessageSenderInfo(
               message,
@@ -499,7 +510,7 @@ export const MessagesHistory = ({
             } = senderInfo;
 
             // Build avatar elements
-            const isLastMessage = messageIndex === messages.length - 1;
+            const isLastMessage = messageIndex === uniqueMessages.length - 1;
             const effectiveModel = getEffectiveModel(
               message,
               isLastMessage,
@@ -570,6 +581,22 @@ export const MessagesHistory = ({
                       });
                     case "file":
                       return renderFilePart({ message, part, partId });
+                    case "source-url":
+                      return (
+                        <Source
+                          href={part.url}
+                          key={partId}
+                          title={part.title}
+                        />
+                      );
+                    case "source-document":
+                      return (
+                        <Source
+                          href={part.sourceId}
+                          key={partId}
+                          title={part.title}
+                        />
+                      );
                     default:
                       // Handle tool parts (type starts with "tool-" or "dynamic-tool")
                       if (isToolPart(part.type)) {

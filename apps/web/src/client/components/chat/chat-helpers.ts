@@ -4,6 +4,18 @@ import { getLastUsedModel } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
 
 /**
+ * Deduplicates messages by ID, keeping the last occurrence
+ * This prevents duplicate key errors when resuming streams
+ */
+const deduplicateMessages = (messages: ChatUIMessage[]): ChatUIMessage[] => {
+  const seen = new Map<string, ChatUIMessage>();
+  for (const msg of messages) {
+    seen.set(msg.id, msg);
+  }
+  return [...seen.values()];
+};
+
+/**
  * Fetches fresh messages from DB and updates both state and cache
  * Used when resuming a stream to ensure we have the correct baseline
  */
@@ -14,10 +26,11 @@ const refreshMessagesFromDb = async (
 ): Promise<void> => {
   try {
     const freshMessages = await rpcClient.messages.list({ chatId });
-    // Update local state with fresh messages
-    setMessages(freshMessages);
+    // Replace local state with fresh messages (deduped for safety)
+    const deduped = deduplicateMessages(freshMessages);
+    setMessages(deduped);
     // Update cache so future reads are consistent
-    queryClient.setQueryData(["chat-messages", chatId], freshMessages);
+    queryClient.setQueryData(["chat-messages", chatId], deduped);
   } catch (error) {
     console.error("Failed to refresh messages from DB:", error);
     // Continue anyway - stream will still work, just might have stale baseline
@@ -152,6 +165,7 @@ type ResumeChunkState = { messageId: string | null; text: string };
 
 /**
  * Handles text-start chunk: creates new assistant message
+ * Checks for existing messages to prevent duplicates during stream resumption
  */
 const handleTextStartChunk = (
   chunk: Record<string, unknown>,
@@ -159,22 +173,25 @@ const handleTextStartChunk = (
 ): ResumeChunkState => {
   if (chunk.type === "text-start" && typeof chunk.id === "string") {
     let messageId: string | null = null;
+    let existingText = "";
 
     setMessages((prev) => {
-      // Check if we're already processing this stream (last message is assistant with empty text)
       const lastMessage = prev.at(-1);
-      if (
-        lastMessage?.role === "assistant" &&
-        lastMessage.parts.length === 1 &&
-        lastMessage.parts[0]?.type === "text" &&
-        lastMessage.parts[0]?.text === ""
-      ) {
-        // Already have a streaming message, reuse it
+
+      // Check if last message is an assistant message (streaming or complete)
+      // During resumption, useChat's initialMessages may already contain the assistant message
+      if (lastMessage?.role === "assistant") {
+        // Reuse the existing assistant message ID
         messageId = lastMessage.id;
+        // Preserve existing text content for resumption (don't overwrite)
+        const textPart = lastMessage.parts.find((p) => p.type === "text");
+        if (textPart && "text" in textPart) {
+          existingText = textPart.text;
+        }
         return prev;
       }
 
-      // Create new assistant message
+      // Create new assistant message only if last message is not assistant
       const newMessageId = crypto.randomUUID();
       messageId = newMessageId;
       return [
@@ -187,7 +204,7 @@ const handleTextStartChunk = (
       ];
     });
 
-    return { messageId, text: "" };
+    return { messageId, text: existingText };
   }
   return { messageId: null, text: "" };
 };

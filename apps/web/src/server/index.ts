@@ -326,6 +326,7 @@ await initializeRedisBridge();
 const server = serve<WsClientData>({
   port,
   hostname: "0.0.0.0", // Bind to all network interfaces
+  idleTimeout: 255, // 5 minutes - required for long AI streaming responses
 
   routes: {
     // Frontend SPA routes - HTML import bundles React app
