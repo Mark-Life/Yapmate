@@ -51,6 +51,8 @@ export const MessageContent = ({
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-sm group-[.is-user]:bg-primary group-[.is-user]:px-3 group-[.is-user]:py-1 group-[.is-user]:text-primary-foreground",
       "group-[.is-user]:[&_code:not(pre>code)]:rounded group-[.is-user]:[&_code:not(pre>code)]:border group-[.is-user]:[&_code:not(pre>code)]:border-background/30 group-[.is-user]:[&_code:not(pre>code)]:bg-background/10 group-[.is-user]:[&_code:not(pre>code)]:px-1 group-[.is-user]:[&_code:not(pre>code)]:py-0.5",
       "group-[.is-user]:[&_pre]:!bg-background group-[.is-user]:[&_pre]:!text-foreground",
+      "group-[.is-user]:[&_a]:text-primary-foreground group-[.is-user]:[&_a]:underline",
+      "group-[.is-user]:[&_blockquote]:border-primary-foreground/50 group-[.is-user]:[&_blockquote]:text-primary-foreground/90",
       "group-[.is-assistant]:text-foreground",
       className
     )}
