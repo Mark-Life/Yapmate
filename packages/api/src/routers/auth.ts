@@ -1,8 +1,5 @@
 import { deleteUserAccount } from "@yapmate/db/service";
-import {
-  getClientIp,
-  isRateLimited,
-} from "@yapmate/server/lib/rate-limit";
+import { getClientIp, isRateLimited } from "@yapmate/server/lib/rate-limit";
 import { createClient } from "@yapmate/server/lib/supabase";
 import { protectedProcedure, publicProcedure } from "../middleware";
 import {

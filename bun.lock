@@ -148,6 +148,7 @@
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
+        "@marsidev/react-turnstile": "^1.4.1",
         "@orpc/client": "catalog:",
         "@orpc/server": "catalog:",
         "@stripe/react-stripe-js": "^5.4.1",
@@ -818,6 +819,8 @@
     "@langfuse/tracing": ["@langfuse/tracing@4.5.1", "", { "dependencies": { "@langfuse/core": "^4.5.1" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-PvN8fJzEDG2IQMD7/iGhoeEzMM0fJ/ktZdy5gfMfj3/UUccigqV0flxpzvgRoAUss+0ZmqkIlJoaerHKOCMD+A=="],
 
     "@legendapp/list": ["@legendapp/list@2.0.19", "", { "dependencies": { "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-zDWg8yg0smKxxk+M7gwAbZAnf5uczohPA+IjqLSkImz7+e9ytxeT0Mq35RBO9RTKODOXfV/aIgm1uqUHLBEdmg=="],
+
+    "@marsidev/react-turnstile": ["@marsidev/react-turnstile@1.4.1", "", { "peerDependencies": { "react": "^17.0.2 || ^18.0.0 || ^19.0", "react-dom": "^17.0.2 || ^18.0.0 || ^19.0" } }, "sha512-1jE0IjvB8z+q1NFRs3149gXzXwIzXQWqQjn9fmAr13BiE3RYLWck5Me6flHYE90shW5L12Jkm6R1peS1OnA9oQ=="],
 
     "@mermaid-js/parser": ["@mermaid-js/parser@0.6.3", "", { "dependencies": { "langium": "3.3.1" } }, "sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA=="],
 

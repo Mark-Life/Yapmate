@@ -94,6 +94,9 @@ export default defineConfig(({ mode }) => {
         env.PUBLIC_POSTHOG_HOST
       ),
       "process.env.PUBLIC_POSTHOG_KEY": JSON.stringify(env.PUBLIC_POSTHOG_KEY),
+      "process.env.PUBLIC_TURNSTILE_SITE_KEY": JSON.stringify(
+        env.PUBLIC_TURNSTILE_SITE_KEY
+      ),
     },
 
     css: {

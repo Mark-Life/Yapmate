@@ -12,12 +12,14 @@ type AuthResult = {
  */
 export const signInWithPassword = async (
   email: string,
-  password: string
+  password: string,
+  captchaToken?: string
 ): Promise<AuthResult> => {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
+    options: { captchaToken },
   });
 
   if (error) {
@@ -33,7 +35,8 @@ export const signInWithPassword = async (
  */
 export const signUpWithPassword = async (
   email: string,
-  password: string
+  password: string,
+  captchaToken?: string
 ): Promise<AuthResult> => {
   const supabase = createClient();
   const appUrl =
@@ -46,6 +49,7 @@ export const signUpWithPassword = async (
     password,
     options: {
       emailRedirectTo: `${appUrl}/auth/callback`,
+      captchaToken,
     },
   });
 
@@ -64,7 +68,8 @@ export const signUpWithPassword = async (
  */
 export const sendMagicLink = async (
   email: string,
-  redirectTo?: string
+  redirectTo?: string,
+  captchaToken?: string
 ): Promise<AuthResult> => {
   const supabase = createClient();
   const appUrl =
@@ -75,6 +80,7 @@ export const sendMagicLink = async (
     email,
     options: {
       emailRedirectTo: redirectTo ?? `${appUrl}/auth/callback`,
+      captchaToken,
     },
   });
 

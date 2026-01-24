@@ -1,3 +1,4 @@
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { Button } from "@yapmate/components/ui/button";
 import {
   Card,
@@ -7,7 +8,7 @@ import {
   CardTitle,
 } from "@yapmate/components/ui/card";
 import { Lock, Mail } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EmailConfirmationView } from "../components/auth/email-confirmation-view";
 import { EmailForm } from "../components/auth/email-form";
 import { OtpForm } from "../components/auth/otp-form";
@@ -29,6 +30,8 @@ type AuthMethod = "password" | "magiclink";
  * Supports both login and signup modes
  * Redirects authenticated users to home page
  */
+const TURNSTILE_SITE_KEY = process.env.PUBLIC_TURNSTILE_SITE_KEY;
+
 export const LoginPage = () => {
   const { user, isLoading } = useUser();
   const [mode, setMode] = useState<Mode>("login");
@@ -40,6 +43,8 @@ export const LoginPage = () => {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   /**
    * Redirect authenticated users to home page or redirect URL
@@ -56,6 +61,14 @@ export const LoginPage = () => {
   }, [isLoading, user]);
 
   /**
+   * Resets captcha widget for retry
+   */
+  const resetCaptcha = () => {
+    turnstileRef.current?.reset();
+    setCaptchaToken(undefined);
+  };
+
+  /**
    * Handles password-based authentication
    */
   const handlePasswordSubmit = async (values: {
@@ -67,8 +80,16 @@ export const LoginPage = () => {
 
     const result =
       mode === "login"
-        ? await signInWithPassword(values.email.trim(), values.password)
-        : await signUpWithPassword(values.email.trim(), values.password);
+        ? await signInWithPassword(
+            values.email.trim(),
+            values.password,
+            captchaToken
+          )
+        : await signUpWithPassword(
+            values.email.trim(),
+            values.password,
+            captchaToken
+          );
 
     if (result.success) {
       if (result.needsEmailConfirmation) {
@@ -77,6 +98,7 @@ export const LoginPage = () => {
       // Redirect will happen via useEffect when user state updates
     } else {
       setAuthError(result.error ?? "An error occurred");
+      resetCaptcha();
     }
     setIsPending(false);
   };
@@ -89,12 +111,17 @@ export const LoginPage = () => {
     setAuthError(null);
     setEmail(emailValue.trim());
 
-    const result = await sendMagicLink(emailValue.trim());
+    const result = await sendMagicLink(
+      emailValue.trim(),
+      undefined,
+      captchaToken
+    );
 
     if (result.success) {
       setShowSuccess(true);
     } else {
       setAuthError(result.error ?? "An error occurred");
+      resetCaptcha();
     }
     setIsPending(false);
   };
@@ -265,6 +292,16 @@ export const LoginPage = () => {
               onSubmit={handleMagicLinkSubmit}
             />
           )}
+          {TURNSTILE_SITE_KEY ? (
+            <div className="mt-4 flex justify-center">
+              <Turnstile
+                onExpire={resetCaptcha}
+                onSuccess={setCaptchaToken}
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY}
+              />
+            </div>
+          ) : null}
           <div className="mt-4 space-y-3">
             <Button
               className="w-full"
