@@ -62,7 +62,7 @@ const ContentSection = () => (
           <p>We offer the following subscription tiers:</p>
           <ul className="ml-6 list-disc space-y-1">
             <li>
-              <strong className="text-foreground">Free:</strong> 20 AI
+              <strong className="text-foreground">Free:</strong> 10 AI
               generations per month at no cost
             </li>
             <li>

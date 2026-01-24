@@ -19,7 +19,7 @@ const PRODUCT_TIER_MAP: Record<string, Tier> = {
 
 /** Generation limits per tier */
 const TIER_LIMITS: Record<Tier, number> = {
-  free: 20,
+  free: 10,
   hobby: 1000,
   pro: 3000,
   unlimited: Number.POSITIVE_INFINITY,
