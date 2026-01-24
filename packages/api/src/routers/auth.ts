@@ -1,4 +1,8 @@
 import { deleteUserAccount } from "@yapmate/db/service";
+import {
+  getClientIp,
+  isRateLimited,
+} from "@yapmate/server/lib/rate-limit";
 import { createClient } from "@yapmate/server/lib/supabase";
 import { protectedProcedure, publicProcedure } from "../middleware";
 import {
@@ -19,6 +23,13 @@ export const auth = {
     .input(magicLinkInputSchema)
     .output(magicLinkResponseSchema)
     .handler(async ({ input, context }) => {
+      const ip = getClientIp(context.req);
+
+      // 3 requests per minute per IP
+      if (isRateLimited(`auth:${ip}`, 3, 60_000)) {
+        return { success: false, error: "Too many requests. Try again later." };
+      }
+
       const appUrl = process.env.PUBLIC_APP_URL ?? "http://localhost:3000";
       const supabase = createClient(context.req);
 
