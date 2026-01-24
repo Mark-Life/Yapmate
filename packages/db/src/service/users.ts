@@ -56,6 +56,20 @@ export const getUserById = async (
 };
 
 /**
+ * Check if user is blocked
+ * @param userId - User ID to check
+ * @returns true if user is blocked, false otherwise
+ */
+export const isUserBlocked = async (userId: string): Promise<boolean> => {
+  const [result] = await db
+    .select({ blockedAt: users.blockedAt })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return result?.blockedAt !== null;
+};
+
+/**
  * Deletes user account and all associated data
  * Hard delete - removes all user data except Stripe records (kept for legal/bookkeeping)
  *

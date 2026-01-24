@@ -7,6 +7,7 @@ import {
   canAccessChat,
   checkGenerationLimit,
   getUserRulesByIds,
+  isUserBlocked,
   saveMessage as saveMessageService,
   updateActiveStreamId,
   uploadFilesInBackground,
@@ -37,6 +38,12 @@ export const chatHandler = {
     const userId = await getCurrentUserId(req);
     if (!userId) {
       return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Check if user is blocked
+    const blocked = await isUserBlocked(userId);
+    if (blocked) {
+      return new Response("Account blocked", { status: 403 });
     }
 
     const {

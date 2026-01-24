@@ -21,6 +21,9 @@ export const users = pgTable("users", {
   /** Timestamp when unlimited access was granted (null = subject to limits) */
   unlimitedAccessGrantedAt: timestamp({ withTimezone: true }),
 
+  /** Timestamp when user was blocked (null = not blocked) */
+  blockedAt: timestamp({ withTimezone: true }),
+
   /** Whether to blur/hide email in UI (privacy mode) */
   hideEmailInUi: boolean().default(false).notNull(),
 
