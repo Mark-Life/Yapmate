@@ -67,10 +67,24 @@ const extractAuthParams = (params: Record<string, string | undefined>) => {
   const token_hash =
     typeof params.token_hash === "string" ? params.token_hash : null;
   const type = typeof params.type === "string" ? params.type : null;
+  const access_token =
+    typeof params.access_token === "string" ? params.access_token : null;
+  const refresh_token =
+    typeof params.refresh_token === "string" ? params.refresh_token : null;
+  const expires_in =
+    typeof params.expires_in === "string" ? Number(params.expires_in) : null;
   const error = params.error;
   const error_description = params.error_description;
 
-  return { token_hash, type, error, error_description };
+  return {
+    token_hash,
+    type,
+    access_token,
+    refresh_token,
+    expires_in,
+    error,
+    error_description,
+  };
 };
 
 /**
@@ -100,8 +114,8 @@ const verifyOtpToken = async (
 };
 
 /**
- * Creates a session from a magic link URL
- * Handles both token_hash (for magic links) and regular OTP tokens
+ * Creates a session from a magic link URL or WebView callback
+ * Handles token_hash (for magic links), direct tokens (from WebView auth), and regular OTP tokens
  * Supports both deep links (yapmate://auth/callback) and universal links (https://yapmate.com/auth/mobile)
  * Returns null session and null error if URL is not an auth callback
  */
@@ -126,15 +140,37 @@ export const createSessionFromUrl = async (
       };
     }
 
-    const { token_hash, type, error, error_description } = extractAuthParams(
-      queryResult.params
-    );
+    const {
+      token_hash,
+      type,
+      access_token,
+      refresh_token,
+      error,
+      error_description,
+    } = extractAuthParams(queryResult.params);
 
     if (error) {
       throw new Error(String(error_description ?? error));
     }
 
-    // Verify token_hash with appropriate type
+    // Handle direct tokens from WebView auth flow
+    if (access_token && refresh_token) {
+      console.log("Setting session from WebView tokens");
+      const { data, error: setSessionError } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (setSessionError) {
+        console.error("Error setting session:", setSessionError);
+        return { session: null, error: setSessionError };
+      }
+
+      console.log("Session set successfully");
+      return { session: data.session, error: null };
+    }
+
+    // Verify token_hash with appropriate type (magic link flow)
     // Supabase sends type=email for magic links, but we verify with type=magiclink
     if (token_hash && type) {
       const otpType: EmailOtpType = type === "signup" ? "signup" : "magiclink";

@@ -21,6 +21,7 @@ import {
   signUpWithPassword,
   verifyOtp,
 } from "../lib/auth";
+import { createClient } from "../lib/supabase/client";
 
 type Mode = "login" | "signup";
 type AuthMethod = "password" | "magiclink";
@@ -31,6 +32,36 @@ type AuthMethod = "password" | "magiclink";
  * Redirects authenticated users to home page
  */
 const TURNSTILE_SITE_KEY = process.env.PUBLIC_TURNSTILE_SITE_KEY;
+
+/**
+ * Gets URL scheme for mobile deep link redirect
+ */
+const getMobileScheme = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const scheme = searchParams.get("scheme");
+  return scheme || "yapmate";
+};
+
+/**
+ * Checks if this is a mobile auth flow
+ */
+const isMobileAuth = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  return searchParams.get("mobile") === "true";
+};
+
+/**
+ * Redirects to mobile app with session tokens
+ */
+const redirectToMobileApp = async () => {
+  const supabase = createClient();
+  const { data } = await supabase.auth.getSession();
+  if (data.session) {
+    const scheme = getMobileScheme();
+    const redirectUrl = `${scheme}://auth/callback?access_token=${data.session.access_token}&refresh_token=${data.session.refresh_token}&expires_in=${data.session.expires_in}`;
+    window.location.href = redirectUrl;
+  }
+};
 
 export const LoginPage = () => {
   const { user, isLoading } = useUser();
@@ -47,10 +78,15 @@ export const LoginPage = () => {
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   /**
-   * Redirect authenticated users to home page or redirect URL
+   * Redirect authenticated users to home page, redirect URL, or mobile app
    */
   useEffect(() => {
     if (!isLoading && user) {
+      if (isMobileAuth()) {
+        redirectToMobileApp();
+        return;
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       const redirect = urlParams.get("redirect");
       const redirectPath = redirect || "/";
@@ -94,6 +130,9 @@ export const LoginPage = () => {
     if (result.success) {
       if (result.needsEmailConfirmation) {
         setNeedsEmailConfirmation(true);
+      } else if (isMobileAuth()) {
+        await redirectToMobileApp();
+        return;
       }
       // Redirect will happen via useEffect when user state updates
     } else {
@@ -136,6 +175,10 @@ export const LoginPage = () => {
     const result = await verifyOtp(email.trim(), otp.trim(), "email");
 
     if (result.success) {
+      if (isMobileAuth()) {
+        await redirectToMobileApp();
+        return;
+      }
       // Redirect will happen via useEffect when user state updates
     } else {
       setAuthError(result.error ?? "An error occurred");
