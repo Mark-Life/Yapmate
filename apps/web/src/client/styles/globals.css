@@ -223,6 +223,11 @@ html {
   --sidebar-ring: var(--ring);
 }
 
+/* Streamdown code block horizontal scroll */
+[data-streamdown="code-block-body"] {
+  overflow-x: auto;
+}
+
 /* Streamdown/Shiki dark mode code highlighting */
 .dark [data-streamdown="code-block-body"],
 .dark [data-streamdown="code-block-body"] pre {
