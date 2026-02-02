@@ -493,7 +493,7 @@ export const MessagesHistory = ({
   return (
     <Conversation className="h-full">
       <ConversationContent>
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-12 pb-34">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 overflow-hidden px-4 pt-12 pb-34">
           {uniqueMessages.map((message, messageIndex) => {
             // Get sender info for multi-user chat avatars
             const senderInfo = getMessageSenderInfo(

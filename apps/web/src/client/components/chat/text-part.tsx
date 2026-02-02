@@ -426,7 +426,7 @@ export const TextPart = ({
         {/* Avatar aligned to bottom of bubble */}
         {avatar ? <div className="shrink-0">{avatar}</div> : null}
 
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <TextPartMessageContent
             editedText={editedText}
             isEditing={isEditing}
