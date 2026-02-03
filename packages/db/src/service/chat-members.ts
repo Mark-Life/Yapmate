@@ -69,6 +69,14 @@ export const canAccessChat = async (
   chatId: string,
   userId: string
 ): Promise<boolean> => {
+  // Admin bypass - only in dev, only for specific admin user
+  const ADMIN_USER_ID = "9744dbb6-96c1-4607-8c7f-b4e33738cbfe";
+  const isDevAdmin =
+    process.env.NODE_ENV !== "production" && userId === ADMIN_USER_ID;
+  if (isDevAdmin) {
+    return true;
+  }
+
   // First check if user is the chat owner (single-user chat)
   const chat = await db
     .select({ userId: chats.userId, isMultiUser: chats.isMultiUser })

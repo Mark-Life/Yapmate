@@ -513,6 +513,11 @@ const server = serve<WsClientData>({
       });
     },
 
+    // Admin routes - dev only, 404 in production
+    "/admin/*": isProduction
+      ? () => new Response("Not found", { status: 404 })
+      : index,
+
     // SPA catch-all fallback - must be last in routes
     // Serves bundled HTML for client-side routing (React router handles 404)
     "/*": index,

@@ -1,6 +1,7 @@
 import { Spinner } from "@yapmate/components/ui/spinner";
 import { useEffect, useState } from "react";
 import { useUser } from "./contexts/user-context";
+import { AdminChatPage } from "./pages/admin-chat";
 import { ChatLayout } from "./pages/chat-layout";
 import { CheckoutSuccessPage } from "./pages/checkout-success";
 import { JoinChatPage } from "./pages/join-chat";
@@ -80,6 +81,15 @@ export const Router = () => {
 
   if (pathname === "/auth/mobile") {
     return <MobileAuthPage />;
+  }
+
+  // Admin routes - dev only (server returns 404 in production)
+  if (pathname.startsWith("/admin/chat/")) {
+    if (!user) {
+      return <AuthLoading />;
+    }
+    const chatId = pathname.replace("/admin/chat/", "");
+    return <AdminChatPage chatId={chatId} />;
   }
 
   // Checkout success page - requires authentication
