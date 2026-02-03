@@ -77,6 +77,7 @@ export const LoginPage = () => {
   }) => {
     setIsPending(true);
     setAuthError(null);
+    sessionStorage.setItem("auth_method", "password");
 
     const result =
       mode === "login"
@@ -110,6 +111,7 @@ export const LoginPage = () => {
     setIsPending(true);
     setAuthError(null);
     setEmail(emailValue.trim());
+    sessionStorage.setItem("auth_method", "magic_link");
 
     const result = await sendMagicLink(
       emailValue.trim(),

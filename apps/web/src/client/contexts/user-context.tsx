@@ -106,30 +106,42 @@ export const UserProvider = ({ children }: UserProviderProps) => {
      * Updates auth user state from Supabase auth user
      * Identifies user in PostHog when authenticated
      */
-    const updateAuthUser = (supabaseUser: SupabaseUser | null) => {
+    const updateAuthUser = (
+      supabaseUser: SupabaseUser | null,
+      isSignInEvent = false,
+    ) => {
       setAuthUser(supabaseUser);
       if (supabaseUser) {
-        // Identify user in PostHog
         if (posthog && supabaseUser.id) {
           posthog.identify(supabaseUser.id, {
             email: supabaseUser.email,
           });
+
+          // Track signup vs login on actual sign-in events
+          if (isSignInEvent && supabaseUser.created_at) {
+            const createdAt = new Date(supabaseUser.created_at).getTime();
+            const isNewUser = Date.now() - createdAt < 60_000;
+            const authMethod = sessionStorage.getItem("auth_method") ?? "magic_link";
+            sessionStorage.removeItem("auth_method");
+            posthog.capture(isNewUser ? "user_signed_up" : "user_logged_in", {
+              method: authMethod,
+            });
+          }
         }
       } else if (posthog) {
-        // Reset PostHog identification on logout
         posthog.reset();
       }
       setIsLoading(false);
     };
 
     /**
-     * Initial auth check
+     * Initial auth check - don't track as sign-in event
      */
     const checkAuth = async () => {
       const {
         data: { user: supabaseUser },
       } = await supabase.auth.getUser();
-      updateAuthUser(supabaseUser);
+      updateAuthUser(supabaseUser, false);
     };
 
     checkAuth();
@@ -139,8 +151,9 @@ export const UserProvider = ({ children }: UserProviderProps) => {
      */
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      updateAuthUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const isSignIn = event === "SIGNED_IN";
+      updateAuthUser(session?.user ?? null, isSignIn);
     });
 
     return () => {

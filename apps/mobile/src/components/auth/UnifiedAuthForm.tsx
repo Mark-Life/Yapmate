@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { useSession } from "@/contexts/auth";
 import { generateAPIUrl } from "@/lib/api-url";
+import { setAuthMethod as setAnalyticsAuthMethod } from "@/lib/auth-method";
 
 interface UnifiedAuthFormProps {
   type: "login" | "signup";
@@ -181,6 +182,7 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
     }
 
     setIsLoading(true);
+    setAnalyticsAuthMethod("password");
     try {
       if (isLogin) {
         await signIn(email.trim(), password);
@@ -209,6 +211,7 @@ export function UnifiedAuthForm({ type }: UnifiedAuthFormProps) {
     }
 
     setIsLoading(true);
+    setAnalyticsAuthMethod("magic_link");
     try {
       // Get redirect URL for magic link using API URL
       const redirectTo = generateAPIUrl("/auth/mobile");

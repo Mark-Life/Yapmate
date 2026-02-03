@@ -12,6 +12,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { SessionProvider, useSession } from "@/contexts/auth";
 import { initUserPreferences } from "@/hooks/use-user-preferences";
 import { useAuthLinking } from "@/hooks/useAuthLinking";
+import { getAndClearAuthMethod } from "@/lib/auth-method";
 import { posthog } from "@/lib/posthog";
 import { SplashScreenController } from "./splash";
 
@@ -89,6 +90,7 @@ function UserPreferencesInitializer() {
 
 /**
  * Identifies users in PostHog when they sign in
+ * Tracks signup vs login based on created_at timestamp
  * Resets PostHog on sign out to clear user data
  * Note: Using direct posthog client (no Provider) due to React 19 incompatibility
  */
@@ -103,6 +105,15 @@ function PostHogIdentify() {
     if (userId && userId !== prevUserId.current) {
       const email = session?.user?.email;
       posthog.identify(userId, email ? { email } : undefined);
+
+      // Track signup vs login
+      const createdAt = session?.user?.created_at;
+      if (createdAt) {
+        const isNewUser = Date.now() - new Date(createdAt).getTime() < 60_000;
+        posthog.capture(isNewUser ? "user_signed_up" : "user_logged_in", {
+          method: getAndClearAuthMethod(),
+        });
+      }
     }
 
     // User signed out
