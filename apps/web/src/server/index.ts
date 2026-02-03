@@ -11,6 +11,7 @@ import { networkInterfaces } from "node:os";
 import { join, relative, sep } from "node:path";
 import { RPCHandler } from "@orpc/server/fetch";
 import { router } from "@yapmate/api/router";
+import { canAccessChat } from "@yapmate/db/service";
 import { getStreamStatus } from "@yapmate/server/lib/redis/stream";
 import { getCurrentUserId } from "@yapmate/server/lib/supabase";
 import {
@@ -565,6 +566,15 @@ const server = serve<WsClientData>({
             break;
 
           case "join_chat": {
+            // Verify user has access to this chat before joining
+            const hasAccess = await canAccessChat(data.chatId, userId);
+            if (!hasAccess) {
+              wsConnection.send(
+                JSON.stringify({ type: "error", message: "Forbidden" })
+              );
+              break;
+            }
+
             // User opened a chat - join the room and update presence
             await joinChat(data.chatId, wsConnection);
             if (data.displayName) {
@@ -592,14 +602,20 @@ const server = serve<WsClientData>({
 
           case "heartbeat":
             // Update presence TTL to keep user "online"
-            if (data.displayName) {
+            if (
+              data.displayName &&
+              (await canAccessChat(data.chatId, userId))
+            ) {
               await updatePresence(data.chatId, userId, data.displayName);
             }
             break;
 
           case "typing":
             // Publish typing event to chat channel
-            if (data.displayName) {
+            if (
+              data.displayName &&
+              (await canAccessChat(data.chatId, userId))
+            ) {
               await publishTypingEvent(
                 data.chatId,
                 userId,
@@ -611,7 +627,10 @@ const server = serve<WsClientData>({
 
           case "stop_typing":
             // Publish stop typing event to chat channel
-            if (data.displayName) {
+            if (
+              data.displayName &&
+              (await canAccessChat(data.chatId, userId))
+            ) {
               await publishTypingEvent(
                 data.chatId,
                 userId,
