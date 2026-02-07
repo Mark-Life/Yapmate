@@ -327,6 +327,12 @@ export const mapDbMessageToUI = (dbMessage: DbMessageWithParts): UIMessage => {
   if (dbMessage.userId) {
     metadata.userId = dbMessage.userId;
   }
+  // Include error status and details (strip raw field for security)
+  if (dbMessage.status === "error" && dbMessage.error) {
+    const { raw: _raw, ...clientError } = dbMessage.error;
+    metadata.status = dbMessage.status;
+    metadata.error = clientError;
+  }
 
   return {
     id: dbMessage.id,

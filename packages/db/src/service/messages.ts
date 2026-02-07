@@ -8,7 +8,11 @@ import type { UIMessage } from "ai";
 import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../client";
 import { chats } from "../schema/chats";
-import { type MessageMetadata, messages } from "../schema/messages";
+import {
+  type MessageError,
+  type MessageMetadata,
+  messages,
+} from "../schema/messages";
 import { parts } from "../schema/parts";
 import { getFileAccessUrl, getFilesByIds } from "./files";
 import {
@@ -613,6 +617,62 @@ export const abortStreamAtomic = async (
   });
 
   return hasContent;
+};
+
+/**
+ * Atomically persists an error state for a failed generation.
+ *
+ * Always creates an assistant message (even with no content) so the frontend
+ * can render the error inline. Clears activeStreamId and updates chat timestamp.
+ *
+ * @param chatId - ID of the chat
+ * @param chunks - Stream chunks from Redis buffer (may be empty)
+ * @param errorInfo - Classified error details
+ * @returns true when error message was persisted
+ */
+export const errorStreamAtomic = async (
+  chatId: string,
+  chunks: StreamChunk[],
+  errorInfo: MessageError
+): Promise<boolean> => {
+  const { textContent, reasoningContent } = extractContentFromChunks(chunks);
+
+  await db.transaction(async (tx) => {
+    const dbMessageId = Bun.randomUUIDv7();
+
+    // Get current message count for order
+    const existingMessages = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(eq(messages.chatId, chatId));
+    const order = Number(existingMessages[0]?.count ?? 0);
+
+    // Always insert assistant message with error status
+    await tx.insert(messages).values({
+      id: dbMessageId,
+      chatId,
+      role: "assistant",
+      order,
+      status: "error",
+      error: errorInfo,
+    });
+
+    // Insert partial content parts if any
+    await insertPartialMessageParts(
+      tx,
+      dbMessageId,
+      textContent,
+      reasoningContent
+    );
+
+    // Clear activeStreamId and touch chat
+    await tx
+      .update(chats)
+      .set({ activeStreamId: null, updatedAt: new Date() })
+      .where(eq(chats.id, chatId));
+  });
+
+  return true;
 };
 
 // ─── Atomic Stream Completion ─────────────────────────────────────────────────

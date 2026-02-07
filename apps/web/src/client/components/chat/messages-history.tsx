@@ -34,6 +34,7 @@ import { useUser } from "../../contexts/user-context";
 import { useModels } from "../../hooks/use-models";
 import { sendFeedback } from "../../lib/langfuse";
 import type { FeedbackState } from "./feedback-buttons";
+import { MessageError } from "./message-error";
 import { TypingIndicator } from "./member-list";
 import { groupModelsByProvider } from "./model-utils";
 import { TextPart } from "./text-part";
@@ -609,6 +610,13 @@ export const MessagesHistory = ({
                       return null;
                   }
                 })}
+                {message.metadata?.status === "error" &&
+                  message.metadata.error && (
+                    <MessageError
+                      error={message.metadata.error}
+                      onRetry={() => onRegenerate(message.id, "assistant")}
+                    />
+                  )}
               </div>
             );
           })}

@@ -280,7 +280,11 @@ export const chatHandler = {
             isMultiUser: chat.isMultiUser,
           });
         } catch (err) {
-          await handleStreamError(streamId, id, err);
+          await handleStreamError(streamId, id, err, {
+            writer,
+            assistantMessageId,
+            chunkIndex,
+          });
         }
       },
       originalMessages: allMessages,

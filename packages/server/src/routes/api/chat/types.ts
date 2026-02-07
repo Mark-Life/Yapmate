@@ -1,4 +1,8 @@
-import type { MessageMetadata } from "@yapmate/db/schema";
+import type {
+  MessageError,
+  MessageMetadata,
+  MessageStatus,
+} from "@yapmate/db/schema";
 import type { UIMessage } from "ai";
 
 /**
@@ -7,6 +11,8 @@ import type { UIMessage } from "ai";
 export type ChatUIMessage = UIMessage<
   {
     model?: string;
+    status?: MessageStatus;
+    error?: Omit<MessageError, "raw">;
   } & MessageMetadata,
   {
     "chat-title": {

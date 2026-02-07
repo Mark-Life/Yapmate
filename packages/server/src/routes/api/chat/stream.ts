@@ -5,12 +5,13 @@
 
 import type { MCPClient } from "@ai-sdk/mcp";
 import {
-  abortStreamAtomic,
   completeStreamAtomic,
+  errorStreamAtomic,
   getChat,
   updateActiveStreamId,
 } from "@yapmate/db/service";
 import type { UIMessage } from "ai";
+import { classifyGenerationError } from "../../../lib/error-classifier";
 import { resolveChatMcpTools } from "../../../lib/mcp";
 import { unregisterStream } from "../../../lib/redis/controller";
 import {
@@ -85,20 +86,35 @@ export const processStreamChunks = async (
 };
 
 /**
+ * Options for handling stream errors
+ */
+type HandleStreamErrorOptions = {
+  writer?: ProcessStreamChunksOptions["writer"];
+  assistantMessageId: string;
+  chunkIndex: { current: number };
+};
+
+/**
  * Handles stream errors
- * Saves partial message for non-abort errors, cleans up stream state
+ * Classifies the error, persists it atomically with partial content, and emits an error chunk.
  *
  * IMPORTANT: For non-abort errors, this function uses an atomic transaction
- * to save partial message and clear stream state together. This prevents
+ * to save the error message and clear stream state together. This prevents
  * data corruption if any step fails.
+ *
+ * Usage is NOT counted for errored generations because onFinish only fires
+ * on successful stream completion, and this function throws before that.
  *
  * Redis status is updated AFTER the DB transaction commits to ensure consistency.
  */
 export const handleStreamError = async (
   streamId: string,
   chatId: string,
-  err: unknown
+  err: unknown,
+  options: HandleStreamErrorOptions
 ): Promise<void> => {
+  const { writer, assistantMessageId, chunkIndex } = options;
+
   if (err instanceof Error && err.name === "AbortError") {
     // User stopped the stream - status already set to "aborted" by stop handler
     // Partial message will be saved by stop handler
@@ -106,14 +122,15 @@ export const handleStreamError = async (
     await updateActiveStreamId(chatId, null);
     unregisterStream(streamId);
   } else {
-    // Other error - save partial content before marking error
+    const classifiedError = classifyGenerationError(err);
+
+    // Persist error with partial content atomically
     try {
       const chunks = await getBufferedChunks(streamId);
-      // ATOMIC: Save partial message + clear activeStreamId in single transaction
-      await abortStreamAtomic(chatId, chunks);
+      await errorStreamAtomic(chatId, chunks, classifiedError);
     } catch (saveError) {
       console.error(
-        `[Stream ${streamId}] Error saving partial message:`,
+        `[Stream ${streamId}] Error saving error message:`,
         saveError
       );
       // Even if save fails, try to clear stream state
@@ -123,6 +140,37 @@ export const handleStreamError = async (
         // Ignore - best effort cleanup
       }
     }
+
+    // Strip raw field before sending to client
+    const { raw: _raw, ...clientError } = classifiedError;
+    const errorChunk = {
+      type: "data-generation-error" as const,
+      data: { messageId: assistantMessageId, error: clientError },
+    };
+
+    // Emit error chunk via the three-way pattern: Redis, WebSocket, writer
+    const currentIndex = chunkIndex.current;
+    await publishStreamChunk(streamId, {
+      type: errorChunk.type,
+      data: errorChunk.data,
+      index: currentIndex,
+    });
+    await publishChatEvent(chatId, {
+      type: "stream_chunk",
+      chatId,
+      chunk: errorChunk,
+      chunkIndex: currentIndex,
+    });
+    chunkIndex.current += 1;
+
+    if (writer) {
+      try {
+        writer.write(errorChunk);
+      } catch {
+        // Client disconnected, ignore
+      }
+    }
+
     // Only update Redis status AFTER DB operations
     await setStreamStatus(streamId, "error");
     unregisterStream(streamId);
