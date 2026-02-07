@@ -61,6 +61,7 @@ type MessageError = {
   message: string     // human-readable description
   provider?: string   // e.g. "openrouter", "openai"
   retryable: boolean  // hint for frontend
+  raw?: unknown       // raw provider error for debugging (not exposed to users)
 }
 ```
 
@@ -188,7 +189,18 @@ When loading messages via `getMessages()`, include `status` and `error` fields. 
 
 Can reuse existing `handleRegenerate()` logic — it already handles replacing the last assistant message.
 
-### 4. Optional: Auto-Retry for Transient Errors
+### 4. Usage: Errored Generations Don't Count
+
+Errored generations must NOT count toward the user's generation limit. When a generation fails:
+- Do not increment the usage counter
+- If usage was already incremented optimistically, decrement it on error
+- This applies to all error types (retryable and non-retryable)
+
+### 5. Multi-User: Errors Visible to All Members
+
+Error state is visible to all chat members, not just the sender. The `data-generation-error` chunk is already broadcast via WebSocket to all connected members. On reload, the errored message loads from DB for everyone.
+
+### 6. Optional: Auto-Retry for Transient Errors
 
 For errors classified as `retryable: true`, the server can automatically retry once before persisting the error:
 
@@ -210,19 +222,24 @@ Generation fails
 ## Implementation Order
 
 ### Phase 1: Core Error Persistence & Display
-1. Add `status` and `error` columns to messages table + migration
-2. Add `classifyGenerationError()` helper
+1. Add `status` and `error` columns to messages schema (Drizzle schema only — **no migration run**)
+2. Add `classifyGenerationError()` helper (with `raw` field for debugging)
 3. Add `errorStreamAtomic()` DB service function
 4. Update `handleStreamError()` to use `errorStreamAtomic()` + emit error chunk
-5. Update message mapping to include status/error
-6. Frontend: handle `data-generation-error` in `onData`
-7. Frontend: render error state in message bubble
-8. Frontend: retry button wired to regenerate
+5. Ensure errored generations don't count toward usage limit
+6. Update message mapping to include status/error (strip `raw` from client response)
+7. Frontend: handle `data-generation-error` in `onData`
+8. Frontend: render error state in message bubble (visible to all chat members)
+9. Frontend: retry button wired to regenerate
+
+> **Migration note:** Schema changes (step 1) will be committed as Drizzle schema code only.
+> `bun run db:generate` and `bun run db:migrate` will be run manually by a human after reviewing the PR.
+> Build/typecheck may fail due to schema-DB desync until migration is applied — this is expected.
 
 ### Phase 2: Polish & Auto-Retry
-9. Auto-retry once for transient errors (server-side)
-10. "Delete" button on errored messages (remove failed attempt)
-11. Error analytics (track error rates by provider/model)
+10. Auto-retry once for transient errors (server-side)
+11. "Delete" button on errored messages (remove failed attempt)
+12. Error analytics (track error rates by provider/model)
 
 ---
 
@@ -238,13 +255,18 @@ Generation fails
 | `apps/web/src/client/components/chat/chat.tsx` | Update `onError`, `onData` handlers |
 | `apps/web/src/client/components/chat/message-error.tsx` | New: error state UI component |
 | `apps/web/src/client/components/chat/message.tsx` | Render error state when present |
-| DB migration | `status` + `error` columns |
+| DB migration | **Human-run only** — `bun run db:generate` + `bun run db:migrate` after PR review |
 
 ---
 
+## Resolved Decisions
+
+1. **Errored generations do NOT count toward usage limit.** Applies to all error types.
+2. **Raw provider error stored in `MessageError.raw`** for debugging. Stripped before sending to client.
+3. **Errors visible to all chat members** via WebSocket broadcast + DB persistence.
+4. **User message kept on error.** Error shown on the assistant message placeholder, not rolled back.
+5. **DB migration run manually by human** after reviewing PR. Build may fail until migration applied — expected.
+
 ## Open Questions
 
-1. **Should errored messages count toward the generation limit?** Probably not for retryable errors, but possibly yes for content-filter errors.
-2. **Should we store the raw provider error for debugging?** Could add `rawError` to MessageError but only expose `message` to users.
-3. **Multi-user: should other chat members see the error?** Probably yes — the error chunk is already broadcast via WebSocket.
-4. **Should the user message be rolled back if generation fails before any content?** Current proposal: keep user message, show error on assistant message. Alternative: roll back user message too.
+1. Should we add a dedicated admin/debug view to inspect `raw` errors, or just rely on DB queries?
