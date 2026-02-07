@@ -222,9 +222,9 @@ Generation fails
 ## Implementation Order
 
 ### Phase 1: Core Error Persistence & Display
-1. Add `status` and `error` columns to messages schema (Drizzle schema only — **no migration run**)
-2. Add `classifyGenerationError()` helper (with `raw` field for debugging)
-3. Add `errorStreamAtomic()` DB service function
+1. [x] Add `status` and `error` columns to messages schema (Drizzle schema only — **no migration run**)
+2. [x] Add `classifyGenerationError()` helper (with `raw` field for debugging)
+3. [x] Add `errorStreamAtomic()` DB service function
 4. Update `handleStreamError()` to use `errorStreamAtomic()` + emit error chunk
 5. Ensure errored generations don't count toward usage limit
 6. Update message mapping to include status/error (strip `raw` from client response)

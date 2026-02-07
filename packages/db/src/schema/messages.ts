@@ -19,6 +19,26 @@ import { users } from "./users";
 export const MESSAGE_ROLES = ["user", "assistant", "system", "tool"] as const;
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
+/** Valid message statuses */
+export const MESSAGE_STATUSES = ["completed", "streaming", "error"] as const;
+export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
+
+/** Structured error info for failed generations */
+export interface MessageError {
+  code:
+    | "provider_error"
+    | "insufficient_balance"
+    | "rate_limited"
+    | "content_filtered"
+    | "timeout"
+    | "bad_request"
+    | "unknown";
+  message: string;
+  provider?: string;
+  retryable: boolean;
+  raw?: unknown;
+}
+
 /**
  * Metadata stored with assistant messages
  * Contains usage metrics, cost, and provider info
@@ -72,6 +92,10 @@ export const messages = pgTable(
     order: integer().notNull(),
     /** Usage metrics, cost, and generation info */
     metadata: jsonb().$type<MessageMetadata>(),
+    /** Generation status: completed, streaming, or error */
+    status: text().$type<MessageStatus>().notNull().default("completed"),
+    /** Error details when status is 'error' */
+    error: jsonb().$type<MessageError>(),
     /** User who sent this message (null for assistant messages) */
     userId: uuid().references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
