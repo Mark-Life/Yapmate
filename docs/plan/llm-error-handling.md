@@ -225,9 +225,9 @@ Generation fails
 1. [x] Add `status` and `error` columns to messages schema (Drizzle schema only — **no migration run**)
 2. [x] Add `classifyGenerationError()` helper (with `raw` field for debugging)
 3. [x] Add `errorStreamAtomic()` DB service function
-4. Update `handleStreamError()` to use `errorStreamAtomic()` + emit error chunk
-5. Ensure errored generations don't count toward usage limit
-6. Update message mapping to include status/error (strip `raw` from client response)
+4. [x] Update `handleStreamError()` to use `errorStreamAtomic()` + emit error chunk
+5. [x] Ensure errored generations don't count toward usage limit
+6. [x] Update message mapping to include status/error (strip `raw` from client response)
 7. Frontend: handle `data-generation-error` in `onData`
 8. Frontend: render error state in message bubble (visible to all chat members)
 9. Frontend: retry button wired to regenerate
