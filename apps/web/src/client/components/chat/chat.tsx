@@ -347,6 +347,30 @@ export const Chat = ({
           });
         }
       }
+      // Handle generation errors (in-stream failures)
+      if (part.type === "data-generation-error" && part.data) {
+        const { messageId, error } = part.data as {
+          messageId: string;
+          error: Omit<
+            import("@yapmate/db/schema").MessageError,
+            "raw"
+          >;
+        };
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  metadata: {
+                    ...msg.metadata,
+                    status: "error" as const,
+                    error,
+                  },
+                }
+              : msg
+          )
+        );
+      }
       // Handle model info for avatar display
       if (part.type === "data-model" && part.data) {
         const { model: streamedModel, assistantMessageId } = part.data as {
@@ -397,22 +421,19 @@ export const Chat = ({
       });
     },
     onError: (error) => {
-      // Rollback optimistic updates if we have stored previous messages
-      // This restores the UI to match the actual DB state after a failed operation
-      if (previousMessagesRef.current) {
-        setMessages(previousMessagesRef.current);
-        previousMessagesRef.current = null;
-        // Refresh from DB to ensure consistency
-        queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
-      }
-
       // Handle 402 Payment Required (rate limit exceeded)
+      // This fires when the server rejects the request before streaming starts
       if (
         error &&
         typeof error === "object" &&
         "status" in error &&
         error.status === 402
       ) {
+        // Rollback for 402 — message was never persisted
+        if (previousMessagesRef.current) {
+          setMessages(previousMessagesRef.current);
+          previousMessagesRef.current = null;
+        }
         capture("rate limit exceeded", {
           chat_id: chatId,
           model,
@@ -429,6 +450,12 @@ export const Chat = ({
         });
         return;
       }
+
+      // For in-stream errors: don't rollback messages — both user and assistant
+      // messages are persisted in DB. Invalidate cache so DB state loads.
+      previousMessagesRef.current = null;
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", chatId] });
+
       capture("message error", {
         chat_id: chatId,
         model,

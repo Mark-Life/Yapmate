@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { MessageError } from "@yapmate/db/schema";
 import type { ChatUIMessage } from "@yapmate/server/routes/api/chat/types";
 import { getLastUsedModel } from "../../hooks/use-user-preferences";
 import { rpcClient } from "../../lib/rpc-client";
@@ -235,6 +236,37 @@ const handleTextDeltaChunk = (
 };
 
 /**
+ * Handles data-generation-error chunk: marks assistant message with error state
+ */
+const handleGenerationErrorChunk = (
+  chunk: Record<string, unknown>,
+  setMessages: React.Dispatch<React.SetStateAction<ChatUIMessage[]>>
+): void => {
+  const data = chunk.data as {
+    messageId: string;
+    error: Omit<MessageError, "raw">;
+  } | undefined;
+  if (!data) {
+    return;
+  }
+  const { messageId, error } = data;
+  setMessages((prev) =>
+    prev.map((msg) =>
+      msg.id === messageId
+        ? {
+            ...msg,
+            metadata: {
+              ...msg.metadata,
+              status: "error" as const,
+              error,
+            },
+          }
+        : msg
+    )
+  );
+};
+
+/**
  * Processes a single SSE chunk and updates state
  */
 export const processResumeChunk = (
@@ -250,6 +282,11 @@ export const processResumeChunk = (
   // Handle text-delta: append to accumulated text
   if (chunk.type === "text-delta") {
     return handleTextDeltaChunk(chunk, state, setMessages);
+  }
+
+  // Handle generation error: mark message with error state
+  if (chunk.type === "data-generation-error") {
+    handleGenerationErrorChunk(chunk, setMessages);
   }
 
   return state;

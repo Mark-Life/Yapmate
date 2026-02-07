@@ -228,9 +228,9 @@ Generation fails
 4. [x] Update `handleStreamError()` to use `errorStreamAtomic()` + emit error chunk
 5. [x] Ensure errored generations don't count toward usage limit
 6. [x] Update message mapping to include status/error (strip `raw` from client response)
-7. Frontend: handle `data-generation-error` in `onData`
-8. Frontend: render error state in message bubble (visible to all chat members)
-9. Frontend: retry button wired to regenerate
+7. [x] Frontend: handle `data-generation-error` in `onData`
+8. [x] Frontend: render error state in message bubble (visible to all chat members)
+9. [x] Frontend: retry button wired to regenerate
 
 > **Migration note:** Schema changes (step 1) will be committed as Drizzle schema code only.
 > `bun run db:generate` and `bun run db:migrate` will be run manually by a human after reviewing the PR.
