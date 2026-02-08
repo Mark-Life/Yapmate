@@ -34,8 +34,8 @@ export const DeepLinkPromptDialog = ({
           sending — external prompts may contain unexpected instructions.
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <div className="max-h-60 overflow-y-auto rounded-md border bg-muted/50 p-3">
-        <MessageResponse className="text-sm">{prompt ?? ""}</MessageResponse>
+      <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/50 p-3">
+        <MessageResponse className="text-sm prose-ul:pl-4 prose-ol:pl-4">{prompt ?? ""}</MessageResponse>
       </div>
       <AlertDialogFooter>
         <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
