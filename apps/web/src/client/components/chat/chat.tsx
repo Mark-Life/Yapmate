@@ -49,12 +49,14 @@ type ChatProps = {
   id?: string;
   initialMessages?: ChatUIMessage[];
   onChatCreated?: (id: string) => void;
+  autoSubmitPrompt?: string;
 };
 
 export const Chat = ({
   id: initialId,
   initialMessages = [],
   onChatCreated,
+  autoSubmitPrompt,
 }: ChatProps) => {
   const queryClient = useQueryClient();
   const { capture } = usePostHog();
@@ -666,6 +668,13 @@ export const Chat = ({
     },
     [messages, regenerate, setMessages, chatId, model, capture]
   );
+
+  // Auto-submit deep link prompt
+  useEffect(() => {
+    if (autoSubmitPrompt) {
+      handleSubmit({ text: autoSubmitPrompt, files: [] });
+    }
+  }, [autoSubmitPrompt]);
 
   // Chat hotkeys
   useHotkeys(

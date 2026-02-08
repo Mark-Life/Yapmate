@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AppSidebar } from "../components/app-sidebar";
 import { Chat } from "../components/chat/chat";
+import { DeepLinkPromptDialog } from "../components/chat/deep-link-prompt-dialog";
 import { InviteModal } from "../components/chat/invite-modal";
 import { MemberList } from "../components/chat/member-list";
 import { MembersModal } from "../components/chat/members-modal";
@@ -22,6 +23,7 @@ import { MessagesSkeleton } from "../components/chat/messages-skeleton";
 import { FeedbackDialog } from "../components/feedback-dialog";
 import { HotkeysCheatsheet } from "../components/hotkeys-cheatsheet";
 import { ChatProvider, useChatContext } from "../contexts/chat-context";
+import { useDeepLinkPrompt } from "../hooks/use-deep-link-prompt";
 import { HOTKEYS } from "../hooks/use-hotkeys-config";
 import { useMultiUserChat } from "../hooks/use-multi-user-chat";
 import { syncWithServer } from "../hooks/use-user-preferences";
@@ -261,6 +263,10 @@ const ChatContainer = () => {
   // Track which chat was created by this session
   const [createdChatId, setCreatedChatId] = useState<string | null>(null);
 
+  // Deep link prompt handling
+  const { pendingPrompt, clearPrompt } = useDeepLinkPrompt(currentChatId);
+  const [confirmedPrompt, setConfirmedPrompt] = useState<string | null>(null);
+
   // Reset when navigating away from own chat
   useEffect(() => {
     if (currentChatId !== createdChatId) {
@@ -290,12 +296,23 @@ const ChatContainer = () => {
   }
 
   return (
-    <Chat
-      id={currentChatId ?? undefined}
-      initialMessages={isOwnChat ? undefined : messages}
-      key={chatKey}
-      onChatCreated={handleChatCreated}
-    />
+    <>
+      <DeepLinkPromptDialog
+        onCancel={clearPrompt}
+        onConfirm={() => {
+          setConfirmedPrompt(pendingPrompt);
+          clearPrompt();
+        }}
+        prompt={pendingPrompt}
+      />
+      <Chat
+        autoSubmitPrompt={confirmedPrompt ?? undefined}
+        id={currentChatId ?? undefined}
+        initialMessages={isOwnChat ? undefined : messages}
+        key={chatKey}
+        onChatCreated={handleChatCreated}
+      />
+    </>
   );
 };
 
