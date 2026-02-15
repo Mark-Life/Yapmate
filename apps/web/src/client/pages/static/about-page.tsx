@@ -1,6 +1,7 @@
 import { Button } from "@yapmate/components/ui/button";
 import { PRICE_IDS, PricingCards } from "@yapmate/components/ui/pricing-cards";
 import {
+  AlertTriangle,
   Brain,
   Cloud,
   DatabaseIcon,
@@ -349,8 +350,26 @@ const CTASection = () => (
 /**
  * About/Landing page component
  */
+/**
+ * Warning banner for known issues
+ */
+const IosAuthWarning = () => (
+  <div className="mx-auto mt-4 flex max-w-2xl items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
+    <AlertTriangle className="size-5 shrink-0" />
+    <p>
+      We're currently experiencing authentication issues on the iOS app. If you
+      have trouble signing in, please use the{" "}
+      <a className="underline" href="/">
+        web app
+      </a>{" "}
+      in the meantime. We're working on a fix.
+    </p>
+  </div>
+);
+
 export const AboutPage = () => (
   <StaticLayout>
+    <IosAuthWarning />
     <HeroSection />
     <div id="models">
       <ModelsExplorer />
