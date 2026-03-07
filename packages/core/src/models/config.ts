@@ -11,17 +11,17 @@
 export const TOP_MODELS = [
   // Google - Latest Gemini models
   "google/gemini-3-flash-preview",
-  "google/gemini-3-pro-preview",
+  "google/gemini-3.1-pro-preview",
 
   // OpenAI - Latest GPT models
   "openai/gpt-5-nano",
   "openai/gpt-5-mini",
-  "openai/gpt-5.2",
-  "openai/gpt-5.2-pro",
+  "openai/gpt-5.4",
+  "openai/gpt-5.4-pro",
 
   // Anthropic - Latest Claude models
-  "anthropic/claude-sonnet-4.5",
-  "anthropic/claude-opus-4.5",
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-opus-4.6",
 
   // Mistral
   "mistralai/mistral-medium-3.1",

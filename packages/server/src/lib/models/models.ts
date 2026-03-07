@@ -12,7 +12,7 @@ export const MODELS = [
   "google/gemini-2.5-pro",
 
   // OPENAI
-  "openai/gpt-5.2",
+  "openai/gpt-5.4",
   "openai/gpt-5",
   "openai/gpt-5-mini",
   "openai/gpt-5-nano",
