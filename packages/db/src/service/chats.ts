@@ -83,16 +83,14 @@ export const getChatsByUserWithLastModel = async (
     .where(
       and(
         eq(messages.role, "assistant"),
-        chatIds.length === 1 ? eq(messages.chatId, chatIds[0]) : undefined // Use filter instead for multiple
+        chatIds.length === 1
+          ? eq(messages.chatId, chatIds[0])
+          : inArray(messages.chatId, chatIds)
       )
     )
     .orderBy(messages.chatId, desc(messages.order));
 
-  // Filter to only include chats in our list when multiple
-  const filteredModels =
-    chatIds.length === 1
-      ? lastModels
-      : lastModels.filter((m) => chatIds.includes(m.chatId));
+  const filteredModels = lastModels;
 
   // Create lookup map
   const modelMap = new Map(filteredModels.map((m) => [m.chatId, m.model]));
