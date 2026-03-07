@@ -420,7 +420,7 @@ export const Chat = ({
           model,
         });
         toast.error("Message limit reached", {
-          description: "You've used all your free messages this month.",
+          description: "Subscribe to a plan to start sending messages.",
           duration: 8000,
           action: {
             label: "Upgrade",
