@@ -111,9 +111,11 @@ export const broadcast = (userId: string, event: WsEvent): void => {
     }
   }
 
-  // Clean up dead connections
+  // Clean up dead connections (fire-and-forget with error handling)
   for (const ws of deadConnections) {
-    removeConnection(userId, ws);
+    removeConnection(userId, ws).catch((err) =>
+      console.error("[WS] Error cleaning up dead connection:", err)
+    );
   }
 };
 
@@ -226,11 +228,13 @@ export const broadcastToChat = (chatId: string, event: WsEvent): void => {
     }
   }
 
-  // Clean up dead connections
+  // Clean up dead connections (fire-and-forget with error handling)
   for (const ws of deadConnections) {
     const userId = connectionUserId.get(ws);
     if (userId) {
-      removeConnection(userId, ws);
+      removeConnection(userId, ws).catch((err) =>
+        console.error("[WS] Error cleaning up dead connection:", err)
+      );
     }
   }
 };

@@ -48,6 +48,15 @@ import devTermsHtml from "../client/pages/static/terms.html";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const isProduction = process.env.NODE_ENV === "production";
 
+// Global error handlers to prevent server crashes from unhandled errors
+process.on("uncaughtException", (error) => {
+  console.error("[FATAL] Uncaught exception:", error);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled rejection:", reason);
+});
+
 /** Cache durations in seconds */
 const CACHE_IMMUTABLE = 31_536_000; // 1 year - for Vite hashed assets
 const CACHE_STATIC = 604_800; // 1 week - for non-hashed static files
@@ -546,7 +555,11 @@ const server = serve<WsClientData>({
       await addConnection(wsConnection.data.userId, wsConnection);
     },
     async close(wsConnection: ServerWebSocket<WsClientData>) {
-      await removeConnection(wsConnection.data.userId, wsConnection);
+      try {
+        await removeConnection(wsConnection.data.userId, wsConnection);
+      } catch (error) {
+        console.error("[WS] Error in close handler:", error);
+      }
     },
     async message(
       wsConnection: ServerWebSocket<WsClientData>,
@@ -679,3 +692,14 @@ const logServerUrls = () => {
 };
 
 logServerUrls();
+
+// Graceful shutdown - let active connections drain before exiting
+const shutdown = () => {
+  console.log("[SERVER] Shutting down gracefully...");
+  server.stop();
+  // Allow 5s for in-flight requests to complete
+  setTimeout(() => process.exit(0), 5000);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
