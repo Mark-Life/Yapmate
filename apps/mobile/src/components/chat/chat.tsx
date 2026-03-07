@@ -403,7 +403,7 @@ export const Chat = ({
         });
         Alert.alert(
           "Message limit reached",
-          "You've reached your free monthly message limit. Your allowance will reset next month."
+          "Subscribe to a plan to start sending messages."
         );
         return;
       }

@@ -40,8 +40,8 @@ const TIERS: {
     name: "Free",
     price: "$0",
     priceDetail: "forever",
-    generations: "10 generations/month",
-    features: ["All AI models", "Web & iOS apps", "Chat history sync"],
+    generations: "No generations",
+    features: ["Browse AI models", "Web & iOS apps"],
   },
   {
     id: "hobby",
