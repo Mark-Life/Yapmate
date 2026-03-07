@@ -66,7 +66,7 @@ export const isUserBlocked = async (userId: string): Promise<boolean> => {
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return result?.blockedAt !== null;
+  return !!result?.blockedAt;
 };
 
 /**

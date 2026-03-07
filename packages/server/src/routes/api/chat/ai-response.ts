@@ -75,10 +75,6 @@ const getMessageText = (msg: UIMessage): string => {
   return textParts.map((p) => p.text).join("\n\n");
 };
 
-// Get Supermemory API key (only needed when memory is enabled)
-if (!process.env.SUPERMEMORY_API_KEY) {
-  throw new Error("SUPERMEMORY_API_KEY is not set");
-}
 const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
 
 /**
